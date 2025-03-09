@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { FaCloudUploadAlt } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
-import uploadToCloudinary from "../uploadToCloudinary";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDocs } from "firebase/firestore";
 import { db } from "../firebase.config"; // Import Firestore instance
 
 const PageContainer = styled.div`
@@ -46,61 +45,66 @@ const MainContent = styled.div.attrs(({ isSidebarOpen }) => ({
   height: 100%;
 `;
 
-const AddCourse = () => {
+const AddModule = () => {
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [file, setFile] = useState(null);
+  const [content, setContent] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const fileInputRef = useRef(null);
+
+  // Fetch courses from Firestore
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "courses"));
+        const coursesData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          title: doc.data().title,
+        }));
+        setCourses(coursesData);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   // Toggle Sidebar function
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Handle File Selection
-  const handleFileChange = (event) => {
-    setFile(event.target.files[0]);
-  };
-
   // Handle Form Submission
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!file || !title || !category) {
-      alert("Please fill all required fields and upload a file.");
+    if (!selectedCourseId || !title || !description || !content) {
+      alert("Please fill all required fields.");
       return;
     }
 
     try {
-      // Upload file to Cloudinary
-      const fileUrl = await uploadToCloudinary(file);
-      if (!fileUrl) {
-        alert("File upload to Cloudinary failed.");
-        return;
-      }
-
-      // Store course details in Firestore
-      await addDoc(collection(db, "courses"), {
+      // Add module to the course's modules subcollection
+      const moduleRef = collection(doc(db, "courses", selectedCourseId), "modules");
+      await addDoc(moduleRef, {
         title,
         description,
-        category,
-        fileUrl, // Store Cloudinary file URL
-        createdAt: serverTimestamp(), // Timestamp for sorting
+        content,
+        createdAt: serverTimestamp(),
       });
 
-      alert("Course uploaded successfully!");
+      alert("Module added successfully!");
 
       // Reset form fields
       setTitle("");
       setDescription("");
-      setCategory("");
-      setFile(null);
-      fileInputRef.current.value = "";
+      setContent("");
+      setSelectedCourseId("");
     } catch (error) {
-      console.error("Error uploading course:", error);
-      alert("An error occurred while uploading.");
+      console.error("Error adding module:", error);
+      alert("An error occurred while adding the module.");
     }
   };
 
@@ -118,18 +122,36 @@ const AddCourse = () => {
             <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-3xl">
               <div className="flex items-center mb-6">
                 <FaCloudUploadAlt className="text-green-500 text-3xl mr-3" />
-                <h1 className="text-2xl font-bold">Add New Course</h1>
+                <h1 className="text-2xl font-bold">Add New Module</h1>
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Course Title *
+                      Select Course *
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+                      value={selectedCourseId}
+                      onChange={(e) => setSelectedCourseId(e.target.value)}
+                      required
+                    >
+                      <option value="">Select a course</option>
+                      {courses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">
+                      Module Title *
                     </label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      placeholder="Enter course title"
+                      placeholder="Enter module title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
@@ -137,29 +159,11 @@ const AddCourse = () => {
                   </div>
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Category *
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      required
-                    >
-                      <option value="">Select a category</option>
-                      <option value="programming">Programming</option>
-                      <option value="design">Design</option>
-                      <option value="business">Business</option>
-                      <option value="marketing">Marketing</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
                       Description
                     </label>
                     <textarea
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      placeholder="Describe the course content"
+                      placeholder="Describe the module content"
                       rows="4"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -167,15 +171,15 @@ const AddCourse = () => {
                   </div>
                   <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Upload Course File *
+                      Content
                     </label>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      onChange={handleFileChange}
-                      required
-                    />
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
+                      placeholder="Enter module content"
+                      rows="4"
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                    ></textarea>
                   </div>
                 </div>
                 <div className="mt-6 flex justify-center">
@@ -183,7 +187,7 @@ const AddCourse = () => {
                     type="submit"
                     className="bg-green-500 text-white py-2 px-6 rounded-md hover:bg-green-600"
                   >
-                    Upload Course
+                    Add Module
                   </button>
                 </div>
               </form>
@@ -195,4 +199,4 @@ const AddCourse = () => {
   );
 };
 
-export default AddCourse;
+export default AddModule;

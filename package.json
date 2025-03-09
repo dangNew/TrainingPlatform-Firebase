@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.8.1",
     "cloudinary": "^2.5.1",
+    "crypto-browserify": "^3.12.1",
     "firebase": "^11.4.0",
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",

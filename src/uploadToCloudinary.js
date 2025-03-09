@@ -3,16 +3,19 @@ import axios from "axios";
 const uploadToCloudinary = async (file) => {
   const CLOUD_NAME = "trainingplat-a"; // Your Cloudinary cloud name
   const UPLOAD_PRESET = "training"; // Your preset name
-  const API_KEY = "278769468359541"; // Your Cloudinary API Key
 
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET); // Required for unsigned uploads
-  formData.append("api_key", API_KEY); // Required if using a signed preset
+
+  const uploadUrl = file.type.startsWith("image")
+    ? `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
+    : `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
 
   try {
+    console.log("Uploading file to Cloudinary:", file);
     const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+      uploadUrl,
       formData,
       {
         headers: {

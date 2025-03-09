@@ -7,8 +7,9 @@ import Dashboard from "./Dashboard/Dashboard";
 import UploadContent from "./adviser/uploadcontent";
 import Courses from "./adviser/courses"
 import AddCourses from "./adviser/Addcourse"
-
-
+import FileLibrary from "./adviser/filelibrary"
+import Addmodule from "./adviser/AddModule"
+import Moduledisplay from "./adviser/ModuleDisplay"
 
   
 function App() {
@@ -24,6 +25,10 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/addcourse" element={<AddCourses />} />
+        <Route path="/file-library" element={<FileLibrary />} />
+        <Route path="/addmodule" element={<Addmodule />} />
+        <Route path="/modules/:courseId" element={<Moduledisplay />} />
+        
       </Routes>
     </Router>
   );

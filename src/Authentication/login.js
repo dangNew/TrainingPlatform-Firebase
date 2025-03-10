@@ -36,24 +36,41 @@ function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Query Firestore to check if the user exists in the 'users' collection
+      // Check if the user exists in the 'users' collection
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
+      const qUsers = query(usersRef, where("email", "==", email));
+      const querySnapshotUsers = await getDocs(qUsers);
 
-      if (querySnapshot.empty) {
-        setError("User not found. Please check your email and password.");
-      } else {
+      if (!querySnapshotUsers.empty) {
         navigate("/dashboard"); // Redirect to Dashboard
+        return;
       }
+
+      // Check if the user exists in the 'learner' collection
+      const learnersRef = collection(db, "learner");
+      const qLearners = query(learnersRef, where("email", "==", email));
+      const querySnapshotLearners = await getDocs(qLearners);
+
+      if (!querySnapshotLearners.empty) {
+        navigate("/user-dashboard"); // Redirect to User Dashboard
+        return;
+      }
+
+      setError("User not found. Please check your email and password.");
     } catch (err) {
+      if (err.code === "auth/invalid-email" || err.code === "auth/user-not-found") {
+        setError("Invalid email address. Please check your email.");
+      } else if (err.code === "auth/wrong-password") {
+        setError("Incorrect password. Please try again.");
+      } else {
+        setError("An error occurred. Please try again later.");
+      }
       console.error("Login Error:", err.message);
-      setError(err.message || "Server error. Please try again.");
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
       <div className="flex w-full max-w-4xl bg-gray-900 text-white shadow-2xl rounded-lg overflow-hidden">
         {/* Login Form */}
         <div className="w-1/2 p-8">

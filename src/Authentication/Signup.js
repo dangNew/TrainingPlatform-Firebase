@@ -22,6 +22,7 @@ function SignUp() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [isLearner, setIsLearner] = useState(false)
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -41,7 +42,9 @@ function SignUp() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      await setDoc(doc(db, "users", user.uid), {
+      const collectionName = isLearner ? "learner" : "users"
+
+      await setDoc(doc(db, collectionName, user.uid), {
         fullName,
         username,
         email,
@@ -160,6 +163,19 @@ function SignUp() {
                 </div>
               ))}
 
+              {/* Dropdown for Learner */}
+              <div className="md:col-span-2 space-y-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Register as Learner</label>
+                <select
+                  value={isLearner}
+                  onChange={(e) => setIsLearner(e.target.value === "true")}
+                  className="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
+                >
+                  <option value={false}>No</option>
+                  <option value={true}>Yes</option>
+                </select>
+              </div>
+
               <div className="md:col-span-2 mt-4">
                 <button
                   type="submit"
@@ -189,5 +205,3 @@ function SignUp() {
 }
 
 export default SignUp
-
-  

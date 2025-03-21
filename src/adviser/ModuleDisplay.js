@@ -2,28 +2,28 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { collection, getDoc, doc, getDocs, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase.config";
-import { FaEdit, FaTrash } from "react-icons/fa"; // Import edit and delete icons
-import styled from "styled-components";
-import IntSidebar from "./sidebar"; // Import your sidebar component
-import Header from "../Dashboard/Header"; // Import your header component
+import { FaEdit, FaTrash, FaTimes, FaSearch, FaFilter, FaBook } from "react-icons/fa";
+import IntSidebar from "./sidebar";
+import Header from "../Dashboard/Header";
 
 const ModuleDisplay = () => {
   const { courseId } = useParams();
   const [modules, setModules] = useState([]);
   const [course, setCourse] = useState(null);
   const [editingModule, setEditingModule] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ title: "", description: "", content: "" });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch course data
         const courseDocRef = doc(db, "courses", courseId);
         const courseDocSnap = await getDoc(courseDocRef);
         if (courseDocSnap.exists()) {
           setCourse(courseDocSnap.data());
         }
 
-        // Fetch modules data
         const modulesCollectionRef = collection(courseDocRef, "modules");
         const querySnapshot = await getDocs(modulesCollectionRef);
         const modulesData = querySnapshot.docs.map((doc) => ({
@@ -41,19 +41,58 @@ const ModuleDisplay = () => {
 
   const handleEditModule = (module) => {
     setEditingModule(module);
-    // Add logic to handle editing, such as opening a modal
+    setFormData({ title: module.title, description: module.description, content: module.content });
+    setIsEditing(true);
   };
 
   const handleDeleteModule = async (moduleId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this module?");
+    if (confirmDelete) {
+      try {
+        const courseDocRef = doc(db, "courses", courseId);
+        await deleteDoc(doc(courseDocRef, "modules", moduleId));
+        setModules(modules.filter((module) => module.id !== moduleId));
+        alert("Module deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting module:", error);
+        alert("An error occurred while deleting the module.");
+      }
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmitEdit = async (e) => {
+    e.preventDefault();
     try {
       const courseDocRef = doc(db, "courses", courseId);
-      await deleteDoc(doc(courseDocRef, "modules", moduleId));
-      setModules(modules.filter((module) => module.id !== moduleId));
-      alert("Module deleted successfully!");
+      await updateDoc(doc(courseDocRef, "modules", editingModule.id), {
+        ...formData,
+      });
+      setModules(modules.map((module) =>
+        module.id === editingModule.id ? { ...module, ...formData } : module
+      ));
+      setIsEditing(false);
+      alert("Module updated successfully!");
     } catch (error) {
-      console.error("Error deleting module:", error);
-      alert("An error occurred while deleting the module.");
+      console.error("Error updating module:", error);
+      alert("An error occurred while updating the module.");
     }
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const filteredModules = modules.filter((module) =>
+    module.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const openModuleDetails = (moduleId) => {
+    window.open(`/course/${courseId}/module/${moduleId}`, '_blank', 'noopener,noreferrer');
   };
 
   if (!course) {
@@ -61,163 +100,113 @@ const ModuleDisplay = () => {
   }
 
   return (
-    <PageContainer>
-      <HeaderWrapper>
-        <Header />
-      </HeaderWrapper>
-      <ContentContainer>
-        <SidebarWrapper>
-          <IntSidebar />
-        </SidebarWrapper>
-        <MainContent>
-          <CourseHeader>
-            <CourseTitle>{course.title}</CourseTitle>
-            <CourseImage src={course.fileUrl} alt={course.title} />
-          </CourseHeader>
-          <ModuleContainer>
-            <ModuleList>
-              {modules.map((module, index) => (
-                <ModuleItem key={module.id}>
-                  <ModuleIcon>
-                    {/* Replace with actual icon logic if needed */}
+    <div className="flex flex-col h-screen bg-gray-100">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <IntSidebar />
+        <div className="flex-1 p-6 overflow-y-auto bg-white rounded-lg shadow-lg">
+          <div className="mb-6 relative bg-blue-100 p-6 rounded-lg shadow-inner">
+            <div className="flex items-center mb-4">
+              <FaBook className="text-blue-500 text-4xl mr-4" />
+              <h1 className="text-3xl font-bold text-blue-600">{course.title}</h1>
+            </div>
+            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg">
+              <img src={course.fileUrl} alt={course.title} className="w-full h-full object-cover rounded-2xl" />
+              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-center p-4 rounded-2xl">
+                <p className="text-lg">{course.description}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-between mb-4">
+            <input
+              type="text"
+              placeholder="Search modules..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="flex-1 p-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500"
+            />
+            <button className="ml-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+              <FaSearch />
+            </button>
+            <button className="ml-2 bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+              <FaFilter /> Filter
+            </button>
+          </div>
+          <div className="space-y-4">
+            {filteredModules.map((module, index) => (
+              <div key={module.id} className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-lg">
+                <div
+                  className="flex items-center flex-1 cursor-pointer"
+                  onClick={() => openModuleDetails(module.id)}
+                >
+                  <div className="w-10 h-10 bg-red-500 text-white flex items-center justify-center rounded-full mr-4 text-lg font-semibold">
                     {index + 1}
-                  </ModuleIcon>
-                  <ModuleContent>
-                    <ModuleTitle>Module {index + 1} – {module.title}</ModuleTitle>
-                  </ModuleContent>
-                  <ActionButtons>
-                    <button onClick={() => handleEditModule(module)}>
-                      <FaEdit />
-                    </button>
-                    <button onClick={() => handleDeleteModule(module.id)}>
-                      <FaTrash />
-                    </button>
-                  </ActionButtons>
-                </ModuleItem>
-              ))}
-            </ModuleList>
-          </ModuleContainer>
-        </MainContent>
-      </ContentContainer>
-    </PageContainer>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-800">
+                      Module {index + 1} – {module.title}
+                    </h2>
+                    <p className="text-sm text-gray-600">{module.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <button onClick={() => handleEditModule(module)} className="text-yellow-500 hover:text-yellow-700 rounded-full">
+                    <FaEdit />
+                  </button>
+                  <button onClick={() => handleDeleteModule(module.id)} className="text-red-500 hover:text-red-700 rounded-full">
+                    <FaTrash />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {isEditing && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Edit Module</h2>
+              <button onClick={() => setIsEditing(false)} className="text-gray-500 hover:text-gray-700">
+                <FaTimes />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitEdit} className="space-y-4">
+              <input
+                type="text"
+                name="title"
+                placeholder="Module Title"
+                value={formData.title}
+                onChange={handleInputChange}
+                required
+                className="w-full p-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500"
+              />
+              <textarea
+                name="description"
+                placeholder="Description"
+                value={formData.description}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              ></textarea>
+              <textarea
+                name="content"
+                placeholder="Content"
+                value={formData.content}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              ></textarea>
+              <button
+                type="submit"
+                className="w-full bg-blue-500 text-white py-2 rounded-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
 export default ModuleDisplay;
-
-// Styled Components
-const PageContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #f4f6f9;
-`;
-
-const HeaderWrapper = styled.div`
-  width: 100%;
-  z-index: 10;
-`;
-
-const ContentContainer = styled.div`
-  display: flex;
-  flex: 1;
-`;
-
-const SidebarWrapper = styled.div`
-  height: 100%;
-  z-index: 5;
-`;
-
-const MainContent = styled.div`
-  padding: 2rem;
-  background-color: #f9f9f9;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  flex: 1;
-  overflow-y: auto;
-  height: 100%;
-  border-radius: 8px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-`;
-
-const CourseHeader = styled.div`
-  margin-bottom: 20px;
-`;
-
-const CourseTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-  border-bottom: 3px solid #3498db;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-  letter-spacing: 0.5px;
-`;
-
-const CourseImage = styled.img`
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 20px;
-`;
-
-const ModuleContainer = styled.div`
-  padding: 20px;
-  background-color: #f9f9f9;
-`;
-
-const ModuleList = styled.ul`
-  list-style: none;
-  padding: 0;
-`;
-
-const ModuleItem = styled.li`
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  background-color: #fff;
-`;
-
-const ModuleIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  background-color: #e74c3c;
-  border-radius: 50%;
-  margin-right: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 20px;
-`;
-
-const ModuleContent = styled.div`
-  flex: 1;
-`;
-
-const ModuleTitle = styled.h2`
-  font-size: 18px;
-  color: #333;
-  margin: 0;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 10px;
-
-  button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #333;
-    font-size: 20px;
-
-    &:hover {
-      color: #e74c3c;
-    }
-  }
-`;
-

@@ -60,7 +60,7 @@ function SignUp() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center  px-4 py-12">
       <div className="w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl">
         {/* Left decorative panel - visible on medium screens and up */}
         <div className="flex flex-col md:flex-row">

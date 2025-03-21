@@ -70,7 +70,7 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="flex min-h-screen items-center justify-center">
       <div className="flex w-full max-w-4xl bg-gray-900 text-white shadow-2xl rounded-lg overflow-hidden">
         {/* Login Form */}
         <div className="w-1/2 p-8">

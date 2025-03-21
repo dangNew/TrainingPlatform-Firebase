@@ -28,6 +28,8 @@ import ChatRoom from "./Learner/Chatroom";
 import LProfile from "./Learner/LProfile";
 import LCourses from "./Learner/LCourses";
 import ModuleDisplay from "./Learner/LModules";
+import CertificatePage from "./Learner/Certificates";
+import ModuleViewer from "./Learner/LModuleView";
 
 // Create a wrapper component for the NavBar
 const NavBarWrapper = () => {
@@ -63,6 +65,9 @@ function App() {
         <Route path="/lprofile" element={<LProfile />} />
         <Route path="/lcourses" element={<LCourses />} />
         <Route path="/lcourse/:courseId" element={<ModuleDisplay />} />
+        <Route path="/lmodules/:courseId" element={<ModuleDisplay />} />
+        <Route path="/certificates" element={<CertificatePage />} /> 
+        <Route path="/module-viewer" element={<ModuleViewer />} />     
       </Routes>
     </Router>
   );

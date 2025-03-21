@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import logo from "../assets/logo.jpg";
-import { LifeBuoy, Receipt, FolderOpen, UserCircle, FileText, BookOpen, LayoutDashboard, Settings, Menu, MoreVertical, MessageCircle } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { LifeBuoy, Receipt, FolderOpen, UserCircle, FileText, BookOpen, LayoutDashboard, Settings, Menu, MoreVertical, LogOut } from 'lucide-react';
 import { auth, db } from '../firebase.config';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -12,7 +11,11 @@ export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
   const [user] = useAuthState(auth);
   const [userData, setUserData] = useState({ fullName: '', email: '' });
-  const [activeItem, setActiveItem] = useState('Dashboard'); // Default active item
+
+  const location = useLocation();
+  const [activeItem, setActiveItem] = useState(() => {
+    return localStorage.getItem('activeItem') || 'Dashboard'; // Default active item
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -25,9 +28,36 @@ export default function Sidebar() {
         }
       }
     };
-
     fetchUserData();
   }, [user]);
+
+  useEffect(() => {
+    // Map URL path to corresponding sidebar item text
+    const routeToText = {
+      '/user-dashboard': 'Dashboard',
+      '/lcourses': 'Courses',
+      '/lprofile': 'Profile',
+      '/certificates': 'Certificates',
+      '/resources': 'Resources',
+      '/settings': 'Settings',
+      '/help': 'Help',
+    };
+
+    // Ensure "Courses" stays active when navigating to a module
+    if (location.pathname.startsWith('/lcourses') || location.pathname.startsWith('/lmodules')) {
+      setActiveItem('Courses');
+    } else {
+      setActiveItem(routeToText[location.pathname] || 'Dashboard');
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    localStorage.setItem('activeItem', activeItem);
+  }, [activeItem]);
+
+  const handleLogout = () => {
+    auth.signOut();
+  };
 
   return (
     <SidebarContext.Provider value={{ expanded, activeItem, setActiveItem }}>
@@ -35,45 +65,50 @@ export default function Sidebar() {
         <aside className={`fixed h-screen transition-all ${expanded ? 'w-64' : 'w-16'}`}>
           <nav className="h-full flex flex-col bg-blue-950 border-r shadow-sm text-gray-200">
             <div className="p-4 pb-2 flex justify-between items-center">
-              <img
-                src={logo}
-                className={`overflow-hidden transition-all ${expanded ? 'w-12' : 'w-0'}`}
-                alt="Logo"
-              />
               <button
                 onClick={() => setExpanded((curr) => !curr)}
                 className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600"
               >
-                <Menu className="text-gray-200" />
+                <Menu className="text-gray-200" size={32} />
               </button>
             </div>
 
-            <ul className="flex-1 px-3">
-              <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" route="/user-dashboard" />
-              <SidebarItem icon={<BookOpen size={20} />} text="Courses" route="/lcourses" />
-              <SidebarItem icon={<FileText size={20} />} text="Modules" />
-              <SidebarItem icon={<FolderOpen size={20} />} text="Resources" />
-              <SidebarItem icon={<UserCircle size={20} />} text="Profile" route="/lprofile" />
-              {/* <SidebarItem icon={<MessageCircle size={20} />} text="Chat Room" alert route="/chatroom" /> */}
-              <hr className="my-3 border-gray-700" />
-              <SidebarItem icon={<Settings size={20} />} text="Settings" />
-              <SidebarItem icon={<LifeBuoy size={20} />} text="Help" />
-            </ul>
-
-            <Link to="/lprofile" className="border-t border-gray-700 flex p-3">
-              <img
-                src=""
-                alt=""
-                className="w-10 h-10 rounded-md"
-              />
-              <div className={`flex justify-between items-center overflow-hidden transition-all ${expanded ? 'w-52 ml-3' : 'w-0'}`}>
-                <div className="leading-4">
-                  <h4 className="font-semibold text-gray-200">{userData.fullName}</h4>
-                  <span className="text-xs text-gray-400">{userData.email}</span>
-                </div>
-                <MoreVertical size={20} className="text-gray-200" />
+            <Link to="/lprofile" className="flex flex-col items-center p-3">
+              <div className={`rounded-full overflow-hidden ${expanded ? 'w-24 h-24' : 'w-12 h-12'}`}>
+                <img
+                  src={userData.photoURL}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className={`text-center ${expanded ? 'block' : 'hidden'}`}>
+                <h4 className="font-bold text-lg text-gray-200">{userData.fullName}</h4>
+                <span className="text-sm text-gray-400">{userData.email}</span>
               </div>
             </Link>
+
+            <hr className="my-3 border-gray-700" />
+
+            <ul className="flex-1 px-3">
+              <SidebarItem icon={<LayoutDashboard size={24} />} text="Dashboard" route="/user-dashboard" />
+              <SidebarItem icon={<BookOpen size={24} />} text="Courses" route="/lcourses" />
+              <SidebarItem icon={<FileText size={24} />} text="Certificates" route="/certificates" />
+              <SidebarItem icon={<FolderOpen size={24} />} text="Resources" route="/resources" />
+              <SidebarItem icon={<UserCircle size={24} />} text="Profile" route="/lprofile" />
+              <hr className="my-3 border-gray-700" />
+              <SidebarItem icon={<Settings size={24} />} text="Settings" route="/settings" />
+              <SidebarItem icon={<LifeBuoy size={24} />} text="Help" route="/help" />
+            </ul>
+
+            <div className="border-t border-gray-700 flex p-3">
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center w-full text-gray-200 hover:text-red-500"
+              >
+                <LogOut size={32} className="mr-2" />
+                <span className={`overflow-hidden transition-all ${expanded ? 'w-52 ml-3 text-lg' : 'w-0'}`}>Logout</span>
+              </button>
+            </div>
           </nav>
         </aside>
         <main className={`transition-all ${expanded ? 'ml-64' : 'ml-16'}`}>
@@ -84,12 +119,13 @@ export default function Sidebar() {
   );
 }
 
-function SidebarItem({ icon, text, alert, route }) {
+function SidebarItem({ icon, text, route }) {
   const { expanded, activeItem, setActiveItem } = useContext(SidebarContext);
   const navigate = useNavigate();
 
   const handleClick = () => {
     setActiveItem(text);
+    localStorage.setItem('activeItem', text); // Persist the active item
     if (route) {
       navigate(route);
     }
@@ -98,18 +134,12 @@ function SidebarItem({ icon, text, alert, route }) {
   return (
     <li
       onClick={handleClick}
-      className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
+      className={`relative flex items-center py-1 px-2 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
         activeItem === text ? 'bg-gradient-to-tr from-yellow-200 to-yellow-100 text-yellow-800' : 'hover:bg-yellow-50 text-gray-200'
       }`}
     >
       {icon}
-      <span className={`overflow-hidden transition-all ${expanded ? 'w-52 ml-3' : 'w-0'}`}>{text}</span>
-      {alert && <div className={`absolute right-2 w-2 h-2 rounded bg-yellow-400 ${expanded ? '' : 'top-2'}`} />}
-      {!expanded && (
-        <div className="absolute left-full rounded-md px-2 py-1 ml-6 bg-yellow-100 text-yellow-800 text-sm invisible opacity-20 -translate-x-3 transition-all group-hover:visible group-hover:opacity-100 group-hover:translate-x-0">
-          {text}
-        </div>
-      )}
+      <span className={`overflow-hidden transition-all ${expanded ? 'w-40 ml-3 text-sm' : 'w-0'}`}>{text}</span>
     </li>
   );
 }

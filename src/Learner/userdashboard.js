@@ -1,11 +1,23 @@
 import React from 'react';
 import Sidebar from '../components/LSidebar';
+import styled from 'styled-components';
+
+
+const MainContent = styled.div`
+  flex: 1;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  margin-left: 10px; `
+;
 
 const UserDashboard = () => {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 p-6 bg-gray-100">
+      <MainContent>
 
         {/* Progress Overview */}
         <section className="mb-8">
@@ -213,7 +225,7 @@ const UserDashboard = () => {
             <p>Change Theme or Layout</p>
           </div>
         </section>
-      </main>
+      </MainContent>
     </div>
   );
 };

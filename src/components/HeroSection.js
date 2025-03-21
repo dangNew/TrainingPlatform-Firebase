@@ -3,6 +3,7 @@ import video1 from "../assets/video1.mp4";
 import video2 from "../assets/video2.mp4";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 export const FadeUp = (delay) => {
   return {
@@ -27,6 +28,7 @@ export const FadeUp = (delay) => {
 const HeroSection = () => {
   const [currentVideo, setCurrentVideo] = useState(0);
   const videos = [video1, video2];
+  const navigate = useNavigate(); // Get the navigate function
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -38,6 +40,10 @@ const HeroSection = () => {
 
   const handleDotClick = (index) => {
     setCurrentVideo(index);
+  };
+
+  const handleGetStartedClick = () => {
+    navigate("/signup"); // Navigate to the /signup route
   };
 
   return (
@@ -80,7 +86,9 @@ const HeroSection = () => {
             initial="initial"
             animate="animate"
             className="flex justify-center m-10">
-            <button className="primary-btn flex bg-gradient-to-r from-yellow-500 to-yellow-600 py-3 px-4 mx-3 text-white rounded-md gap-2 group">
+            <button
+              onClick={handleGetStartedClick} // Add onClick handler
+              className="primary-btn flex bg-gradient-to-r from-yellow-500 to-yellow-600 py-3 px-4 mx-3 text-white rounded-md gap-2 group">
               Get Started
               <IoIosArrowForward className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300" />
             </button>

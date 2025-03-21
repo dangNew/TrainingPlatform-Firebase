@@ -18,13 +18,17 @@ import {
   FaSearch,
   FaSortAlphaDown,
   FaSortAlphaUp,
-  FaFilter,
   FaTimes,
   FaBook,
 } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
 import ModuleDisplay from "./ModuleDisplay";
+import { Viewer, Worker } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 
 const CourseDashboard = () => {
   const navigate = useNavigate();
@@ -33,7 +37,10 @@ const CourseDashboard = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [modal, setModal] = useState({ isOpen: false, type: '', content: null });
   const [editingCourse, setEditingCourse] = useState(null);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [numPages, setNumPages] = useState(null);
   const coursesPerPage = 6;
 
   useEffect(() => {
@@ -67,12 +74,18 @@ const CourseDashboard = () => {
 
   const handleEditCourse = (course) => {
     setEditingCourse(course);
+    setModal({ isOpen: true, type: 'edit', content: course });
   };
 
-  const handleDeleteCourse = async (courseId) => {
+  const handleDeleteCourse = (courseId) => {
+    setModal({ isOpen: true, type: 'delete', content: courseId });
+  };
+
+  const confirmDeleteCourse = async (courseId) => {
     try {
       await deleteDoc(doc(db, "courses", courseId));
       setCourses(courses.filter((course) => course.id !== courseId));
+      setModal({ isOpen: false, type: '', content: null });
       alert("Course deleted successfully!");
     } catch (error) {
       console.error("Error deleting course:", error);
@@ -105,14 +118,16 @@ const CourseDashboard = () => {
   const handleSubmitEdit = async () => {
     try {
       await updateDoc(doc(db, "courses", editingCourse.id), {
-        ...editingCourse,
+        title: editingCourse.title,
+        description: editingCourse.description,
+        category: editingCourse.category,
       });
       setCourses(
         courses.map((course) =>
           course.id === editingCourse.id ? editingCourse : course
         )
       );
-      setEditingCourse(null);
+      setModal({ isOpen: false, type: '', content: null });
       alert("Course updated successfully!");
     } catch (error) {
       console.error("Error updating course:", error);
@@ -121,11 +136,34 @@ const CourseDashboard = () => {
   };
 
   const closeModal = () => {
+    setModal({ isOpen: false, type: '', content: null });
     setEditingCourse(null);
+    setPdfFile(null);
   };
 
   const handleCourseClick = (courseId) => {
     navigate(`/modules/${courseId}`);
+  };
+
+  const handleViewFile = (fileUrl) => {
+    if (fileUrl.endsWith('.pdf')) {
+      setPdfFile(fileUrl);
+      setModal({ isOpen: true, type: 'viewPdf', content: fileUrl });
+    } else {
+      window.open(fileUrl, '_blank');
+    }
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+  };
+
+  const settings = {
+    dots: true,
+    infinite: false,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
   };
 
   const filteredCourses = courses.filter(
@@ -222,6 +260,15 @@ const CourseDashboard = () => {
                 >
                   <FaTrash />
                 </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewFile(course.fileUrl);
+                  }}
+                  className="text-blue-500 hover:text-blue-700 rounded-full"
+                >
+                  <FaBook />
+                </button>
               </div>
             </div>
           ))}
@@ -246,11 +293,13 @@ const CourseDashboard = () => {
           )}
         </div>
       </div>
-      {editingCourse && (
+      {modal.isOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-lg">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Edit Course</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {modal.type === 'edit' ? 'Edit Course' : modal.type === 'delete' ? 'Confirm Delete' : 'View File'}
+              </h2>
               <button
                 onClick={closeModal}
                 className="text-gray-500 hover:text-gray-700"
@@ -258,41 +307,65 @@ const CourseDashboard = () => {
                 <FaTimes />
               </button>
             </div>
-            <div className="space-y-4">
-              <input
-                type="text"
-                name="title"
-                placeholder="Course Title"
-                value={editingCourse.title}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-              <textarea
-                name="description"
-                placeholder="Course Description"
-                value={editingCourse.description}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              ></textarea>
-              <select
-                name="category"
-                value={editingCourse.category}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="programming">Programming</option>
-                <option value="design">Design</option>
-                <option value="business">Business</option>
-                <option value="marketing">Marketing</option>
-                <option value="other">Other</option>
-              </select>
-              <button
-                onClick={handleSubmitEdit}
-                className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Save Changes
-              </button>
-            </div>
+            {modal.type === 'edit' && editingCourse && (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  name="title"
+                  placeholder="Course Title"
+                  value={editingCourse.title}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+                <textarea
+                  name="description"
+                  placeholder="Course Description"
+                  value={editingCourse.description}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                ></textarea>
+                <select
+                  name="category"
+                  value={editingCourse.category}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="programming">Programming</option>
+                  <option value="design">Design</option>
+                  <option value="business">Business</option>
+                  <option value="marketing">Marketing</option>
+                  <option value="other">Other</option>
+                </select>
+                <button
+                  onClick={handleSubmitEdit}
+                  className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
+            {modal.type === 'delete' && (
+              <div>
+                <p>Are you sure you want to delete this course?</p>
+                <div className="flex justify-end mt-4">
+                  <button onClick={closeModal} className="mr-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                  <button onClick={() => confirmDeleteCourse(modal.content)} className="px-4 py-2 bg-red-600 text-white rounded">Delete</button>
+                </div>
+              </div>
+            )}
+            {modal.type === 'viewPdf' && pdfFile && (
+              <div>
+                <Slider {...settings}>
+                  {Array.from({ length: numPages }, (_, i) => (
+                    <div key={i} style={{ height: '500px' }}>
+                      <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
+                        <Viewer fileUrl={pdfFile} defaultScale={1.5} pageNumber={i + 1} />
+                      </Worker>
+                    </div>
+                  ))}
+                </Slider>
+              </div>
+            )}
           </div>
         </div>
       )}

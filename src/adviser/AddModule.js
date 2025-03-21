@@ -1,12 +1,11 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { FaCloudUploadAlt } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
-import { collection, addDoc, serverTimestamp, doc, getDocs } from "firebase/firestore";
-import { db } from "../firebase.config"; // Import Firestore instance
+import { collection, doc, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase.config"; // Firestore instance
+import uploadToCloudinary from "../uploadToCloudinary";
 
 const PageContainer = styled.div`
   display: flex;
@@ -45,15 +44,29 @@ const MainContent = styled.div.attrs(({ isSidebarOpen }) => ({
   height: 100%;
 `;
 
+const AccordionItem = ({ title, children, isOpen, toggle }) => (
+  <div className="border rounded-lg mb-3">
+    <button
+      onClick={toggle}
+      className="w-full flex justify-between items-center p-3 bg-gray-100 hover:bg-gray-200"
+    >
+      <span className="font-medium">{title}</span>
+      <span>{isOpen ? "▲" : "▼"}</span>
+    </button>
+    {isOpen && <div className="p-3 bg-white">{children}</div>}
+  </div>
+);
+
 const AddModule = () => {
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [content, setContent] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [chapters, setChapters] = useState([{ title: "", description: "", file: null }]);
+  const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
-  // Fetch courses from Firestore
   useEffect(() => {
     const fetchCourses = async () => {
       try {
@@ -67,44 +80,68 @@ const AddModule = () => {
         console.error("Error fetching courses:", error);
       }
     };
-
     fetchCourses();
   }, []);
 
-  // Toggle Sidebar function
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+  const handleFileChange = (index, e) => {
+    const updatedChapters = [...chapters];
+    updatedChapters[index].file = e.target.files[0];
+    setChapters(updatedChapters);
   };
 
-  // Handle Form Submission
+  const addChapter = () => {
+    setChapters([...chapters, { title: "", description: "", file: null }]);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!selectedCourseId || !title || !description || !content) {
-      alert("Please fill all required fields.");
+    if (!selectedCourseId || !title || chapters.some((chapter) => !chapter.title || !chapter.file)) {
+      alert("Please fill all required fields and upload files for each chapter.");
       return;
     }
 
     try {
-      // Add module to the course's modules subcollection
-      const moduleRef = collection(doc(db, "courses", selectedCourseId), "modules");
-      await addDoc(moduleRef, {
+      setLoading(true);
+      const courseDocRef = doc(db, "courses", selectedCourseId);
+      const modulesCollectionRef = collection(courseDocRef, "modules");
+
+      const querySnapshot = await getDocs(modulesCollectionRef);
+      const newModuleId = (querySnapshot.size + 1).toString();
+
+      const uploadedUrls = await Promise.all(
+        chapters.map(async (chapter) => {
+          const url = await uploadToCloudinary(chapter.file);
+          if (!url) {
+            throw new Error("Failed to upload file to Cloudinary.");
+          }
+          return url;
+        })
+      );
+
+      const chaptersData = chapters.map((chapter, index) => ({
+        title: chapter.title,
+        description: chapter.description,
+        fileUrl: uploadedUrls[index],
+      }));
+
+      await setDoc(doc(modulesCollectionRef, newModuleId), {
+        id: newModuleId,
         title,
         description,
-        content,
+        chapters: chaptersData,
         createdAt: serverTimestamp(),
       });
 
       alert("Module added successfully!");
-
-      // Reset form fields
       setTitle("");
       setDescription("");
-      setContent("");
-      setSelectedCourseId("");
+      setChapters([{ title: "", description: "", file: null }]);
+      setLoading(false);
     } catch (error) {
       console.error("Error adding module:", error);
       alert("An error occurred while adding the module.");
+      setLoading(false);
     }
   };
 
@@ -124,64 +161,108 @@ const AddModule = () => {
                 <FaCloudUploadAlt className="text-green-500 text-3xl mr-3" />
                 <h1 className="text-2xl font-bold">Add New Module</h1>
               </div>
+
               <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 gap-6">
-                  <div>
+                <AccordionItem title="Step 1: Select Course" isOpen={true} toggle={() => {}}>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Select Course *
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={selectedCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select a course</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </AccordionItem>
+
+                <AccordionItem title="Step 2: Add Module Details" isOpen={true} toggle={() => {}}>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Module Title *
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter module title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Describe the module content"
+                    rows="4"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  ></textarea>
+                </AccordionItem>
+
+                {chapters.map((chapter, index) => (
+                  <AccordionItem
+                    key={index}
+                    title={`Chapter ${index + 1} Details`}
+                    isOpen={true}
+                    toggle={() => {}}
+                  >
                     <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Select Course *
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      value={selectedCourseId}
-                      onChange={(e) => setSelectedCourseId(e.target.value)}
-                      required
-                    >
-                      <option value="">Select a course</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Module Title *
+                      Chapter Title *
                     </label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      placeholder="Enter module title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter chapter title"
+                      value={chapter.title}
+                      onChange={(e) => {
+                        const updatedChapters = [...chapters];
+                        updatedChapters[index].title = e.target.value;
+                        setChapters(updatedChapters);
+                      }}
                       required
                     />
-                  </div>
-                  <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
                       Description
                     </label>
                     <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      placeholder="Describe the module content"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Describe the chapter content"
                       rows="4"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      value={chapter.description}
+                      onChange={(e) => {
+                        const updatedChapters = [...chapters];
+                        updatedChapters[index].description = e.target.value;
+                        setChapters(updatedChapters);
+                      }}
                     ></textarea>
-                  </div>
-                  <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Content
+                      Upload File (PDF, Video, Slides, Image) *
                     </label>
-                    <textarea
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500"
-                      placeholder="Enter module content"
-                      rows="4"
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                    ></textarea>
-                  </div>
-                </div>
+                    <input
+                      type="file"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      accept="application/pdf, video/*, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation, image/*"
+                      onChange={(e) => handleFileChange(index, e)}
+                      required
+                    />
+                  </AccordionItem>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addChapter}
+                  className="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+                >
+                  Add Another Chapter
+                </button>
+
                 <div className="mt-6 flex justify-center">
                   <button
                     type="submit"

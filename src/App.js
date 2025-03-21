@@ -1,18 +1,23 @@
 import "./index.css";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import LandingPage from "./Dashboard/Landing";
 import Login from "./Authentication/login";
 import SignUp from "./Authentication/Signup";
 import Adviser from "./adviser/sidebar";
 import Dashboard from "./Dashboard/Dashboard";
 import UploadContent from "./adviser/uploadcontent";
-import Courses from "./adviser/courses"
-import AddCourses from "./adviser/Addcourse"
-import FileLibrary from "./adviser/filelibrary"
-import Addmodule from "./adviser/AddModule"
-import Moduledisplay from "./adviser/ModuleDisplay"
+import Courses from "./adviser/courses";
+import AddCourses from "./adviser/Addcourse";
+import FileLibrary from "./adviser/filelibrary";
+import Addmodule from "./adviser/AddModule";
+import Moduledisplay from "./adviser/ModuleDisplay";
 import NavBar from "./components/Navbar";
-
+import ModuleDetails from './adviser/ModuleDetails';
 
 //learners
 import UserDashboard from "./Learner/userdashboard";
@@ -46,12 +51,17 @@ function App() {
         <Route path="/file-library" element={<FileLibrary />} />
         <Route path="/addmodule" element={<Addmodule />} />
         <Route path="/modules/:courseId" element={<Moduledisplay />} />
-        
+        <Route path="/course/:courseId/module/:moduleId" element={<ModuleDetails />} />
+
+
+
+
 
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/chatroom" element={<ChatRoom />} />
-        <Route path="/lprofile" element={<LProfile/>}/>
+        <Route path="/lprofile" element={<LProfile />} />
         <Route path="/lcourses" element={<LCourses />} />
+        <Route path="/lcourse/:courseId" element={<ModuleDisplay />} />
         <Route path="/lmodules/:courseId" element={<ModuleDisplay />} />
         <Route path="/certificates" element={<CertificatePage />} /> 
         <Route path="/module-viewer" element={<ModuleViewer />} />     

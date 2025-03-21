@@ -6,6 +6,8 @@ import { FaCloudUploadAlt, FaTrashAlt, FaArrowRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase.config"; // Ensure the path is correct
+import uploadToCloudinary from "../uploadToCloudinary";
+
 
 // Styled Components
 const PageContainer = styled.div`

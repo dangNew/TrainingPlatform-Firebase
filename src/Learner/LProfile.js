@@ -1,9 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase.config';
 import Sidebar from '../components/LSidebar';
 import uploadToCloudinary from '../uploadToCloudinary';
+import styled from 'styled-components';
+
+
+const MainContent = styled.div`
+  flex: 1;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  margin-left: 10px; `
+;
 
 function Profile() {
   const [user] = useAuthState(auth);
@@ -13,6 +25,7 @@ function Profile() {
   const [activeTab, setActiveTab] = useState('Personal Info');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [comments, setComments] = useState([]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -28,6 +41,23 @@ function Profile() {
 
     fetchUserData();
   }, [user]);
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (user && activeTab === 'Comments') {
+        const commentsRef = collection(db, 'comments');
+        const q = query(commentsRef, where('userId', '==', user.uid));
+        const querySnapshot = await getDocs(q);
+        const commentsData = [];
+        querySnapshot.forEach((doc) => {
+          commentsData.push(doc.data());
+        });
+        setComments(commentsData);
+      }
+    };
+
+    fetchComments();
+  }, [user, activeTab]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -80,7 +110,7 @@ function Profile() {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 p-6 bg-gray-100">
+      <MainContent>
         <div className="group relative w-full max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-2xl ">
           <div className="absolute -left-16 -top-16 h-32 w-32 rounded-full  from-indigo-500/20 to-purple-500/0 blur-2xl" />
           <div className="absolute -right-16 -bottom-16 h-32 w-32 rounded-full  from-purple-500/20 to-indigo-500/0 blur-2xl" />
@@ -231,8 +261,23 @@ function Profile() {
                     </span>
                     <div className="absolute inset-0 bg-black opacity-0 transition-opacity duration-300 group-hover:opacity-20"></div>
                   </button>
-
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'Comments' && (
+            <div className="bg p-4 rounded-lg shadow-inner">
+              <h3 className="text-lg font-semibold mb-2 text-blue-950">Comments</h3>
+              {comments.length > 0 ? (
+                comments.map((comment, index) => (
+                  <div key={index} className="mb-2">
+                    <p className="text-gray-700">{comment.text}</p>
+                    <p className="text-gray-500 text-sm">{new Date(comment.timestamp?.toDate()).toLocaleString()}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500">No comments available.</p>
               )}
             </div>
           )}
@@ -260,9 +305,10 @@ function Profile() {
             </div>
           )}
 
-          {/* Additional sections for Progress, History, and Comments can be added here */}
+          {/* Additional sections for Progress and History can be added here */}
         </div>
-      </div>
+
+      </MainContent>
     </div>
   );
 }

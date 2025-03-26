@@ -1,6 +1,6 @@
-import PropTypes from "prop-types"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
+import PropTypes from "prop-types"
 
 const CertificateTemplate = ({ userName, courseTitle, moduleTitle, issueDate, certificateId }) => {
   return (
@@ -13,8 +13,6 @@ const CertificateTemplate = ({ userName, courseTitle, moduleTitle, issueDate, ce
           <div className="text-blue-900 text-4xl font-bold mb-6">{userName}</div>
 
           <div className="text-gray-700 mb-2">has successfully completed</div>
-          <div className="text-blue-900 text-3xl font-bold mb-2">{moduleTitle}</div>
-          <div className="text-gray-700 mb-6">from the course</div>
           <div className="text-blue-900 text-2xl font-semibold mb-6">{courseTitle}</div>
 
           <div className="text-gray-500 text-sm">Issued on {issueDate}</div>

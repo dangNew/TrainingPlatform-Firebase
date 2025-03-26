@@ -1,25 +1,12 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
-import {
-  doc,
-  getDoc,
-  collection,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-  setDoc,
-} from "firebase/firestore"
-import { db } from "../firebase.config"
-import { FaLock, FaLockOpen, FaCheck, FaCertificate, FaTrophy, FaSignInAlt } from "react-icons/fa"
-import { useAuthState } from "react-firebase-hooks/auth"
-import { auth } from "../firebase.config"
 import { onAuthStateChanged } from "firebase/auth"
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore"
+import { useEffect, useRef, useState } from "react"
+import { useAuthState } from "react-firebase-hooks/auth"
+import { FaCheck, FaLock, FaLockOpen, FaSignInAlt } from "react-icons/fa"
+import { useLocation, useNavigate } from "react-router-dom"
+import { auth, db } from "../firebase.config"
 
 // Add this CSS for animations
 const styles = `
@@ -71,15 +58,10 @@ const ModuleView = () => {
   const [isLastChapterScrolledToBottom, setIsLastChapterScrolledToBottom] = useState(false)
   const [savingCompletion, setSavingCompletion] = useState(false)
   const [showCompletionAlert, setShowCompletionAlert] = useState(false)
-  const [showCertificateAlert, setShowCertificateAlert] = useState(false)
-  const [certificateCreated, setCertificateCreated] = useState(false)
-  const [savingCertificate, setSavingCertificate] = useState(false)
   const [moduleAlreadyCompleted, setModuleAlreadyCompleted] = useState(false)
-  const [existingCertificate, setExistingCertificate] = useState(null)
   const [historyDocId, setHistoryDocId] = useState(null)
-  const [certificateDocId, setCertificateDocId] = useState(null)
-  const [authChecked, setAuthChecked] = useState(false)
   const contentRef = useRef(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
   // Check authentication status
   useEffect(() => {
@@ -136,21 +118,6 @@ const ModuleView = () => {
           setModuleAlreadyCompleted(true)
           // Store the history document ID for potential updates
           setHistoryDocId(historySnapshot.docs[0].id)
-        }
-
-        // Check if certificate already exists
-        const certificatesCollection = collection(db, "certificates")
-        const certificateQuery = query(
-          certificatesCollection,
-          where("userId", "==", user.uid),
-          where("moduleId", "==", moduleId),
-          where("courseId", "==", courseId),
-        )
-        const certificateSnapshot = await getDocs(certificateQuery)
-
-        if (!certificateSnapshot.empty) {
-          setExistingCertificate(certificateSnapshot.docs[0].data())
-          setCertificateDocId(certificateSnapshot.docs[0].id)
         }
 
         // Fetch user's progress from Firestore
@@ -317,97 +284,13 @@ const ModuleView = () => {
         setModuleAlreadyCompleted(true)
       }
 
-      // 3. Show completion alert with certificate option
+      // 3. Show completion alert
       setShowCompletionAlert(true)
     } catch (error) {
       console.error("Error saving completion:", error)
       setError("There was an error saving your progress. Please try again.")
     } finally {
       setSavingCompletion(false)
-    }
-  }
-
-  // Function to generate and save certificate
-  const generateCertificate = async () => {
-    if (!user || !module || !course || !userData) return
-
-    try {
-      setSavingCertificate(true)
-
-      // Check if certificate already exists
-      if (existingCertificate) {
-        setCertificateCreated(true)
-        return
-      }
-
-      // Create certificate data
-      const completionDate = new Date()
-      const certificateData = {
-        userId: user.uid,
-        userName: userData.fullName,
-        courseId,
-        courseTitle: course.title,
-        moduleId,
-        moduleTitle: module.title,
-        issueDate: serverTimestamp(),
-        formattedDate: completionDate.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-        certificateId: `CERT-${Date.now().toString(36).toUpperCase()}`,
-      }
-
-      // Save certificate to Firestore
-      const certificatesCollection = collection(db, "certificates")
-      const certDoc = await addDoc(certificatesCollection, certificateData)
-
-      // Store the certificate document ID
-      setCertificateDocId(certDoc.id)
-
-      // Update user's certificates count
-      const userRef = doc(db, "learner", user.uid)
-      await updateDoc(userRef, {
-        certificatesCount: (userData.certificatesCount || 0) + 1,
-      })
-
-      // Set existing certificate for future reference
-      setExistingCertificate(certificateData)
-
-      // Show success message
-      setCertificateCreated(true)
-
-      // Close window after delay
-      setTimeout(() => {
-        window.close()
-      }, 3000)
-    } catch (error) {
-      console.error("Error generating certificate:", error)
-      setError("There was an error generating your certificate. Please try again.")
-    } finally {
-      setSavingCertificate(false)
-    }
-  }
-
-  // Function to delete existing certificate
-  const deleteCertificate = async () => {
-    if (!certificateDocId) return
-
-    try {
-      setSavingCertificate(true)
-
-      // Delete the certificate from Firestore
-      await deleteDoc(doc(db, "certificates", certificateDocId))
-
-      // Reset certificate state
-      setExistingCertificate(null)
-      setCertificateDocId(null)
-      setCertificateCreated(false)
-    } catch (error) {
-      console.error("Error deleting certificate:", error)
-      setError("There was an error deleting your certificate. Please try again.")
-    } finally {
-      setSavingCertificate(false)
     }
   }
 
@@ -650,32 +533,6 @@ const ModuleView = () => {
               </div>
               <p className="text-gray-300 mb-6">Module completed successfully! Your progress has been saved.</p>
 
-              <div className="bg-blue-900 bg-opacity-50 p-4 rounded-lg mb-6 border border-blue-400">
-                <div className="flex items-center mb-2">
-                  <FaCertificate className="text-yellow-400 text-xl mr-2" />
-                  <h4 className="text-lg font-semibold text-white">Certificate Available</h4>
-                </div>
-                <p className="text-gray-300 mb-4">
-                  You've earned a certificate for completing this module! Would you like to claim it now?
-                </p>
-                {existingCertificate ? (
-                  <div className="bg-green-800 bg-opacity-50 p-3 rounded-lg mb-2 text-sm">
-                    <FaCheck className="inline-block mr-1 text-green-400" />
-                    You've already claimed a certificate for this module
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setShowCompletionAlert(false)
-                      setShowCertificateAlert(true)
-                    }}
-                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-4 rounded-lg transition-colors duration-300 flex items-center justify-center animate-pulse"
-                  >
-                    <FaTrophy className="mr-2" /> Claim Your Certificate
-                  </button>
-                )}
-              </div>
-
               <div className="flex justify-between">
                 <button
                   onClick={() => {
@@ -695,93 +552,6 @@ const ModuleView = () => {
                 >
                   Close
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Certificate Claim Alert */}
-        {showCertificateAlert && (
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 animate-fadeIn">
-            <div className="bg-gray-900 border-2 border-yellow-500 rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 transform transition-all animate-slideIn">
-              <div className="flex items-center mb-6">
-                <div className="bg-yellow-500 rounded-full p-2 mr-4">
-                  <FaCertificate className="text-white text-2xl" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">Your Certificate</h3>
-              </div>
-
-              {certificateCreated || existingCertificate ? (
-                <div className="text-center mb-6">
-                  <div className="bg-green-500 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-                    <FaCheck className="text-white text-3xl" />
-                  </div>
-                  <h4 className="text-xl font-bold text-white mb-2">Certificate Created!</h4>
-                  <p className="text-gray-300">
-                    Your certificate has been successfully generated and added to your profile. You can view all your
-                    certificates in the Certificates page.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="bg-gray-800 p-5 rounded-lg mb-6 border border-gray-700">
-                    <div className="border-4 border-yellow-500 p-6 rounded-lg bg-gradient-to-br from-gray-900 to-blue-900">
-                      <div className="text-center">
-                        <h4 className="text-yellow-400 text-xl font-bold mb-1">Certificate of Completion</h4>
-                        <p className="text-gray-400 text-sm mb-4">This certifies that</p>
-                        <h5 className="text-white text-2xl font-bold mb-4">{userData?.fullName || "Student Name"}</h5>
-                        <p className="text-gray-300 mb-4">has successfully completed</p>
-                        <h6 className="text-blue-300 text-xl font-bold mb-1">{module.title}</h6>
-                        <p className="text-gray-400 text-sm mb-4">from the course</p>
-                        <h6 className="text-white text-lg font-semibold mb-4">{course.title}</h6>
-                        <p className="text-gray-300 text-sm">
-                          Issued on{" "}
-                          {new Date().toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-gray-300 mb-6 text-center">
-                    This certificate will be saved to your profile and can be accessed anytime from the Certificates
-                    page.
-                  </p>
-                </>
-              )}
-
-              <div className="flex justify-between">
-                <button
-                  onClick={() => {
-                    setShowCertificateAlert(false)
-                    window.close()
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Close
-                </button>
-
-                {!certificateCreated && !existingCertificate && (
-                  <button
-                    onClick={generateCertificate}
-                    disabled={savingCertificate}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold px-6 py-2 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 flex items-center"
-                  >
-                    {savingCertificate ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-gray-900 border-t-transparent rounded-full mr-2"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <FaTrophy className="mr-2" /> Claim Certificate
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
             </div>
           </div>

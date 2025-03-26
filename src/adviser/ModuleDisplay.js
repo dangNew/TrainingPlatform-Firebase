@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { collection, getDoc, doc, getDocs, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase.config";
-import { FaEdit, FaTrash, FaTimes, FaSearch, FaFilter, FaBook } from "react-icons/fa";
+import { FaEdit, FaTrash, FaTimes, FaSearch, FaFilter, FaBook, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
 
@@ -16,6 +16,7 @@ const ModuleDisplay = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({ title: "", description: "", content: "" });
   const [searchTerm, setSearchTerm] = useState("");
+  const [modal, setModal] = useState({ isOpen: false, type: '', message: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,6 +36,7 @@ const ModuleDisplay = () => {
         setModules(modulesData);
       } catch (error) {
         console.error("Error fetching data:", error);
+        showModal("error", "An error occurred while fetching data.");
       }
     };
 
@@ -58,10 +60,10 @@ const ModuleDisplay = () => {
       await deleteDoc(doc(courseDocRef, "modules", deletingModuleId));
       setModules(modules.filter((module) => module.id !== deletingModuleId));
       setIsDeleting(false);
-      alert("Module deleted successfully!");
+      showModal("success", "Module deleted successfully!");
     } catch (error) {
       console.error("Error deleting module:", error);
-      alert("An error occurred while deleting the module.");
+      showModal("error", "An error occurred while deleting the module.");
     }
   };
 
@@ -81,10 +83,10 @@ const ModuleDisplay = () => {
         module.id === editingModule.id ? { ...module, ...formData } : module
       ));
       setIsEditing(false);
-      alert("Module updated successfully!");
+      showModal("success", "Module updated successfully!");
     } catch (error) {
       console.error("Error updating module:", error);
-      alert("An error occurred while updating the module.");
+      showModal("error", "An error occurred while updating the module.");
     }
   };
 
@@ -98,6 +100,13 @@ const ModuleDisplay = () => {
 
   const openModuleDetails = (moduleId) => {
     window.open(`/course/${courseId}/module/${moduleId}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const showModal = (type, message) => {
+    setModal({ isOpen: true, type, message });
+    setTimeout(() => {
+      setModal({ isOpen: false, type: '', message: '' });
+    }, 3000);
   };
 
   if (!course) {
@@ -212,17 +221,39 @@ const ModuleDisplay = () => {
       )}
       {isDeleting && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
+          <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-2xl">
+            <div className="flex justify-between items-center mb-10">
               <h2 className="text-xl font-bold text-gray-800">Confirm Delete</h2>
               <button onClick={() => setIsDeleting(false)} className="text-gray-500 hover:text-gray-700">
                 <FaTimes />
               </button>
             </div>
-            <p>Are you sure you want to delete this module?</p>
+            <div className="flex items-center mb-4">
+              <FaTrash className="text-red-500 text-4xl mr-4" />
+              <p className="font-bold text-lg">Are you sure you want to delete this module?</p>
+            </div>
             <div className="flex justify-end mt-4">
               <button onClick={() => setIsDeleting(false)} className="mr-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
               <button onClick={confirmDeleteModule} className="px-4 py-2 bg-red-600 text-white rounded">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modal.isOpen && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white p-16 rounded-2xl shadow-lg w-full max-w-2xl">
+            <div className="flex items-center mb-10">
+              {modal.type === "success" ? (
+                <FaCheckCircle className="text-green-500 text-6xl mr-6" />
+              ) : (
+                <FaExclamationTriangle className="text-red-500 text-6xl mr-6" />
+              )}
+              <p className="text-gray-900 font-bold text-2xl">{modal.message}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-gray-700 text-lg">
+                Additional details or actions can go here if needed.
+              </p>
             </div>
           </div>
         </div>

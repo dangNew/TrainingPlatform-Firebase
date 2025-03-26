@@ -10,6 +10,7 @@ import {
   orderBy,
   limit,
   where,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase.config";
 import {
@@ -29,6 +30,7 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import deleteFromCloudinary from "../deleteFromCloudinary";
 
 const CourseDashboard = () => {
   const navigate = useNavigate();
@@ -83,7 +85,20 @@ const CourseDashboard = () => {
 
   const confirmDeleteCourse = async (courseId) => {
     try {
-      await deleteDoc(doc(db, "courses", courseId));
+      const courseDocRef = doc(db, "courses", courseId);
+      const courseDoc = await getDoc(courseDocRef);
+      const courseData = courseDoc.data();
+
+      // Assuming you store the public IDs in an array called `filePublicIds`
+      const filePublicIds = courseData.filePublicIds || [];
+
+      // Delete files from Cloudinary
+      for (const publicId of filePublicIds) {
+        await deleteFromCloudinary(publicId);
+      }
+
+      // Delete the course from Firestore
+      await deleteDoc(courseDocRef);
       setCourses(courses.filter((course) => course.id !== courseId));
       setModal({ isOpen: false, type: '', content: null });
       alert("Course deleted successfully!");

@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase.config";
+import { Viewer, Worker } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 const LoadingModal = ({ isOpen }) => {
   if (!isOpen) return null;
@@ -22,6 +26,7 @@ const ModuleDetails = () => {
   const [loading, setLoading] = useState(true);
   const [selectedChapterIndex, setSelectedChapterIndex] = useState(0);
   const [error, setError] = useState(null);
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   useEffect(() => {
     const fetchModule = async () => {
@@ -73,13 +78,11 @@ const ModuleDetails = () => {
 
     if (contentType === "application/pdf") {
       return (
-        <iframe
-          src={fileUrl}
-          width="100%"
-          height="600px"
-          className="border rounded"
-          title="PDF Document"
-        />
+        <div className="border rounded" style={{ height: '600px' }}>
+          <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.0.279/build/pdf.worker.min.js`}>
+            <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance]} />
+          </Worker>
+        </div>
       );
     }
 
@@ -142,7 +145,7 @@ const ModuleDetails = () => {
             <p className="text-gray-400">{module.chapters[selectedChapterIndex].description}</p>
 
             {/* Debugging: Display raw file URL */}
-            <p className="text-green-400 mt-4">File URL: {module.chapters[selectedChapterIndex].fileUrl || "No file URL available"}</p>
+           
 
             {/* Render File */}
             {module.chapters[selectedChapterIndex].fileUrl && (

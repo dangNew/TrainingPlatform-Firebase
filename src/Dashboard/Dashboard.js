@@ -10,6 +10,8 @@ const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [recentActivities, setRecentActivities] = useState([]);
   const [quickStats, setQuickStats] = useState({});
+  const [newAnnouncement, setNewAnnouncement] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -55,8 +57,23 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const handleAddAnnouncement = () => {
+    if (newAnnouncement.trim() === "") return;
+    setAnnouncements([...announcements, { id: Date.now(), title: "New Announcement", content: newAnnouncement }]);
+    setNewAnnouncement("");
+  };
+
+  const handleDownloadReport = () => {
+    const csvContent = `Total Users,Active Courses,Recent Logins\n${quickStats.totalUsers},${quickStats.activeCourses},${quickStats.recentLogins}`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "dashboard_report.csv";
+    link.click();
+  };
+
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className={`h-screen flex flex-col ${darkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
       <div className="fixed top-0 left-0 w-full z-50">
         <Header />
       </div>
@@ -67,53 +84,68 @@ const Dashboard = () => {
         </div>
 
         <div className="flex-1 ml-64 p-6 overflow-y-auto h-[calc(100vh-4rem)]">
-          <h1 className="text-3xl font-semibold text-gray-700">
-            Welcome Back, Professor!
-          </h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-semibold">Welcome Back, Professor!</h1>
+            <button onClick={() => setDarkMode(!darkMode)} className="px-4 py-2 bg-gray-700 text-white rounded-md">
+              {darkMode ? "Light Mode" : "Dark Mode"}
+            </button>
+          </div>
 
-          <div className="mt-4 text-xl font-semibold text-gray-600">
+          <div className="mt-4 text-xl font-semibold">
             {currentTime.toLocaleTimeString()}
           </div>
 
           <div className="grid grid-cols-3 gap-6 mt-6">
-            <div className="bg-red-500 text-white p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition duration-300">
+            <div className="bg-red-500 text-white p-6 rounded-lg shadow-lg cursor-pointer">
               <h2 className="text-lg font-semibold">Courses</h2>
               <p className="text-sm">Manage your courses</p>
             </div>
 
-            <div className="bg-blue-500 text-white p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition duration-300">
+            <div className="bg-blue-500 text-white p-6 rounded-lg shadow-lg cursor-pointer">
               <h2 className="text-lg font-semibold">Enrolled Courses</h2>
               <p className="text-sm">Track student progress</p>
             </div>
 
-            <div className="bg-black text-white p-6 rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition duration-300">
+            <div className="bg-black text-white p-6 rounded-lg shadow-lg cursor-pointer">
               <h2 className="text-lg font-semibold">Achievements</h2>
               <p className="text-sm">View student milestones</p>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
-            <h2 className="text-lg font-semibold text-gray-700">Calendar</h2>
+            <h2 className="text-lg font-semibold">Calendar</h2>
             <Calendar />
           </div>
 
           <div className="grid grid-cols-2 gap-6 mt-6">
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-700">📢 Announcements</h2>
+              <h2 className="text-lg font-semibold">📢 Announcements</h2>
               <ul className="mt-2">
                 {announcements.map((announcement) => (
-                  <li key={announcement.id} className="text-sm text-gray-600 mt-2">
+                  <li key={announcement.id} className="text-sm mt-2">
                     <strong>{announcement.title}:</strong> {announcement.content}
                   </li>
                 ))}
               </ul>
+              <div className="mt-4">
+                <input
+                  type="text"
+                  value={newAnnouncement}
+                  onChange={(e) => setNewAnnouncement(e.target.value)}
+                  placeholder="Add new announcement..."
+                  className="border px-2 py-1 w-full"
+                />
+                <button onClick={handleAddAnnouncement} className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md">
+                  Add Announcement
+                </button>
+              </div>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-700">🏆 Leaderboard</h2>
+              <h2 className="text-lg font-semibold">🏆 Leaderboard</h2>
               <ul className="mt-2">
                 {leaderboard.map((entry) => (
-                  <li key={entry.id} className="text-sm text-gray-600 mt-2">
+                  <li key={entry.id} className="text-sm mt-2">
                     {entry.name}: {entry.score} points
                   </li>
                 ))}
@@ -122,19 +154,22 @@ const Dashboard = () => {
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
-            <h2 className="text-lg font-semibold text-gray-700">📊 Quick Stats</h2>
+            <h2 className="text-lg font-semibold">📊 Quick Stats</h2>
             <div className="mt-2">
               <p>Total Users: {quickStats.totalUsers}</p>
               <p>Active Courses: {quickStats.activeCourses}</p>
               <p>Recent Logins: {quickStats.recentLogins}</p>
             </div>
+            <button onClick={handleDownloadReport} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md">
+              Download Report
+            </button>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
-            <h2 className="text-lg font-semibold text-gray-700">🕒 Recent Activities</h2>
+            <h2 className="text-lg font-semibold">🕒 Recent Activities</h2>
             <ul className="mt-2">
               {recentActivities.map((activity) => (
-                <li key={activity.id} className="text-sm text-gray-600 mt-2">
+                <li key={activity.id} className="text-sm mt-2">
                   {activity.activity} - {new Date(activity.timestamp).toLocaleString()}
                 </li>
               ))}

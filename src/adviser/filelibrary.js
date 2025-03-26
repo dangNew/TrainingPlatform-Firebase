@@ -1,299 +1,188 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
-import { FaCloudUploadAlt, FaTrashAlt, FaArrowRight, FaInfoCircle, FaEdit } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { FaFolder, FaSortAlphaDown, FaSortAlphaUp, FaUpload } from "react-icons/fa";
+import { BsThreeDotsVertical, BsSearch } from "react-icons/bs";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase.config";
 
 const FileLibrary = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [files, setFiles] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [menuOpen, setMenuOpen] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ isOpen: false, type: '', content: null });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
 
-  const fileInputRef = useRef(null);
-  const filesPerPage = 10;
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      console.log("Selected file:", file);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-
-    // Simulate file upload progress
-    for (let i = 0; i <= 100; i++) {
-      setTimeout(() => {
-        setUploadProgress(i);
-      }, 20 * i);
-    }
-
-    setTimeout(() => {
-      setUploading(false);
-      setUploadProgress(0);
-      alert("File uploaded successfully!");
-    }, 2000);
-  };
-
-  const handleDelete = (id) => {
-    setModal({ isOpen: true, type: 'delete', content: id });
-  };
-
-  const confirmDelete = (id) => {
-    setFiles(files.filter((file) => file.id !== id));
-    setModal({ isOpen: false, type: '', content: null });
-  };
-
-  const handleEdit = (file) => {
-    setModal({ isOpen: true, type: 'edit', content: file });
-  };
-
-  const handleInfo = (file) => {
-    setModal({ isOpen: true, type: 'info', content: file });
-  };
-
-  const closeModal = () => {
-    setModal({ isOpen: false, type: '', content: null });
-  };
-
+  // Fetch files from Firestore
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchFiles = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "courses"));
-        const coursesData = querySnapshot.docs.map((doc) => ({
+        const filesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setFiles(coursesData);
+        setFiles(filesData);
       } catch (error) {
-        console.error("Error fetching courses:", error);
+        console.error("Error fetching files:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCourses();
+    fetchFiles();
   }, []);
 
-  const filteredFiles = files
-    .filter((file) =>
-      file.title?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortOrder === "asc") {
-        return a.createdAt.seconds - b.createdAt.seconds;
-      }
-      return b.createdAt.seconds - a.createdAt.seconds;
-    });
+  // Toggle menu for each file
+  const toggleMenu = (fileId) => {
+    setMenuOpen(menuOpen === fileId ? null : fileId);
+  };
 
-  const indexOfLastFile = currentPage * filesPerPage;
-  const indexOfFirstFile = indexOfLastFile - filesPerPage;
-  const currentFiles = filteredFiles.slice(indexOfFirstFile, indexOfLastFile);
+  // Handle file deletion
+  const handleDelete = async (fileId) => {
+    try {
+      await deleteDoc(doc(db, "courses", fileId));
+      setFiles(files.filter((file) => file.id !== fileId));
+      setMenuOpen(null);
+    } catch (error) {
+      console.error("Error deleting file:", error);
+    }
+  };
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  // Handle file edit
+  const handleEdit = (file) => {
+    alert(`Editing file: ${file.title}`);
+    setMenuOpen(null);
+  };
+
+  // Simulated Upload File (Replace with actual upload logic)
+  const handleUpload = () => {
+    alert("Upload feature coming soon!");
+  };
+
+  // Search functionality
+  const filteredFiles = files.filter((file) =>
+    file.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Sorting functionality
+  const sortedFiles = [...filteredFiles].sort((a, b) => {
+    return sortOrder === "asc"
+      ? a.title.localeCompare(b.title)
+      : b.title.localeCompare(a.title);
+  });
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-white">
+      {/* Header */}
       <div className="w-full z-10 shadow-md">
         <Header />
       </div>
 
       <div className="flex flex-1">
+        {/* Sidebar */}
         <div className="h-full z-5">
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </div>
 
-        <div
-          className={`p-8 bg-white transition-all duration-300 flex-1 overflow-y-auto h-full rounded-lg shadow-lg ${
-            isSidebarOpen ? "ml-4" : "ml-60"
-          }`}
-          style={{ width: `calc(100% - ${isSidebarOpen ? "60px" : "240px"})` }}
-        >
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">File Library</h1>
-          <div className="mb-8 flex items-center space-x-4">
-            <button
-              className="flex items-center bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 shadow-md"
-              onClick={() => fileInputRef.current.click()}
-            >
-              <FaCloudUploadAlt className="mr-2" /> Upload New File
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <form onSubmit={handleSubmit} className="flex items-center">
-              <button
-                type="submit"
-                className="bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 shadow-md"
-                disabled={uploading}
-              >
-                {uploading ? "Uploading..." : "Upload"}
-              </button>
-              {uploading && (
-                <div className="ml-4 w-full max-w-xs">
-                  <div className="bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
+        {/* File Library Content */}
+        <div className="p-8 bg-white transition-all duration-300 flex-1 overflow-y-auto h-full rounded-lg shadow-lg">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">File Library</h1>
 
-          <h2 className="text-2xl font-semibold text-gray-700 mt-6 mb-4">Uploaded Files</h2>
-          <div className="flex justify-between items-center mb-4">
-            <select
-              className="p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={(e) => setSortOrder(e.target.value)}
-            >
-              <option value="desc">Sort by Date Last</option>
-              <option value="asc">Sort by Date First</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Search files..."
-              className="p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-md"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">
-              <span className="text-gray-600">Loading files...</span>
+          {/* Search & Sort Bar */}
+          <div className="flex items-center justify-between mb-6">
+            {/* Search Input */}
+            <div className="relative w-1/3">
+              <input
+                type="text"
+                placeholder="Search files..."
+                className="w-full px-4 py-2 text-gray-900 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <BsSearch className="absolute top-3 right-4 text-gray-600" />
             </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-md">
-                  <thead>
-                    <tr className="bg-gray-200 text-gray-600">
-                      <th className="py-3 px-4 border-b font-semibold text-left">Title</th>
-                      <th className="py-3 px-4 border-b font-semibold text-left">File URL</th>
-                      <th className="py-3 px-4 border-b font-semibold text-left">Created At</th>
-                      <th className="py-3 px-4 border-b font-semibold text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentFiles.map((file) => (
-                      <tr key={file.id} className="border-b hover:bg-gray-100">
-                        <td className="py-4 px-4">{file.title || "N/A"}</td>
-                        <td className="py-4 px-4">
-                          <a
-                            href={file.fileURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            View File
-                          </a>
-                        </td>
-                        <td className="py-4 px-4">
-                          {new Date(file.createdAt?.seconds * 1000).toLocaleString()}
-                        </td>
-                        <td className="py-4 px-4 flex gap-2">
-                          <button
-                            onClick={() => handleDelete(file.id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete File"
-                          >
-                            <FaTrashAlt />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(file)}
-                            className="text-yellow-600 hover:text-yellow-800"
-                            title="Edit File"
-                          >
-                            <FaEdit />
-                          </button>
-                          <button
-                            onClick={() => handleInfo(file)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="File Info"
-                          >
-                            <FaInfoCircle />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
 
-              <div className="flex justify-center mt-4">
-                {Array.from({ length: Math.ceil(filteredFiles.length / filesPerPage) }, (_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => paginate(index + 1)}
-                    className={`mx-1 px-3 py-2 rounded-full ${
-                      currentPage === index + 1 ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
+            {/* Sort Buttons */}
+            <div className="flex space-x-4">
+              <button
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg flex items-center space-x-2 hover:bg-gray-700"
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              >
+                {sortOrder === "asc" ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
+                <span>Sort {sortOrder === "asc" ? "A-Z" : "Z-A"}</span>
+              </button>
+
+              {/* Upload File Button */}
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-500"
+                onClick={handleUpload}
+              >
+                <FaUpload />
+                <span>Upload File</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Files Grid */}
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading files...</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {sortedFiles.map((file) => (
+                <div key={file.id} className="relative">
+                  {/* Folder Item */}
+                  <div
+                    className="bg-gray-200 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-300"
+                    onClick={() => window.open(file.fileURL, "_blank")}
                   >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
-            </>
+                    <div className="flex items-center space-x-3">
+                      <FaFolder className="text-gray-600 text-3xl" />
+                      <h3
+                        className="text-lg font-semibold text-gray-900 truncate w-40"
+                        title={file.title} // Tooltip for full title
+                      >
+                        {file.title.length > 20 ? `${file.title.substring(0, 20)}...` : file.title}
+                      </h3>
+                    </div>
+                    {/* Three-dot Menu Icon */}
+                    <button
+                      className="text-gray-600 hover:text-gray-900"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMenu(file.id);
+                      }}
+                    >
+                      <BsThreeDotsVertical className="text-xl" />
+                    </button>
+                  </div>
+
+                  {/* Dropdown Menu (Edit, Delete) */}
+                  {menuOpen === file.id && (
+                    <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-lg z-10 border">
+                      <button
+                        onClick={() => handleEdit(file)}
+                        className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(file.id)}
+                        className="block w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
-
-      {modal.isOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-1/3">
-            <button onClick={closeModal} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
-              &times;
-            </button>
-            {modal.type === 'delete' && (
-              <>
-                <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
-                <p>Are you sure you want to delete this file?</p>
-                <div className="flex justify-end mt-4">
-                  <button onClick={closeModal} className="mr-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
-                  <button onClick={() => confirmDelete(modal.content)} className="px-4 py-2 bg-red-600 text-white rounded">Delete</button>
-                </div>
-              </>
-            )}
-            {modal.type === 'edit' && (
-              <>
-                <h3 className="text-lg font-semibold mb-4">Edit File</h3>
-                <p>Edit the details of the file here.</p>
-                <div className="flex justify-end mt-4">
-                  <button onClick={closeModal} className="mr-2 px-4 py-2 bg-gray-300 rounded">Cancel</button>
-                  <button onClick={closeModal} className="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-                </div>
-              </>
-            )}
-            {modal.type === 'info' && (
-              <>
-                <h3 className="text-lg font-semibold mb-4">File Info</h3>
-                <p>View the details of the file here.</p>
-                <div className="flex justify-end mt-4">
-                  <button onClick={closeModal} className="px-4 py-2 bg-gray-300 rounded">Close</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

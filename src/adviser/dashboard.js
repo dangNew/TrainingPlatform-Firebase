@@ -1,5 +1,5 @@
-import React from "react";
-import { Link } from "react-router-dom"; // Import Link from react-router-dom
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   FaBook,
   FaGraduationCap,
@@ -10,10 +10,19 @@ import {
   FaUpload,
   FaComment,
   FaUserCircle,
+  FaUsers,
+  FaBullhorn,
 } from "react-icons/fa";
 import Header from "../Dashboard/Header"; // Adjust path to find Header.js
 
 const Dashboard = () => {
+  // Sample announcements state (replace with data from Firestore)
+  const [announcements, setAnnouncements] = useState([
+    "Midterm exams start next week!",
+    "Assignment submission deadline extended.",
+    "New course materials uploaded for Web Development.",
+  ]);
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Header */}
@@ -40,10 +49,6 @@ const Dashboard = () => {
               <FaInbox className="mr-2" />
               <Link to="/messages">Messages</Link>
             </li>
-            <li className="flex items-center text-gray-600 font-medium p-2 rounded-md hover:bg-gray-200 cursor-pointer">
-              <FaComment className="mr-2" />
-              <Link to="/comments">Comments</Link>
-            </li>
             <li className="flex items-center text-green-600 font-medium p-2 rounded-md hover:bg-green-100 cursor-pointer">
               <FaUpload className="mr-2" />
               <Link to="/upload-content">Upload Content</Link>
@@ -51,6 +56,14 @@ const Dashboard = () => {
             <li className="flex items-center text-purple-600 font-medium p-2 rounded-md hover:bg-purple-100 cursor-pointer">
               <FaUserCircle className="mr-2" />
               <Link to="/assistant-access">Assistant Access</Link>
+            </li>
+            <li className="flex items-center text-blue-600 font-medium p-2 rounded-md hover:bg-blue-100 cursor-pointer">
+              <FaUsers className="mr-2" />
+              <Link to="/manage-students">Manage Students</Link>
+            </li>
+            <li className="flex items-center text-yellow-600 font-medium p-2 rounded-md hover:bg-yellow-100 cursor-pointer">
+              <FaBullhorn className="mr-2" />
+              <Link to="/manage-announcements">Manage Announcements</Link>
             </li>
             <li className="flex items-center text-gray-600 font-medium p-2 rounded-md hover:bg-gray-200 cursor-pointer">
               <FaCog className="mr-2" />
@@ -74,34 +87,52 @@ const Dashboard = () => {
             <div className="bg-red-500 text-white p-6 rounded-lg shadow-lg">
               <h2 className="text-lg font-semibold">Courses</h2>
               <p className="text-sm">Manage your courses</p>
+              <Link to="/manage-courses">
+                <button className="mt-3 bg-white text-red-500 px-4 py-2 rounded-lg hover:bg-red-300">
+                  Manage Courses
+                </button>
+              </Link>
             </div>
 
             <div className="bg-blue-500 text-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold">Enrolled Courses</h2>
-              <p className="text-sm">Track student progress</p>
+              <h2 className="text-lg font-semibold">Students</h2>
+              <p className="text-sm">Monitor student progress</p>
+              <Link to="/manage-students">
+                <button className="mt-3 bg-white text-blue-500 px-4 py-2 rounded-lg hover:bg-blue-300">
+                  View Students
+                </button>
+              </Link>
             </div>
 
-            <div className="bg-black text-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold">Achievements</h2>
-              <p className="text-sm">View student milestones</p>
+            <div className="bg-yellow-500 text-white p-6 rounded-lg shadow-lg">
+              <h2 className="text-lg font-semibold">Announcements</h2>
+              <p className="text-sm">Post and edit announcements</p>
+              <Link to="/manage-announcements">
+                <button className="mt-3 bg-white text-yellow-500 px-4 py-2 rounded-lg hover:bg-yellow-300">
+                  Manage Announcements
+                </button>
+              </Link>
             </div>
           </div>
 
           {/* Announcements & Leaderboard */}
           <div className="grid grid-cols-2 gap-6 mt-6">
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-700">
-                📢 Announcements
-              </h2>
-              <p className="text-sm text-gray-600 mt-2">
-                New courses added this week!
-              </p>
+              <h2 className="text-lg font-semibold text-gray-700">📢 Announcements</h2>
+              <ul className="text-sm text-gray-600 mt-2">
+                {announcements.map((announcement, index) => (
+                  <li key={index}>- {announcement}</li>
+                ))}
+              </ul>
+              <Link to="/manage-announcements">
+                <button className="mt-3 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                  Edit Announcements
+                </button>
+              </Link>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-lg">
-              <h2 className="text-lg font-semibold text-gray-700">
-                🏆 Leaderboard
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-700">🏆 Leaderboard</h2>
               <p className="text-sm text-gray-600 mt-2">
                 Top 5 learners of the month
               </p>

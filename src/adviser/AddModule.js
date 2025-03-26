@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { FaCloudUploadAlt } from "react-icons/fa";
+import { FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
-import { collection, doc, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase.config"; // Firestore instance
+import { collection, doc, getDocs, setDoc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase.config";
 import uploadToCloudinary from "../uploadToCloudinary";
 
 const PageContainer = styled.div`
@@ -30,12 +30,7 @@ const SidebarWrapper = styled.div`
   z-index: 5;
 `;
 
-const MainContent = styled.div.attrs(({ isSidebarOpen }) => ({
-  style: {
-    marginLeft: isSidebarOpen ? "10px" : "60px",
-    width: `calc(100% - ${isSidebarOpen ? "38px" : "60px"})`,
-  },
-}))`
+const MainContent = styled.div`
   padding: 2rem;
   background-color: #fff;
   transition: margin-left 0.3s ease, width 0.3s ease;
@@ -57,14 +52,122 @@ const AccordionItem = ({ title, children, isOpen, toggle }) => (
   </div>
 );
 
+const LoadingSpinner = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <FaSpinner className="text-white text-4xl animate-spin" />
+  </div>
+);
+
+const Modal = ({ isOpen, onClose, onSubmit, chapter, setChapter, courses, selectedCourseId, setSelectedCourseId, modules, selectedModuleId, setSelectedModuleId }) => {
+  if (!isOpen) return null;
+
+  const handleFileChange = (e) => {
+    setChapter({ ...chapter, file: e.target.files[0] });
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-start z-50 bg-black bg-opacity-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md ml-10"> {/* Adjust left margin as needed */}
+        <h2 className="text-xl font-semibold mb-4">Add New Chapter</h2>
+
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Select Course *
+        </label>
+        <select
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+          value={selectedCourseId}
+          onChange={(e) => setSelectedCourseId(e.target.value)}
+          required
+        >
+          <option value="">Select a course</option>
+          {courses.map((course) => (
+            <option key={course.id} value={course.id}>
+              {course.title}
+            </option>
+          ))}
+        </select>
+
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Select Module *
+        </label>
+        <select
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+          value={selectedModuleId}
+          onChange={(e) => setSelectedModuleId(e.target.value)}
+          required
+        >
+          <option value="">Select a module</option>
+          {modules.map((module) => (
+            <option key={module.id} value={module.id}>
+              {module.title}
+            </option>
+          ))}
+        </select>
+
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Chapter Title *
+        </label>
+        <input
+          type="text"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+          placeholder="Enter chapter title"
+          value={chapter.title}
+          onChange={(e) => setChapter({ ...chapter, title: e.target.value })}
+          required
+        />
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Description
+        </label>
+        <textarea
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+          placeholder="Describe the chapter content"
+          rows="4"
+          value={chapter.description}
+          onChange={(e) => setChapter({ ...chapter, description: e.target.value })}
+        ></textarea>
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Upload File (PDF, Video, Slides, Image) *
+        </label>
+        <input
+          type="file"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+          accept="application/pdf, video/*, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation, image/*"
+          onChange={handleFileChange}
+          required
+        />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="mr-2 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600"
+          >
+            Add Chapter
+          </button>
+        </div>
+      </div>
+    </div>
+
+  );
+};
+
 const AddModule = () => {
   const [courses, setCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [modules, setModules] = useState([]);
+  const [moduleDetails, setModuleDetails] = useState({ title: "", description: "" });
   const [chapters, setChapters] = useState([{ title: "", description: "", file: null }]);
   const [loading, setLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newChapter, setNewChapter] = useState({ title: "", description: "", file: null });
+  const [selectedModuleId, setSelectedModuleId] = useState("");
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   useEffect(() => {
@@ -83,6 +186,26 @@ const AddModule = () => {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    const fetchModules = async () => {
+      if (selectedCourseId) {
+        try {
+          const courseDocRef = doc(db, "courses", selectedCourseId);
+          const modulesCollectionRef = collection(courseDocRef, "modules");
+          const querySnapshot = await getDocs(modulesCollectionRef);
+          const modulesData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            title: doc.data().title,
+          }));
+          setModules(modulesData);
+        } catch (error) {
+          console.error("Error fetching modules:", error);
+        }
+      }
+    };
+    fetchModules();
+  }, [selectedCourseId]);
+
   const handleFileChange = (index, e) => {
     const updatedChapters = [...chapters];
     updatedChapters[index].file = e.target.files[0];
@@ -96,7 +219,7 @@ const AddModule = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!selectedCourseId || !title || chapters.some((chapter) => !chapter.title || !chapter.file)) {
+    if (!selectedCourseId || !moduleDetails.title || chapters.some((chapter) => !chapter.title || !chapter.file)) {
       alert("Please fill all required fields and upload files for each chapter.");
       return;
     }
@@ -127,20 +250,55 @@ const AddModule = () => {
 
       await setDoc(doc(modulesCollectionRef, newModuleId), {
         id: newModuleId,
-        title,
-        description,
+        ...moduleDetails,
         chapters: chaptersData,
         createdAt: serverTimestamp(),
       });
 
       alert("Module added successfully!");
-      setTitle("");
-      setDescription("");
+      setModuleDetails({ title: "", description: "" });
       setChapters([{ title: "", description: "", file: null }]);
       setLoading(false);
     } catch (error) {
       console.error("Error adding module:", error);
       alert("An error occurred while adding the module.");
+      setLoading(false);
+    }
+  };
+
+  const handleAddChapterModal = async () => {
+    if (!newChapter.title || !newChapter.file || !selectedModuleId) {
+      alert("Please fill all required fields, select a module, and upload a file for the new chapter.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const courseDocRef = doc(db, "courses", selectedCourseId);
+      const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId);
+
+      const url = await uploadToCloudinary(newChapter.file);
+      if (!url) {
+        throw new Error("Failed to upload file to Cloudinary.");
+      }
+
+      const newChapterData = {
+        title: newChapter.title,
+        description: newChapter.description,
+        fileUrl: url,
+      };
+
+      await updateDoc(moduleDocRef, {
+        chapters: arrayUnion(newChapterData),
+      });
+
+      alert("Chapter added successfully!");
+      setNewChapter({ title: "", description: "", file: null });
+      setIsModalOpen(false);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error adding chapter:", error);
+      alert("An error occurred while adding the chapter.");
       setLoading(false);
     }
   };
@@ -154,12 +312,19 @@ const AddModule = () => {
         <SidebarWrapper>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
-        <MainContent isSidebarOpen={isSidebarOpen}>
+        <MainContent>
           <div className="flex justify-center items-start p-6">
             <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-3xl">
               <div className="flex items-center mb-6">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 mr-3"
+                >
+                  Add Chapter to Module
+                </button>
                 <FaCloudUploadAlt className="text-green-500 text-3xl mr-3" />
-                <h1 className="text-2xl font-bold">Add New Module</h1>
+                <h1 className="text-2xl font-bold">Add New Module or Chapter</h1>
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -190,8 +355,8 @@ const AddModule = () => {
                     type="text"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="Enter module title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    value={moduleDetails.title}
+                    onChange={(e) => setModuleDetails({ ...moduleDetails, title: e.target.value })}
                     required
                   />
                   <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -201,8 +366,8 @@ const AddModule = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="Describe the module content"
                     rows="4"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={moduleDetails.description}
+                    onChange={(e) => setModuleDetails({ ...moduleDetails, description: e.target.value })}
                   ></textarea>
                 </AccordionItem>
 
@@ -272,10 +437,25 @@ const AddModule = () => {
                   </button>
                 </div>
               </form>
+
+              <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleAddChapterModal}
+                chapter={newChapter}
+                setChapter={setNewChapter}
+                courses={courses}
+                selectedCourseId={selectedCourseId}
+                setSelectedCourseId={setSelectedCourseId}
+                modules={modules}
+                selectedModuleId={selectedModuleId}
+                setSelectedModuleId={setSelectedModuleId}
+              />
             </div>
           </div>
         </MainContent>
       </ContentContainer>
+      {loading && <LoadingSpinner />}
     </PageContainer>
   );
 };

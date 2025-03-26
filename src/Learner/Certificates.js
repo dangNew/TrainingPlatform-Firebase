@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { db } from '../firebase.config';
-import { collection, getDocs } from 'firebase/firestore';
-import Sidebar from '../components/LSidebar';
-import styled from 'styled-components';
+import { useEffect, useState, useRef } from "react";
+import { db, auth } from "../firebase.config";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { useAuthState } from "react-firebase-hooks/auth";
+import Sidebar from "../components/LSidebar";
+import styled from "styled-components";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const PageContainer = styled.div`
   display: flex;
@@ -65,17 +68,99 @@ const CertificateTitle = styled.h3`
   margin: 10px 0;
 `;
 
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 20px;
+`;
+
 const CertificatePage = () => {
+  const [user, loading] = useAuthState(auth);
   const [certificates, setCertificates] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const certificateRef = useRef(null);
 
   useEffect(() => {
     const fetchCertificates = async () => {
-      const querySnapshot = await getDocs(collection(db, 'certificates'));
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCertificates(data);
+      if (!user) return;
+
+      try {
+        setIsLoading(true);
+
+        // Create a query that only gets certificates for the current user
+        const certificatesQuery = query(
+          collection(db, "certificates"),
+          where("userId", "==", user.uid)
+        );
+
+        const querySnapshot = await getDocs(certificatesQuery);
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setCertificates(data);
+      } catch (error) {
+        console.error("Error fetching certificates:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    fetchCertificates();
-  }, []);
+
+    if (!loading) {
+      fetchCertificates();
+    }
+  }, [user, loading]);
+
+  const downloadCertificate = (certId) => {
+    const certificate = certificates.find((cert) => cert.id === certId);
+    if (!certificate) return;
+
+    html2canvas(certificateRef.current).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF();
+      pdf.addImage(imgData, "PNG", 10, 10);
+      pdf.save(`certificate_${certificate.certificateId}.pdf`);
+    });
+  };
+
+  if (loading || isLoading) {
+    return (
+      <PageContainer>
+        <SidebarWrapper>
+          <Sidebar />
+        </SidebarWrapper>
+        <MainContent>
+          <Title>Certificates</Title>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        </MainContent>
+      </PageContainer>
+    );
+  }
+
+  if (!user) {
+    return (
+      <PageContainer>
+        <SidebarWrapper>
+          <Sidebar />
+        </SidebarWrapper>
+        <MainContent>
+          <Title>Certificates</Title>
+          <EmptyState>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              Please log in
+            </h3>
+            <p className="text-gray-500">
+              You need to be logged in to view your certificates.
+            </p>
+          </EmptyState>
+        </MainContent>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -83,15 +168,43 @@ const CertificatePage = () => {
         <Sidebar />
       </SidebarWrapper>
       <MainContent>
-        <Title>Certificates</Title>
-        <CertificateGrid>
-          {certificates.map(cert => (
-            <CertificateCard key={cert.id}>
-              <CertificateImage src={cert.imageUrl} alt={cert.title} />
-              <CertificateTitle>{cert.title}</CertificateTitle>
-            </CertificateCard>
-          ))}
-        </CertificateGrid>
+        <Title>Your Certificates</Title>
+
+        {certificates.length === 0 ? (
+          <EmptyState>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No certificates yet
+            </h3>
+            <p className="text-gray-500">
+              Complete courses to earn certificates that will appear here.
+            </p>
+          </EmptyState>
+        ) : (
+          <CertificateGrid>
+            {certificates.map((cert) => (
+              <CertificateCard key={cert.id} ref={certificateRef}>
+                <CertificateImage
+                  src={cert.imageUrl || "/placeholder.svg?height=200&width=300"}
+                  alt={cert.moduleTitle || cert.title}
+                />
+                <CertificateTitle>{cert.moduleTitle || cert.title}</CertificateTitle>
+                <p className="text-gray-600 text-sm">{cert.courseTitle}</p>
+                <p className="text-gray-500 text-xs mt-2">
+                  Issued: {cert.formattedDate}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Certificate ID: {cert.certificateId}
+                </p>
+                <button
+                  onClick={() => downloadCertificate(cert.id)}
+                  className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
+                >
+                  Download
+                </button>
+              </CertificateCard>
+            ))}
+          </CertificateGrid>
+        )}
       </MainContent>
     </PageContainer>
   );

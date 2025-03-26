@@ -13,6 +13,7 @@ export default function Sidebar() {
   const [userData, setUserData] = useState({ fullName: '', email: '' });
 
   const location = useLocation();
+  const navigate = useNavigate(); // Add this line to get the navigate function
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem('activeItem') || 'Dashboard'; // Default active item
   });
@@ -56,7 +57,9 @@ export default function Sidebar() {
   }, [activeItem]);
 
   const handleLogout = () => {
-    auth.signOut();
+    auth.signOut().then(() => {
+      navigate('/'); // Navigate to the landing page after signing out
+    });
   };
 
   return (

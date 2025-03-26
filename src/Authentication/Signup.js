@@ -2,12 +2,10 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { db } from "../firebase.config"
+import { db, auth } from "../firebase.config"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
-import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarker } from "react-icons/fa"
-// Signup.js or login.js
-import { auth } from '../firebase.config';
+import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarker, FaArrowLeft } from "react-icons/fa"
 
 function SignUp() {
   const [formData, setFormData] = useState({
@@ -22,11 +20,21 @@ function SignUp() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
-  const [isLearner, setIsLearner] = useState(false)
+  const [userRole, setUserRole] = useState("")
+  const [showRoleSelection, setShowRoleSelection] = useState(true)
   const navigate = useNavigate()
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  const handleRoleSelect = (role) => {
+    setUserRole(role)
+    setShowRoleSelection(false)
+  }
+
+  const handleBackToRoles = () => {
+    setShowRoleSelection(true)
   }
 
   const handleSubmit = async (e) => {
@@ -42,7 +50,13 @@ function SignUp() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      const collectionName = isLearner ? "learner" : "users"
+      // Determine collection based on user role
+      let collectionName = "users" // default for admin
+      if (userRole === "learner") {
+        collectionName = "learner"
+      } else if (userRole === "intern") {
+        collectionName = "intern"
+      }
 
       await setDoc(doc(db, collectionName, user.uid), {
         fullName,
@@ -50,6 +64,7 @@ function SignUp() {
         email,
         phoneNumber,
         address,
+        role: userRole,
         createdAt: new Date(),
       })
 
@@ -59,8 +74,59 @@ function SignUp() {
     }
   }
 
+  // Role selection screen
+  if (showRoleSelection) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 py-12">
+        <div className="w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl">
+          <div className="bg-white dark:bg-gray-800 p-8">
+            <div className="mb-8 text-center">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+                Choose Your Role
+              </h2>
+              <p className="mt-2 text-gray-500 dark:text-gray-400">Select how you want to register with us</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+              {[
+                { role: "admin", title: "Admin", description: "Register as an administrator with full access" },
+                { role: "learner", title: "Learner", description: "Join as a learner to access educational content" },
+                { role: "intern", title: "Intern", description: "Register as an intern to gain practical experience" },
+              ].map((option) => (
+                <button
+                  key={option.role}
+                  onClick={() => handleRoleSelect(option.role)}
+                  className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition-all duration-200 h-full"
+                >
+                  <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-4">
+                    <FaUser className="text-blue-600 dark:text-blue-400 text-xl" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{option.title}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center text-sm">{option.description}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 text-center">
+              <p className="text-gray-600 dark:text-gray-400">
+                Already have an account?{" "}
+                <span
+                  className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline"
+                  onClick={() => navigate("/login")}
+                >
+                  Sign In
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Sign-up form screen
   return (
-    <div className="flex min-h-screen items-center justify-center  px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-3xl overflow-hidden rounded-2xl shadow-2xl">
         {/* Left decorative panel - visible on medium screens and up */}
         <div className="flex flex-col md:flex-row">
@@ -77,7 +143,7 @@ function SignUp() {
                       <span className="text-white text-sm">{i}</span>
                     </div>
                     <p className="text-sm text-white">
-                      {i === 1 && "Create your account"}
+                      {i === 1 && "Choose your role"}
                       {i === 2 && "Complete your profile"}
                       {i === 3 && "Start exploring"}
                     </p>
@@ -89,11 +155,20 @@ function SignUp() {
 
           {/* Form section */}
           <div className="w-full md:w-2/3 bg-white dark:bg-gray-800 p-8">
-            <div className="mb-8 text-center">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-                Create Account
-              </h2>
-              <p className="mt-2 text-gray-500 dark:text-gray-400">Fill in your details to get started</p>
+            <div className="mb-8">
+              <button
+                onClick={handleBackToRoles}
+                className="flex items-center text-blue-600 dark:text-blue-400 mb-4 hover:underline"
+              >
+                <FaArrowLeft className="mr-2" /> Back to role selection
+              </button>
+
+              <div className="text-center">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+                  Create {userRole.charAt(0).toUpperCase() + userRole.slice(1)} Account
+                </h2>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">Fill in your details to get started</p>
+              </div>
             </div>
 
             {error && (
@@ -163,19 +238,6 @@ function SignUp() {
                 </div>
               ))}
 
-              {/* Dropdown for Learner */}
-              <div className="md:col-span-2 space-y-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Register as Learner</label>
-                <select
-                  value={isLearner}
-                  onChange={(e) => setIsLearner(e.target.value === "true")}
-                  className="w-full pl-4 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                >
-                  <option value={false}>No</option>
-                  <option value={true}>Yes</option>
-                </select>
-              </div>
-
               <div className="md:col-span-2 mt-4">
                 <button
                   type="submit"
@@ -205,3 +267,4 @@ function SignUp() {
 }
 
 export default SignUp
+

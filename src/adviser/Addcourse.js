@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import styled from "styled-components";
-import { FaCloudUploadAlt } from "react-icons/fa";
+import { FaCloudUploadAlt, FaTimes } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
 import uploadToCloudinary from "../uploadToCloudinary";
@@ -46,12 +46,30 @@ const MainContent = styled.div.attrs(({ isSidebarOpen }) => ({
   height: 100%;
 `;
 
+const Modal = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+        <div className="flex justify-end">
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <FaTimes />
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+};
+
 const AddCourse = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [file, setFile] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   // Toggle Sidebar function
@@ -90,7 +108,8 @@ const AddCourse = () => {
         createdAt: serverTimestamp(), // Timestamp for sorting
       });
 
-      alert("Course uploaded successfully!");
+      // Open modal to confirm success
+      setIsModalOpen(true);
 
       // Reset form fields
       setTitle("");
@@ -102,6 +121,11 @@ const AddCourse = () => {
       console.error("Error uploading course:", error);
       alert("An error occurred while uploading.");
     }
+  };
+
+  // Close Modal
+  const closeModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -189,6 +213,20 @@ const AddCourse = () => {
               </form>
             </div>
           </div>
+
+          {/* Modal */}
+          <Modal isOpen={isModalOpen} onClose={closeModal}>
+            <h2 className="text-xl font-bold text-gray-800">Success!</h2>
+            <p className="mt-2 text-gray-600">Your course has been uploaded successfully.</p>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                OK
+              </button>
+            </div>
+          </Modal>
         </MainContent>
       </ContentContainer>
     </PageContainer>

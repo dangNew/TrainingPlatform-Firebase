@@ -3,6 +3,19 @@ import { useParams } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase.config";
 
+const LoadingModal = ({ isOpen }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+        <h2 className="text-xl font-semibold text-gray-800">Loading...</h2>
+        <p className="mt-2 text-gray-600">Please wait while we fetch the data.</p>
+      </div>
+    </div>
+  );
+};
+
 const ModuleDetails = () => {
   const { courseId, moduleId } = useParams();
   const [module, setModule] = useState(null);
@@ -20,7 +33,7 @@ const ModuleDetails = () => {
         if (moduleSnap.exists()) {
           const moduleData = moduleSnap.data();
           console.log("Module Data:", moduleData);
-          
+
           // Debug: Log all fileUrls in chapters
           moduleData.chapters?.forEach((ch, index) =>
             console.log(`Chapter ${index + 1} File URL:`, ch.fileUrl)
@@ -98,32 +111,16 @@ const ModuleDetails = () => {
     return <p className="text-yellow-400">Unsupported file type.</p>;
   };
 
-  if (loading) return <div className="text-white">Loading...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
-  if (!module || !module.chapters || module.chapters.length === 0) {
-    return <div className="text-red-500">Module data is missing or incomplete.</div>;
-  }
-
-  // Ensure `selectedChapterIndex` is within bounds
-  const selectedChapter = module.chapters[selectedChapterIndex] || null;
-
-  if (!selectedChapter) {
-    return <div className="text-red-500">No chapter selected.</div>;
-  }
-
-  // Debugging: Log selected chapter details
-  console.log("Selected Chapter:", selectedChapter);
-
-  // Determine content type
-  const contentType = inferContentType(selectedChapter?.fileUrl);
-
   return (
     <div className="flex h-screen bg-black text-white">
+      {/* Loading Modal */}
+      <LoadingModal isOpen={loading} />
+
       {/* Sidebar for Chapter Navigation */}
       <div className="w-64 p-4 bg-gray-900 flex flex-col">
         <h2 className="text-xl font-semibold mb-4">Chapters</h2>
         <ul className="overflow-y-auto">
-          {module.chapters.map((chapter, index) => (
+          {module?.chapters?.map((chapter, index) => (
             <li
               key={index}
               className={`p-2 cursor-pointer rounded ${
@@ -139,19 +136,23 @@ const ModuleDetails = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 p-6 overflow-y-auto">
-        {selectedChapter && (
+        {module && module.chapters && module.chapters.length > 0 ? (
           <>
-            <h1 className="text-3xl font-bold text-blue-300 mb-4">{selectedChapter.title}</h1>
-            <p className="text-gray-400">{selectedChapter.description}</p>
+            <h1 className="text-3xl font-bold text-blue-300 mb-4">{module.chapters[selectedChapterIndex].title}</h1>
+            <p className="text-gray-400">{module.chapters[selectedChapterIndex].description}</p>
 
             {/* Debugging: Display raw file URL */}
-            <p className="text-green-400 mt-4">File URL: {selectedChapter.fileUrl || "No file URL available"}</p>
+            <p className="text-green-400 mt-4">File URL: {module.chapters[selectedChapterIndex].fileUrl || "No file URL available"}</p>
 
             {/* Render File */}
-            {selectedChapter.fileUrl && (
-              <div className="mt-4">{renderFile(selectedChapter.fileUrl, contentType)}</div>
+            {module.chapters[selectedChapterIndex].fileUrl && (
+              <div className="mt-4">
+                {renderFile(module.chapters[selectedChapterIndex].fileUrl, inferContentType(module.chapters[selectedChapterIndex].fileUrl))}
+              </div>
             )}
           </>
+        ) : (
+          <div className="text-red-500">Module data is missing or incomplete.</div>
         )}
       </div>
     </div>

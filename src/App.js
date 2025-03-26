@@ -18,6 +18,9 @@ import Addmodule from "./adviser/AddModule";
 import Moduledisplay from "./adviser/ModuleDisplay";
 import NavBar from "./components/Navbar";
 import ModuleDetails from './adviser/ModuleDetails';
+import AddQuiz from './adviser/addquiz';
+
+
 
 //learners
 import UserDashboard from "./Learner/userdashboard";
@@ -52,7 +55,7 @@ function App() {
         <Route path="/addmodule" element={<Addmodule />} />
         <Route path="/modules/:courseId" element={<Moduledisplay />} />
         <Route path="/course/:courseId/module/:moduleId" element={<ModuleDetails />} />
-
+        <Route path="/addquiz" element={<AddQuiz />} />
 
 
 

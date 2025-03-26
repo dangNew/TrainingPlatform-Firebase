@@ -1,35 +1,35 @@
-import "./index.css";
 import {
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
   useLocation,
 } from "react-router-dom";
-import LandingPage from "./Dashboard/Landing";
-import Login from "./Authentication/login";
 import SignUp from "./Authentication/Signup";
-import Adviser from "./adviser/sidebar";
+import Login from "./Authentication/login";
 import Dashboard from "./Dashboard/Dashboard";
-import UploadContent from "./adviser/uploadcontent";
-import Courses from "./adviser/courses";
-import AddCourses from "./adviser/Addcourse";
-import FileLibrary from "./adviser/filelibrary";
+import LandingPage from "./Dashboard/Landing";
 import Addmodule from "./adviser/AddModule";
-import Moduledisplay from "./adviser/ModuleDisplay";
-import NavBar from "./components/Navbar";
+import AddCourses from "./adviser/Addcourse";
 import ModuleDetails from './adviser/ModuleDetails';
+import Moduledisplay from "./adviser/ModuleDisplay";
 import AddQuiz from './adviser/addquiz';
+import Courses from "./adviser/courses";
+import FileLibrary from "./adviser/filelibrary";
+import Adviser from "./adviser/sidebar";
+import UploadContent from "./adviser/uploadcontent";
+import NavBar from "./components/Navbar";
+import "./index.css";
 
 
 
 //learners
-import UserDashboard from "./Learner/userdashboard";
-import ChatRoom from "./Learner/Chatroom";
-import LProfile from "./Learner/LProfile";
-import LCourses from "./Learner/LCourses";
-import ModuleDisplay from "./Learner/LModules";
 import CertificatePage from "./Learner/Certificates";
+import ChatRoom from "./Learner/Chatroom";
+import LCourses from "./Learner/LCourses";
 import ModuleViewer from "./Learner/LModuleView";
+import ModuleDisplay from "./Learner/LModules";
+import LProfile from "./Learner/LProfile";
+import UserDashboard from "./Learner/userdashboard";
 
 // Create a wrapper component for the NavBar
 const NavBarWrapper = () => {

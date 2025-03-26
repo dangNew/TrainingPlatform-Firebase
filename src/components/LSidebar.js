@@ -1,71 +1,85 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { LifeBuoy, Receipt, FolderOpen, UserCircle, FileText, BookOpen, LayoutDashboard, Settings, Menu, MoreVertical, LogOut } from 'lucide-react';
-import { auth, db } from '../firebase.config';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc } from 'firebase/firestore';
+"use client"
 
-const SidebarContext = createContext();
+import { doc, getDoc } from "firebase/firestore"
+import {
+  BookOpen,
+  FileText,
+  FolderOpen,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Settings,
+  UserCircle,
+} from "lucide-react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { useAuthState } from "react-firebase-hooks/auth"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { auth, db } from "../firebase.config"
+
+const SidebarContext = createContext()
 
 export default function Sidebar() {
-  const [expanded, setExpanded] = useState(true);
-  const [user] = useAuthState(auth);
-  const [userData, setUserData] = useState({ fullName: '', email: '' });
+  const [expanded, setExpanded] = useState(true)
+  const [user] = useAuthState(auth)
+  const [userData, setUserData] = useState({ fullName: "", email: "" })
 
-  const location = useLocation();
-  const navigate = useNavigate(); // Add this line to get the navigate function
+  const location = useLocation()
+  const navigate = useNavigate()
   const [activeItem, setActiveItem] = useState(() => {
-    return localStorage.getItem('activeItem') || 'Dashboard'; // Default active item
-  });
+    return localStorage.getItem("activeItem") || "Dashboard"
+  })
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
-        const userRef = doc(db, 'learner', user.uid);
-        const userDoc = await getDoc(userRef);
+        const userRef = doc(db, "learner", user.uid)
+        const userDoc = await getDoc(userRef)
 
         if (userDoc.exists()) {
-          setUserData(userDoc.data());
+          setUserData(userDoc.data())
         }
       }
-    };
-    fetchUserData();
-  }, [user]);
+    }
+    fetchUserData()
+  }, [user])
 
   useEffect(() => {
     // Map URL path to corresponding sidebar item text
     const routeToText = {
-      '/user-dashboard': 'Dashboard',
-      '/lcourses': 'Courses',
-      '/lprofile': 'Profile',
-      '/certificates': 'Certificates',
-      '/resources': 'Resources',
-      '/settings': 'Settings',
-      '/help': 'Help',
-    };
+      "/user-dashboard": "Dashboard",
+      "/lcourses": "Courses",
+      "/lprofile": "Profile",
+      "/certificates": "Certificates",
+      "/resources": "Resources",
+      "/settings": "Settings",
+      "/help": "Help",
+      "/chat": "Chat", // Add chat route
+    }
 
     // Ensure "Courses" stays active when navigating to a module
-    if (location.pathname.startsWith('/lcourses') || location.pathname.startsWith('/lmodules')) {
-      setActiveItem('Courses');
+    if (location.pathname.startsWith("/lcourses") || location.pathname.startsWith("/lmodules")) {
+      setActiveItem("Courses")
     } else {
-      setActiveItem(routeToText[location.pathname] || 'Dashboard');
+      setActiveItem(routeToText[location.pathname] || "Dashboard")
     }
-  }, [location.pathname]);
+  }, [location.pathname])
 
   useEffect(() => {
-    localStorage.setItem('activeItem', activeItem);
-  }, [activeItem]);
+    localStorage.setItem("activeItem", activeItem)
+  }, [activeItem])
 
   const handleLogout = () => {
     auth.signOut().then(() => {
-      navigate('/'); // Navigate to the landing page after signing out
-    });
-  };
+      navigate("/")
+    })
+  }
 
   return (
     <SidebarContext.Provider value={{ expanded, activeItem, setActiveItem }}>
       <div className="flex">
-        <aside className={`fixed h-screen transition-all ${expanded ? 'w-64' : 'w-16'}`}>
+        <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
           <nav className="h-full flex flex-col bg-blue-950 border-r shadow-sm text-gray-200">
             <div className="p-4 pb-2 flex justify-between items-center">
               <button
@@ -77,14 +91,14 @@ export default function Sidebar() {
             </div>
 
             <Link to="/lprofile" className="flex flex-col items-center p-3">
-              <div className={`rounded-full overflow-hidden ${expanded ? 'w-24 h-24' : 'w-12 h-12'}`}>
+              <div className={`rounded-full overflow-hidden ${expanded ? "w-24 h-24" : "w-12 h-12"}`}>
                 <img
-                  src={userData.photoURL}
+                  src={userData.photoURL || "/placeholder.svg"}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className={`text-center ${expanded ? 'block' : 'hidden'}`}>
+              <div className={`text-center ${expanded ? "block" : "hidden"}`}>
                 <h4 className="font-bold text-lg text-gray-200">{userData.fullName}</h4>
                 <span className="text-sm text-gray-400">{userData.email}</span>
               </div>
@@ -95,6 +109,8 @@ export default function Sidebar() {
             <ul className="flex-1 px-3">
               <SidebarItem icon={<LayoutDashboard size={24} />} text="Dashboard" route="/user-dashboard" />
               <SidebarItem icon={<BookOpen size={24} />} text="Courses" route="/lcourses" />
+              {/* Add Chat item near the top of the navigation */}
+              <SidebarItem icon={<MessageCircle size={24} />} text="Chat" route="/chatroom" />
               <SidebarItem icon={<FileText size={24} />} text="Certificates" route="/certificates" />
               <SidebarItem icon={<FolderOpen size={24} />} text="Resources" route="/resources" />
               <SidebarItem icon={<UserCircle size={24} />} text="Profile" route="/lprofile" />
@@ -109,40 +125,43 @@ export default function Sidebar() {
                 className="flex items-center justify-center w-full text-gray-200 hover:text-red-500"
               >
                 <LogOut size={32} className="mr-2" />
-                <span className={`overflow-hidden transition-all ${expanded ? 'w-52 ml-3 text-lg' : 'w-0'}`}>Logout</span>
+                <span className={`overflow-hidden transition-all ${expanded ? "w-52 ml-3 text-lg" : "w-0"}`}>
+                  Logout
+                </span>
               </button>
             </div>
           </nav>
         </aside>
-        <main className={`transition-all ${expanded ? 'ml-64' : 'ml-16'}`}>
-          {/* Main content goes here */}
-        </main>
+        <main className={`transition-all ${expanded ? "ml-64" : "ml-16"}`}>{/* Main content goes here */}</main>
       </div>
     </SidebarContext.Provider>
-  );
+  )
 }
 
 function SidebarItem({ icon, text, route }) {
-  const { expanded, activeItem, setActiveItem } = useContext(SidebarContext);
-  const navigate = useNavigate();
+  const { expanded, activeItem, setActiveItem } = useContext(SidebarContext)
+  const navigate = useNavigate()
 
   const handleClick = () => {
-    setActiveItem(text);
-    localStorage.setItem('activeItem', text); // Persist the active item
+    setActiveItem(text)
+    localStorage.setItem("activeItem", text)
     if (route) {
-      navigate(route);
+      navigate(route)
     }
-  };
+  }
 
   return (
     <li
       onClick={handleClick}
       className={`relative flex items-center py-1 px-2 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
-        activeItem === text ? 'bg-gradient-to-tr from-yellow-200 to-yellow-100 text-yellow-800' : 'hover:bg-yellow-50 text-gray-200'
+        activeItem === text
+          ? "bg-gradient-to-tr from-yellow-200 to-yellow-100 text-yellow-800"
+          : "hover:bg-yellow-50 text-gray-200"
       }`}
     >
       {icon}
-      <span className={`overflow-hidden transition-all ${expanded ? 'w-40 ml-3 text-sm' : 'w-0'}`}>{text}</span>
+      <span className={`overflow-hidden transition-all ${expanded ? "w-40 ml-3 text-sm" : "w-0"}`}>{text}</span>
     </li>
-  );
+  )
 }
+

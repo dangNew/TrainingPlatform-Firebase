@@ -1,165 +1,565 @@
-import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase.config";
+"use client"
+
+import { onAuthStateChanged } from "firebase/auth"
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore"
+import { useEffect, useRef, useState } from "react"
+import { useAuthState } from "react-firebase-hooks/auth"
+import { FaCheck, FaLock, FaLockOpen, FaSignInAlt } from "react-icons/fa"
+import { useLocation, useNavigate } from "react-router-dom"
+import { auth, db } from "../firebase.config"
+
+// Add this CSS for animations
+const styles = `
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 1.5s infinite;
+}
+`
 
 const ModuleView = () => {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const courseId = searchParams.get('courseId');
-  const moduleId = searchParams.get('moduleId');
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [user, loading, authError] = useAuthState(auth)
+  const searchParams = new URLSearchParams(location.search)
+  const courseId = searchParams.get("courseId")
+  const moduleId = searchParams.get("moduleId")
+  const initialChapterIndex = Number.parseInt(searchParams.get("chapterIndex") || "0", 10)
 
-  const [module, setModule] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedChapterIndex, setSelectedChapterIndex] = useState(0);
-  const [error, setError] = useState(null);
+  const [module, setModule] = useState(null)
+  const [course, setCourse] = useState(null)
+  const [userData, setUserData] = useState(null)
+  const [contentLoading, setContentLoading] = useState(true)
+  const [selectedChapterIndex, setSelectedChapterIndex] = useState(initialChapterIndex)
+  const [error, setError] = useState(null)
+  const [unlockedChapters, setUnlockedChapters] = useState({})
+  const [isLastChapterScrolledToBottom, setIsLastChapterScrolledToBottom] = useState(false)
+  const [savingCompletion, setSavingCompletion] = useState(false)
+  const [showCompletionAlert, setShowCompletionAlert] = useState(false)
+  const [moduleAlreadyCompleted, setModuleAlreadyCompleted] = useState(false)
+  const [historyDocId, setHistoryDocId] = useState(null)
+  const contentRef = useRef(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
+  // Check authentication status
   useEffect(() => {
-    const fetchModule = async () => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setAuthChecked(true)
+      if (!currentUser) {
+        setError("You must be logged in to view this module")
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch module data and unlocked chapters from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        console.log("Fetching module data...");
-        const moduleRef = doc(db, "courses", courseId, "modules", moduleId);
-        const moduleSnap = await getDoc(moduleRef);
+        // Wait for auth to be checked and make sure user is logged in
+        if (!authChecked) return
+        if (!user) {
+          setContentLoading(false)
+          return
+        }
 
-        if (moduleSnap.exists()) {
-          const moduleData = moduleSnap.data();
-          console.log("Module Data:", moduleData);
+        setContentLoading(true)
 
-          // Debug: Log all fileUrls in chapters
-          moduleData.chapters?.forEach((ch, index) =>
-            console.log(`Chapter ${index + 1} File URL:`, ch.fileUrl)
-          );
+        // Fetch module data
+        const moduleRef = doc(db, "courses", courseId, "modules", moduleId)
+        const moduleSnap = await getDoc(moduleRef)
 
-          setModule(moduleData);
+        // Fetch course data for history records
+        const courseRef = doc(db, "courses", courseId)
+        const courseSnap = await getDoc(courseRef)
+
+        // Fetch user data for certificate
+        const userRef = doc(db, "learner", user.uid)
+        const userSnap = await getDoc(userRef)
+        if (userSnap.exists()) {
+          setUserData(userSnap.data())
         } else {
-          console.error("Module not found");
-          setError("Module not found.");
+          console.warn("User document not found in 'learner' collection")
+        }
+
+        // Check if module is already completed in history
+        const historyCollection = collection(db, "learner", user.uid, "history")
+        const historyQuery = query(
+          historyCollection,
+          where("moduleId", "==", moduleId),
+          where("courseId", "==", courseId),
+        )
+        const historySnapshot = await getDocs(historyQuery)
+
+        if (!historySnapshot.empty) {
+          setModuleAlreadyCompleted(true)
+          // Store the history document ID for potential updates
+          setHistoryDocId(historySnapshot.docs[0].id)
+        }
+
+        // Fetch user's progress from Firestore
+        const userProgressRef = doc(db, "learner", user.uid, "progress", courseId)
+        const userProgressDoc = await getDoc(userProgressRef)
+
+        if (userProgressDoc.exists()) {
+          const userProgress = userProgressDoc.data()
+          setUnlockedChapters(userProgress.completedChapters || {})
+        } else {
+          setUnlockedChapters({})
+        }
+
+        if (moduleSnap.exists() && courseSnap.exists()) {
+          setModule(moduleSnap.data())
+          setCourse(courseSnap.data())
+        } else {
+          setError("Module or course not found.")
         }
       } catch (error) {
-        console.error("Error fetching module:", error);
-        setError("Failed to load module.");
+        console.error("Error fetching data:", error)
+        setError(`Failed to load module: ${error.message}`)
       } finally {
-        setLoading(false);
+        setContentLoading(false)
       }
-    };
-
-    fetchModule();
-  }, [courseId, moduleId]);
-
-  const inferContentType = (fileUrl) => {
-    if (!fileUrl || typeof fileUrl !== "string") {
-      return "application/octet-stream"; // Default unknown type
-    }
-    if (fileUrl.endsWith(".pdf")) return "application/pdf";
-    if (fileUrl.match(/\.(jpg|jpeg|png)$/)) return "image/jpeg";
-    if (fileUrl.match(/\.(mp4|mov)$/)) return "video/mp4";
-    if (fileUrl.match(/\.(ppt|pptx)$/)) return "application/vnd.ms-powerpoint";
-    return "application/octet-stream";
-  };
-
-  const renderFile = (fileUrl, contentType) => {
-    if (!fileUrl) return <p className="text-red-500">No file available</p>;
-
-    console.log("Rendering file:", fileUrl, "Type:", contentType);
-
-    if (contentType === "application/pdf") {
-      return (
-        <iframe
-          src={fileUrl}
-          width="100%"
-          height="600px"
-          className="border rounded"
-          title="PDF Document"
-        />
-      );
     }
 
-    if (contentType.startsWith("video/")) {
-      return (
-        <video controls width="100%" height="600px" className="border rounded">
-          <source src={fileUrl} type={contentType} />
-          Your browser does not support the video tag.
-        </video>
-      );
+    fetchData()
+  }, [courseId, moduleId, user, authChecked])
+
+  // Set up scroll tracking
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current || !module) return
+
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50
+
+      if (scrolledToBottom) {
+        // Mark current chapter as completed
+        markChapterAsCompleted()
+
+        // If this is the last chapter, enable the Finish button
+        if (selectedChapterIndex === module.chapters.length - 1) {
+          setIsLastChapterScrolledToBottom(true)
+        }
+      }
     }
 
-    if (contentType.startsWith("image/")) {
-      return <img src={fileUrl} alt="Illustration" width="100%" className="border rounded" />;
+    const contentElement = contentRef.current
+    if (contentElement) {
+      contentElement.addEventListener("scroll", handleScroll)
     }
 
-    if (contentType.includes("powerpoint")) {
-      return (
-        <iframe
-          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
-          width="100%"
-          height="600px"
-          className="border rounded"
-          title="PowerPoint Presentation"
-        />
-      );
+    return () => {
+      if (contentElement) {
+        contentElement.removeEventListener("scroll", handleScroll)
+      }
     }
+  }, [selectedChapterIndex, module])
 
-    return <p className="text-yellow-400">Unsupported file type.</p>;
-  };
+  // Function to mark the current chapter as completed
+  const markChapterAsCompleted = async () => {
+    if (!module || !user) return
 
-  if (loading) return <div className="text-white">Loading...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
+    try {
+      setUnlockedChapters((prev) => {
+        const moduleChapters = prev[moduleId] || []
+
+        // If this chapter is not already marked as completed
+        if (!moduleChapters.includes(selectedChapterIndex)) {
+          const updatedModuleChapters = [...moduleChapters, selectedChapterIndex]
+          const updatedUnlockedChapters = {
+            ...prev,
+            [moduleId]: updatedModuleChapters,
+          }
+
+          // Save to Firestore
+          const userProgressRef = doc(db, "learner", user.uid, "progress", courseId)
+          setDoc(
+            userProgressRef,
+            {
+              completedChapters: updatedUnlockedChapters,
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true },
+          )
+
+          return updatedUnlockedChapters
+        }
+
+        return prev
+      })
+    } catch (error) {
+      console.error("Error saving chapter completion:", error)
+    }
+  }
+
+  // Function to check if a chapter is unlocked
+  const isChapterUnlocked = (index) => {
+    if (index === 0) return true
+    const moduleChapters = unlockedChapters[moduleId] || []
+    return moduleChapters.includes(index - 1)
+  }
+
+  // Navigate to next chapter
+  const goToNextChapter = () => {
+    if (selectedChapterIndex < module.chapters.length - 1 && isChapterUnlocked(selectedChapterIndex + 1)) {
+      setSelectedChapterIndex(selectedChapterIndex + 1)
+      // Reset the last chapter scrolled state when changing chapters
+      setIsLastChapterScrolledToBottom(false)
+      // Scroll back to top when changing chapters
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0
+      }
+    }
+  }
+
+  // Function to mark module as completed and record in history
+  const completeModule = async () => {
+    if (!user || !module || !course) return
+
+    try {
+      setSavingCompletion(true)
+
+      // 1. Mark the module as completed in Firestore
+      const userProgressRef = doc(db, "learner", user.uid, "progress", courseId)
+      const userProgressDoc = await getDoc(userProgressRef)
+
+      let completedModules = []
+      if (userProgressDoc.exists()) {
+        completedModules = userProgressDoc.data().completedModules || []
+      }
+
+      if (!completedModules.includes(moduleId)) {
+        completedModules.push(moduleId)
+        await setDoc(
+          userProgressRef,
+          {
+            completedModules,
+            lastUpdated: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      }
+
+      // 2. Add completion record to user's history in Firestore ONLY if not already completed
+      if (!moduleAlreadyCompleted) {
+        const historyCollection = collection(db, "learner", user.uid, "history")
+        const historyDoc = await addDoc(historyCollection, {
+          courseId,
+          courseTitle: course.title,
+          moduleId,
+          moduleTitle: module.title,
+          completedAt: serverTimestamp(),
+          chaptersCompleted: (unlockedChapters[moduleId] || []).length,
+          totalChapters: module.chapters.length,
+        })
+
+        // Store the history document ID
+        setHistoryDocId(historyDoc.id)
+
+        // Update module completion status
+        setModuleAlreadyCompleted(true)
+      }
+
+      // 3. Show completion alert
+      setShowCompletionAlert(true)
+    } catch (error) {
+      console.error("Error saving completion:", error)
+      setError("There was an error saving your progress. Please try again.")
+    } finally {
+      setSavingCompletion(false)
+    }
+  }
+
+  // Handle login redirect
+  const handleLoginRedirect = () => {
+    // Save current URL to localStorage to redirect back after login
+    localStorage.setItem("redirectAfterLogin", window.location.href)
+    navigate("/login")
+  }
+
+  // Show loading state
+  if (loading || contentLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading module content...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
+          <FaSignInAlt className="text-5xl text-blue-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-4">Login Required</h2>
+          <p className="mb-6">You need to be logged in to view this module and track your progress.</p>
+          <button
+            onClick={handleLoginRedirect}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
+          <div className="text-red-500 text-5xl mx-auto mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-white mb-4">Error</h2>
+          <p className="text-gray-300 mb-6">{error}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show missing module data error
   if (!module || !module.chapters || module.chapters.length === 0) {
-    return <div className="text-red-500">Module data is missing or incomplete.</div>;
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
+          <div className="text-yellow-500 text-5xl mx-auto mb-4">📋</div>
+          <h2 className="text-xl font-bold text-white mb-4">Module Not Found</h2>
+          <p className="text-gray-300 mb-6">The module data is missing or has no chapters.</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
   }
 
-  // Ensure `selectedChapterIndex` is within bounds
-  const selectedChapter = module.chapters[selectedChapterIndex] || null;
-
-  if (!selectedChapter) {
-    return <div className="text-red-500">No chapter selected.</div>;
-  }
-
-  // Debugging: Log selected chapter details
-  console.log("Selected Chapter:", selectedChapter);
-
-  // Determine content type
-  const contentType = inferContentType(selectedChapter?.fileUrl);
+  const selectedChapter = module.chapters[selectedChapterIndex]
+  const moduleChapters = unlockedChapters[moduleId] || []
+  const isCurrentChapterCompleted = moduleChapters.includes(selectedChapterIndex)
+  const isLastChapter = selectedChapterIndex === module.chapters.length - 1
+  const canFinish = isLastChapter && (isCurrentChapterCompleted || isLastChapterScrolledToBottom)
 
   return (
-    <div className="flex h-screen bg-black text-white">
-      {/* Sidebar for Chapter Navigation */}
-      <div className="w-64 p-4 bg-gray-900 flex flex-col">
-        <h2 className="text-xl font-semibold mb-4">Chapters</h2>
-        <ul className="overflow-y-auto">
-          {module.chapters.map((chapter, index) => (
-            <li
-              key={index}
-              className={`p-2 cursor-pointer rounded ${
-                index === selectedChapterIndex ? "bg-gray-800 text-blue-300" : "hover:bg-gray-700"
-              }`}
-              onClick={() => setSelectedChapterIndex(index)}
+    <>
+      {/* Add the styles */}
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
+
+      <div className="flex h-screen bg-gray-900 text-white">
+        {/* Sidebar Navigation */}
+        <div className="w-64 p-4 bg-gray-800 flex flex-col">
+          <h2 className="text-xl font-semibold mb-4">Chapters</h2>
+          <ul className="space-y-2">
+            {module.chapters.map((chapter, index) => {
+              const isUnlocked = isChapterUnlocked(index)
+              const isCompleted = moduleChapters.includes(index)
+
+              return (
+                <li
+                  key={index}
+                  className={`p-2 flex items-center gap-2 rounded transition-colors ${
+                    index === selectedChapterIndex
+                      ? "bg-blue-900 text-blue-300"
+                      : isUnlocked
+                        ? "hover:bg-gray-700 cursor-pointer"
+                        : "text-gray-500 cursor-not-allowed"
+                  } ${isCompleted ? "border-l-4 border-green-500" : ""}`}
+                  onClick={() => {
+                    if (isUnlocked) {
+                      setSelectedChapterIndex(index)
+                      if (contentRef.current) {
+                        contentRef.current.scrollTop = 0
+                      }
+                      // Reset last chapter scrolled state when changing chapters
+                      if (isLastChapter) {
+                        setIsLastChapterScrolledToBottom(false)
+                      }
+                    }
+                  }}
+                >
+                  {!isUnlocked ? (
+                    <FaLock className="text-gray-500" />
+                  ) : isCompleted ? (
+                    <FaCheck className="text-green-500" />
+                  ) : (
+                    <FaLockOpen className="text-blue-400" />
+                  )}
+                  <span className={isCompleted ? "text-green-400" : ""}>{chapter.title}</span>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="mt-auto p-2 bg-gray-700 rounded">
+            <div className="text-sm text-gray-300 mb-1">Progress</div>
+            <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-green-500 h-full"
+                style={{
+                  width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
+                }}
+              ></div>
+            </div>
+            <div className="text-xs text-right mt-1 text-gray-300">
+              {moduleChapters.length}/{module.chapters.length} completed
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
+          <h1 className="text-3xl font-bold text-blue-300 mb-4">{selectedChapter.title}</h1>
+          <p className="text-gray-400 mb-6">{selectedChapter.description}</p>
+
+          <div className="bg-white rounded-lg p-4 mb-6">
+            <iframe
+              src={selectedChapter.fileUrl}
+              width="100%"
+              height="600px"
+              className="border rounded"
+              title="Chapter Content"
+            />
+          </div>
+
+          {isCurrentChapterCompleted && !isLastChapter && (
+            <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
+              <p className="font-medium">You've completed this chapter! You can now proceed to the next chapter.</p>
+            </div>
+          )}
+
+          {canFinish && (
+            <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
+              <p className="font-medium">
+                Congratulations! You've completed all chapters in this module. Click "Finish" to mark the module as
+                complete and save your progress.
+              </p>
+
+              {moduleAlreadyCompleted && (
+                <p className="text-green-300 mt-2 text-sm">
+                  <FaCheck className="inline mr-1" /> You've already completed this module
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-4 flex justify-between">
+            <button
+              className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50 hover:bg-gray-600 transition-colors"
+              disabled={selectedChapterIndex === 0}
+              onClick={() => setSelectedChapterIndex((prev) => prev - 1)}
             >
-              {chapter.title}
-            </li>
-          ))}
-        </ul>
-      </div>
+              Previous
+            </button>
 
-      {/* Main Content Area */}
-      <div className="flex-1 p-6 overflow-y-auto">
-        {selectedChapter && (
-          <>
-            <h1 className="text-3xl font-bold text-blue-300 mb-4">{selectedChapter.title}</h1>
-            <p className="text-gray-400">{selectedChapter.description}</p>
+            <button
+              className={`px-4 py-2 ${
+                canFinish ? "bg-green-600 hover:bg-green-500" : "bg-blue-600 hover:bg-blue-500"
+              } rounded disabled:opacity-50 transition-colors`}
+              disabled={
+                (isLastChapter && !canFinish) ||
+                (!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1)) ||
+                savingCompletion
+              }
+              onClick={() => {
+                if (isLastChapter && canFinish) {
+                  completeModule()
+                } else {
+                  goToNextChapter()
+                }
+              }}
+            >
+              {isLastChapter ? (savingCompletion ? "Saving..." : "Finish") : "Next"}
+            </button>
+          </div>
 
-            {/* Debugging: Display raw file URL */}
-            <p className="text-green-400 mt-4">File URL: {selectedChapter.fileUrl || "No file URL available"}</p>
+          {!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1) && (
+            <p className="text-center text-gray-400 mt-4">
+              Scroll to the bottom of this chapter to unlock the next one
+            </p>
+          )}
 
-            {/* Render File */}
-            {selectedChapter.fileUrl && (
-              <div className="mt-4">{renderFile(selectedChapter.fileUrl, contentType)}</div>
-            )}
-          </>
+          {isLastChapter && !canFinish && (
+            <p className="text-center text-gray-400 mt-4">
+              Scroll to the bottom of this chapter to enable the Finish button
+            </p>
+          )}
+        </div>
+
+        {/* Module Completion Alert */}
+        {showCompletionAlert && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn">
+            <div className="bg-gray-900 border border-blue-500 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all animate-slideIn">
+              <div className="flex items-center mb-4">
+                <div className="bg-green-500 rounded-full p-2 mr-4">
+                  <FaCheck className="text-white text-xl" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Success!</h3>
+              </div>
+              <p className="text-gray-300 mb-6">Module completed successfully! Your progress has been saved.</p>
+
+              <div className="flex justify-between">
+                <button
+                  onClick={() => {
+                    setShowCompletionAlert(false)
+                    window.close()
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCompletionAlert(false)
+                    window.close()
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
-    </div>
-  );
-};
+    </>
+  )
+}
 
-export default ModuleView;
+export default ModuleView
+

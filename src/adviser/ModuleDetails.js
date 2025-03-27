@@ -79,7 +79,7 @@ const ModuleDetails = () => {
     if (contentType === "application/pdf") {
       return (
         <div className="border rounded" style={{ height: '600px' }}>
-          <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.0.279/build/pdf.worker.min.js`}>
+          <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`}>
             <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance]} />
           </Worker>
         </div>
@@ -145,7 +145,6 @@ const ModuleDetails = () => {
             <p className="text-gray-400">{module.chapters[selectedChapterIndex].description}</p>
 
             {/* Debugging: Display raw file URL */}
-           
 
             {/* Render File */}
             {module.chapters[selectedChapterIndex].fileUrl && (

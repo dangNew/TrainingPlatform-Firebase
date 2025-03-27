@@ -5,12 +5,12 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  getDoc,
   updateDoc,
   query,
   orderBy,
   limit,
-  startAfter
+  where,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase.config";
 import {
@@ -23,8 +23,6 @@ import {
   FaBook,
   FaCheckCircle,
   FaExclamationTriangle,
-  FaChevronLeft,
-  FaChevronRight
 } from "react-icons/fa";
 import IntSidebar from "./sidebar";
 import Header from "../Dashboard/Header";
@@ -43,7 +41,6 @@ const CourseDashboard = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [lastVisible, setLastVisible] = useState(null);
   const [modal, setModal] = useState({ isOpen: false, type: '', content: null });
   const [editingCourse, setEditingCourse] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
@@ -53,20 +50,20 @@ const CourseDashboard = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        let q = query(collection(db, "courses"), orderBy("title", sortOrder), limit(coursesPerPage));
-
-        if (lastVisible) {
-          q = query(q, startAfter(lastVisible));
+        let queryConstraints = [];
+        if (categoryFilter !== "all") {
+          queryConstraints.push(where("category", "==", categoryFilter));
         }
+        queryConstraints.push(orderBy("title", sortOrder));
+        queryConstraints.push(limit(coursesPerPage));
 
+        const q = query(collection(db, "courses"), ...queryConstraints);
         const querySnapshot = await getDocs(q);
         const coursesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-
         setCourses(coursesData);
-        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       } catch (error) {
         console.error("Error fetching courses:", error);
         setModal({ isOpen: true, type: 'error', content: 'Error fetching courses.' });
@@ -128,34 +125,6 @@ const CourseDashboard = () => {
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
-    if (newPage === 1) {
-      setLastVisible(null);
-    } else {
-      // Fetch the next set of courses
-      const fetchNextCourses = async () => {
-        try {
-          let q = query(collection(db, "courses"), orderBy("title", sortOrder), limit(coursesPerPage));
-
-          if (lastVisible) {
-            q = query(q, startAfter(lastVisible));
-          }
-
-          const querySnapshot = await getDocs(q);
-          const coursesData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-
-          setCourses(coursesData);
-          setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
-        } catch (error) {
-          console.error("Error fetching next courses:", error);
-          setModal({ isOpen: true, type: 'error', content: 'Error fetching next courses.' });
-        }
-      };
-
-      fetchNextCourses();
-    }
   };
 
   const handleInputChange = (event) => {
@@ -219,6 +188,11 @@ const CourseDashboard = () => {
       course.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * coursesPerPage,
+    currentPage * coursesPerPage
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
       <div className="p-8 bg-blue-100 rounded-lg shadow-lg mb-6">
@@ -267,14 +241,14 @@ const CourseDashboard = () => {
           </select>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => (
+          {paginatedCourses.map((course) => (
             <div
               key={course.id}
               onClick={() => handleCourseClick(course.id)}
               className="bg-white rounded-2xl shadow-lg p-4 hover:shadow-xl transition duration-300 cursor-pointer"
             >
               <img
-                src={course.fileUrl}
+                src={course.fileUrl?.url || "https://res.cloudinary.com/trainingplat-a/image/upload/v1743084091/modules/module_file_1743084087558_download%20(1).jpg"}
                 alt={course.title}
                 className="w-full h-40 object-cover rounded-t-2xl mb-4"
               />
@@ -305,7 +279,7 @@ const CourseDashboard = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleViewFile(course.fileUrl);
+                    handleViewFile(course.fileUrl?.url);
                   }}
                   className="text-blue-500 hover:text-blue-700 rounded-full"
                 >
@@ -316,15 +290,6 @@ const CourseDashboard = () => {
           ))}
         </div>
         <div className="flex justify-center mt-6 space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded-full ${
-              currentPage === 1 ? "bg-gray-300 text-gray-500" : "bg-gray-200"
-            }`}
-          >
-            <FaChevronLeft />
-          </button>
           {Array.from(
             { length: Math.ceil(filteredCourses.length / coursesPerPage) },
             (_, i) => (
@@ -342,19 +307,7 @@ const CourseDashboard = () => {
               </button>
             )
           )}
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === Math.ceil(filteredCourses.length / coursesPerPage)}
-            className={`px-3 py-1 rounded-full ${
-              currentPage === Math.ceil(filteredCourses.length / coursesPerPage) ? "bg-gray-300 text-gray-500" : "bg-gray-200"
-            }`}
-          >
-            <FaChevronRight />
-          </button>
         </div>
-        <p className="text-center mt-4 text-gray-600">
-          Click the page numbers or use the arrows to navigate between pages.
-        </p>
       </div>
       {modal.isOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">

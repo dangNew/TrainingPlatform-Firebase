@@ -76,26 +76,36 @@ const FileLibrary = () => {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-screen bg-gray-50 text-gray-900">
       {/* Header */}
       <div className="w-full z-10 shadow-md">
         <Header />
       </div>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="h-full z-5">
+        <div className={`${isSidebarOpen ? "w-64" : "w-20"} transition-width duration-300`}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </div>
 
         {/* File Library Content */}
-        <div className="p-8 bg-white transition-all duration-300 flex-1 overflow-y-auto h-full rounded-lg shadow-lg">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">File Library</h1>
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+          <div className="p-8 bg-blue-100 rounded-lg shadow-lg mb-6">
+            <div className="flex items-center mb-4">
+              <FaFolder className="text-blue-500 text-4xl mr-4" />
+              <h1 className="text-4xl font-bold text-blue-600">File Library</h1>
+            </div>
+            <button
+              onClick={handleUpload}
+              className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition duration-300"
+            >
+              <FaUpload className="mr-2" /> Upload File
+            </button>
+          </div>
 
           {/* Search & Sort Bar */}
-          <div className="flex items-center justify-between mb-6">
-            {/* Search Input */}
-            <div className="relative w-1/3">
+          <div className="flex items-center mb-4">
+            <div className="relative flex-1 mr-2">
               <input
                 type="text"
                 placeholder="Search files..."
@@ -105,26 +115,13 @@ const FileLibrary = () => {
               />
               <BsSearch className="absolute top-3 right-4 text-gray-600" />
             </div>
-
-            {/* Sort Buttons */}
-            <div className="flex space-x-4">
-              <button
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg flex items-center space-x-2 hover:bg-gray-700"
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-              >
-                {sortOrder === "asc" ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
-                <span>Sort {sortOrder === "asc" ? "A-Z" : "Z-A"}</span>
-              </button>
-
-              {/* Upload File Button */}
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center space-x-2 hover:bg-blue-500"
-                onClick={handleUpload}
-              >
-                <FaUpload />
-                <span>Upload File</span>
-              </button>
-            </div>
+            <button
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg flex items-center space-x-2 hover:bg-gray-700"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            >
+              {sortOrder === "asc" ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
+              <span>Sort {sortOrder === "asc" ? "A-Z" : "Z-A"}</span>
+            </button>
           </div>
 
           {/* Files Grid */}

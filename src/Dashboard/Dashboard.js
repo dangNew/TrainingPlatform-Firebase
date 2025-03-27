@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from "react";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit
+} from "firebase/firestore";
+import { db } from "../firebase.config";
 import Header from "../Dashboard/Header";
 import Sidebar from "../adviser/sidebar";
 import Calendar from 'react-calendar';
@@ -15,37 +25,45 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
-      const mockAnnouncements = [
-        { id: 1, title: "New Course Available", content: "Check out the new course on AI!" },
-        { id: 2, title: "Maintenance Notice", content: "System maintenance scheduled for this weekend." },
-      ];
-      setAnnouncements(mockAnnouncements);
+      const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"), limit(5));
+      const querySnapshot = await getDocs(q);
+      const announcementsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAnnouncements(announcementsData);
     };
 
     const fetchLeaderboard = async () => {
-      const mockLeaderboard = [
-        { id: 1, name: "John Doe", score: 95 },
-        { id: 2, name: "Jane Smith", score: 90 },
-        { id: 3, name: "Alice Johnson", score: 88 },
-      ];
-      setLeaderboard(mockLeaderboard);
+      const q = query(collection(db, "learner"), orderBy("score", "desc"), limit(5));
+      const querySnapshot = await getDocs(q);
+      const leaderboardData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setLeaderboard(leaderboardData);
     };
 
     const fetchRecentActivities = async () => {
-      const mockActivities = [
-        { id: 1, activity: "User enrolled in Course X", timestamp: "2023-10-01T10:00:00Z" },
-        { id: 2, activity: "Quiz completed by John Doe", timestamp: "2023-10-02T12:30:00Z" },
-      ];
-      setRecentActivities(mockActivities);
+      const q = query(collection(db, "activities"), orderBy("timestamp", "desc"), limit(5));
+      const querySnapshot = await getDocs(q);
+      const activitiesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setRecentActivities(activitiesData);
     };
 
     const fetchQuickStats = async () => {
-      const mockStats = {
-        totalUsers: 150,
-        activeCourses: 20,
-        recentLogins: 45,
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      const coursesSnapshot = await getDocs(collection(db, "courses"));
+
+      const quickStats = {
+        totalUsers: usersSnapshot.size,
+        activeCourses: coursesSnapshot.size,
+        recentLogins: usersSnapshot.docs.filter(doc => doc.data().lastLogin > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length
       };
-      setQuickStats(mockStats);
+      setQuickStats(quickStats);
     };
 
     fetchAnnouncements();
@@ -57,9 +75,17 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAddAnnouncement = () => {
+  const handleAddAnnouncement = async () => {
     if (newAnnouncement.trim() === "") return;
-    setAnnouncements([...announcements, { id: Date.now(), title: "New Announcement", content: newAnnouncement }]);
+
+    const announcement = {
+      title: "New Announcement",
+      content: newAnnouncement,
+      timestamp: new Date()
+    };
+
+    await addDoc(collection(db, "announcements"), announcement);
+    setAnnouncements([...announcements, { id: Date.now(), ...announcement }]);
     setNewAnnouncement("");
   };
 
@@ -170,7 +196,7 @@ const Dashboard = () => {
             <ul className="mt-2">
               {recentActivities.map((activity) => (
                 <li key={activity.id} className="text-sm mt-2">
-                  {activity.activity} - {new Date(activity.timestamp).toLocaleString()}
+                  {activity.activity} - {new Date(activity.timestamp.seconds * 1000).toLocaleString()}
                 </li>
               ))}
             </ul>

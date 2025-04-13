@@ -17,6 +17,9 @@ import Courses from "./adviser/courses";
 import FileLibrary from "./adviser/filelibrary";
 import Adviser from "./adviser/sidebar";
 import UploadContent from "./adviser/uploadcontent";
+import AdviserChatroom from "./adviser/AdChatroom";
+
+
 import NavBar from "./components/Navbar";
 import "./index.css";
 
@@ -56,6 +59,7 @@ function App() {
         <Route path="/modules/:courseId" element={<Moduledisplay />} />
         <Route path="/course/:courseId/module/:moduleId" element={<ModuleDetails />} />
         <Route path="/addquiz" element={<AddQuiz />} />
+        <Route path="/Achat" element={<AdviserChatroom />} />
 
 
 

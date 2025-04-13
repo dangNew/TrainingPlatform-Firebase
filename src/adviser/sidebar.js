@@ -13,6 +13,8 @@ import {
   FaArrowDown,
 } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { auth, db } from "../firebase.config"; // Ensure Firestore is imported
+import { doc, getDoc } from "firebase/firestore";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -20,6 +22,23 @@ const Sidebar = () => {
   const sidebarRef = useRef(null);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(true);
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          setUserEmail(userDocSnap.data().email);
+        }
+      }
+    };
+
+    fetchUserEmail();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("userToken");
@@ -72,6 +91,7 @@ const Sidebar = () => {
           TA
         </div>
         <p className="mt-2 font-semibold text-blue-900">Training Academy</p>
+        <p className="text-sm text-gray-600">{userEmail}</p>
         <Link to="/profile" className="text-red-900 text-sm hover:underline">
           View Profile
         </Link>
@@ -90,7 +110,7 @@ const Sidebar = () => {
           <SidebarItem to="/dashboard" icon={<FaTachometerAlt />} label="Dashboard" active={location.pathname === "/dashboard"} />
           <SidebarItem to="/courses" icon={<FaBook />} label="Courses" active={location.pathname === "/courses"} />
           <SidebarItem to="/addcourse" icon={<FaBook />} label="Add Course" active={location.pathname === "/addcourse"} />
-          <SidebarItem to="/reviews" icon={<FaBook />} label="Reviews" active={location.pathname === "/reviews"} />
+          <SidebarItem to="/Achat" icon={<FaBook />} label="Chat" active={location.pathname === "/Achat"} />
           <SidebarItem to="/file-library" icon={<FaFileAlt />} label="File Library" active={location.pathname === "/file-library"} />
           <SidebarItem to="/addmodule" icon={<FaFileAlt />} label="Add Module" active={location.pathname === "/addmodule"} />
           <SidebarItem to="/addquiz" icon={<FaUsers />} label="Quizzes" active={location.pathname === "/addquiz"} />

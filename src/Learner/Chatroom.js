@@ -2,7 +2,10 @@
 
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -14,7 +17,20 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore"
-import { MessageCircle, PlusCircle, Search, Send, Users } from "lucide-react"
+import {
+  Calendar,
+  Edit2,
+  Edit3,
+  LogOut,
+  MessageCircle,
+  MoreHorizontal,
+  PlusCircle,
+  Search,
+  Send,
+  Smile,
+  Trash2,
+  Users,
+} from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
 import Sidebar from "../components/LSidebar"
@@ -54,6 +70,16 @@ import { auth, db } from "../firebase.config"
  * @property {string} senderName
  * @property {string} [senderPhoto]
  * @property {string} [senderRole]
+ * @property {Object} [reactions]
+ * @property {string} [backgroundColor]
+ * @property {boolean} [isEdited]
+ */
+
+/**
+ * @typedef {Object} Reaction
+ * @property {string} type - 'heart', 'laugh', 'sad', 'angry'
+ * @property {string} userId
+ * @property {string} userName
  */
 
 function ChatRoom() {
@@ -69,7 +95,59 @@ function ChatRoom() {
   const [searchResults, setSearchResults] = useState([])
   const [groupName, setGroupName] = useState("")
   const [selectedUsers, setSelectedUsers] = useState([])
+  const [showGroupMembers, setShowGroupMembers] = useState(false)
+  const [allGroupMembers, setAllGroupMembers] = useState([])
+  const [editingGroupName, setEditingGroupName] = useState(false)
+  const [newGroupName, setNewGroupName] = useState("")
+  const [editingMessage, setEditingMessage] = useState(null)
+  const [editMessageText, setEditMessageText] = useState("")
+  const [showReactionMenu, setShowReactionMenu] = useState(null)
+  const [showMessageOptions, setShowMessageOptions] = useState(null)
+  const [messageColorPickerVisible, setMessageColorPickerVisible] = useState(false)
+  const [selectedMessageColor, setSelectedMessageColor] = useState("blue")
   const dummy = useRef()
+
+  // Add this state to store chat background colors
+  const [chatBackgroundColors, setChatBackgroundColors] = useState({})
+  const [showChatColorPicker, setShowChatColorPicker] = useState(false)
+
+  // Load saved chat colors from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedColors = localStorage.getItem("chatBackgroundColors")
+      if (savedColors) {
+        setChatBackgroundColors(JSON.parse(savedColors))
+      }
+    } catch (error) {
+      console.error("Error loading saved chat colors:", error)
+    }
+  }, [])
+
+  // Save chat colors to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("chatBackgroundColors", JSON.stringify(chatBackgroundColors))
+    } catch (error) {
+      console.error("Error saving chat colors:", error)
+    }
+  }, [chatBackgroundColors])
+
+  // Available message background colors
+  const messageColors = {
+    blue: "bg-blue-600 text-white",
+    red: "bg-red-600 text-white",
+    purple: "bg-purple-600 text-white",
+    gray: "bg-gray-600 text-white",
+    black: "bg-black text-white",
+  }
+
+  // Reaction emoji mapping
+  const reactionEmojis = {
+    heart: "❤️",
+    laugh: "😂",
+    sad: "😢",
+    angry: "😡",
+  }
 
   // Fetch current user data
   useEffect(() => {
@@ -170,6 +248,143 @@ function ChatRoom() {
     return () => unsubscribe()
   }, [currentUser])
 
+  // Initialize with Julia's chat if messages exist but no chats are loaded
+  useEffect(() => {
+    const initializeWithJulia = async () => {
+      if (!currentUser || chats.length > 0 || activeChat) return
+
+      try {
+        // Look for Julia in the learner collection
+        const juliaQuery = query(collection(db, "learner"), where("fullName", "==", "Julia Nebhel Bariquit"))
+
+        const juliaSnapshot = await getDocs(juliaQuery)
+
+        if (!juliaSnapshot.empty) {
+          const juliaDoc = juliaSnapshot.docs[0]
+          const juliaData = {
+            id: juliaDoc.id,
+            ...juliaDoc.data(),
+            collection: "learner",
+          }
+
+          // Check if a chat exists with Julia
+          const existingChatQuery = query(
+            collection(db, "chats"),
+            where("type", "==", "direct"),
+            where("participants", "array-contains", currentUser.id),
+          )
+
+          const existingChats = await getDocs(existingChatQuery)
+
+          const existingChat = existingChats.docs.find((chatDoc) => {
+            const participants = chatDoc.data().participants
+            return participants.includes(juliaData.id) && participants.length === 2
+          })
+
+          if (existingChat) {
+            // Set the active chat with Julia
+            setActiveChat({
+              id: existingChat.id,
+              ...existingChat.data(),
+              participantDetails: [juliaData],
+            })
+
+            // Also add this chat to the chats array
+            setChats((prevChats) => [
+              {
+                id: existingChat.id,
+                ...existingChat.data(),
+                participantDetails: [juliaData],
+              },
+              ...prevChats,
+            ])
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing chat with Julia:", error)
+      }
+    }
+
+    initializeWithJulia()
+  }, [currentUser, chats.length, activeChat])
+
+  // Initialize with group chats if they exist but aren't loaded
+  useEffect(() => {
+    const initializeGroupChats = async () => {
+      if (!currentUser || activeChat) return
+
+      try {
+        // Look for group chats that include the current user
+        const groupChatsQuery = query(
+          collection(db, "chats"),
+          where("participants", "array-contains", currentUser.id),
+          where("type", "==", "group"),
+        )
+
+        const groupChatsSnapshot = await getDocs(groupChatsQuery)
+
+        if (!groupChatsSnapshot.empty) {
+          const groupChatsList = []
+
+          for (const chatDoc of groupChatsSnapshot.docs) {
+            const chatData = chatDoc.data()
+
+            // Fetch participant details for each group chat
+            const participantDetails = []
+
+            for (const participantId of chatData.participants) {
+              if (participantId === currentUser.id) continue
+
+              // Check users collection
+              let participantDoc = await getDoc(doc(db, "users", participantId))
+
+              if (participantDoc.exists()) {
+                participantDetails.push({
+                  id: participantDoc.id,
+                  ...participantDoc.data(),
+                  collection: "users",
+                  role: "adviser",
+                })
+                continue
+              }
+
+              // Check learner collection
+              participantDoc = await getDoc(doc(db, "learner", participantId))
+
+              if (participantDoc.exists()) {
+                participantDetails.push({
+                  id: participantDoc.id,
+                  ...participantDoc.data(),
+                  collection: "learner",
+                })
+              }
+            }
+
+            groupChatsList.push({
+              id: chatDoc.id,
+              ...chatData,
+              participantDetails,
+            })
+          }
+
+          // Add group chats to the chats array
+          if (groupChatsList.length > 0) {
+            setChats((prevChats) => [...prevChats, ...groupChatsList])
+
+            // Set the first group chat as active if no chats are loaded
+            if (chats.length === 0) {
+              setActiveChat(groupChatsList[0])
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing group chats:", error)
+      }
+    }
+
+    initializeGroupChats()
+  }, [currentUser, activeChat])
+
   // Fetch messages for active chat
   useEffect(() => {
     if (!activeChat) return
@@ -182,6 +397,7 @@ function ChatRoom() {
         ...doc.data(),
       }))
 
+      console.log("Fetched messages:", messageList) // Debug log
       setMessages(messageList)
 
       // Scroll to bottom after messages load
@@ -192,6 +408,86 @@ function ChatRoom() {
 
     return () => unsubscribe()
   }, [activeChat])
+
+  // Fetch all group members when showing group members
+  useEffect(() => {
+    const fetchAllGroupMembers = async () => {
+      if (!showGroupMembers || !activeChat || activeChat.type !== "group") return
+
+      try {
+        const members = []
+
+        // Add current user to the list
+        members.push({
+          id: currentUser.id,
+          fullName: currentUser.fullName,
+          email: currentUser.email,
+          photoURL: currentUser.photoURL,
+          role: currentUser.role || currentUser.collection,
+          isCurrentUser: true,
+        })
+
+        // Add other participants
+        for (const participantId of activeChat.participants) {
+          if (participantId === currentUser.id) continue
+
+          // Check users collection
+          let participantDoc = await getDoc(doc(db, "users", participantId))
+
+          if (participantDoc.exists()) {
+            members.push({
+              id: participantDoc.id,
+              ...participantDoc.data(),
+              role: "adviser",
+              isCurrentUser: false,
+            })
+            continue
+          }
+
+          // Check learner collection
+          participantDoc = await getDoc(doc(db, "learner", participantId))
+
+          if (participantDoc.exists()) {
+            members.push({
+              id: participantDoc.id,
+              ...participantDoc.data(),
+              role: "learner",
+              isCurrentUser: false,
+            })
+          }
+        }
+
+        setAllGroupMembers(members)
+      } catch (error) {
+        console.error("Error fetching group members:", error)
+      }
+    }
+
+    fetchAllGroupMembers()
+  }, [showGroupMembers, activeChat, currentUser])
+
+  // Set up click outside handler for reaction menu and message options
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showReactionMenu && !event.target.closest(".reaction-menu")) {
+        setShowReactionMenu(null)
+      }
+      if (showMessageOptions && !event.target.closest(".message-options")) {
+        setShowMessageOptions(null)
+      }
+      if (messageColorPickerVisible && !event.target.closest(".color-picker")) {
+        setMessageColorPickerVisible(false)
+      }
+      if (showChatColorPicker && !event.target.closest(".color-picker")) {
+        setShowChatColorPicker(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showReactionMenu, showMessageOptions, messageColorPickerVisible, showChatColorPicker])
 
   // Search users when search term changes
   useEffect(() => {
@@ -292,6 +588,60 @@ function ChatRoom() {
     return () => clearTimeout(debounceTimeout)
   }, [searchTerm, currentUser])
 
+  // Update group name
+  const updateGroupName = async () => {
+    if (!activeChat || !newGroupName.trim()) return
+
+    try {
+      await updateDoc(doc(db, "chats", activeChat.id), {
+        name: newGroupName.trim(),
+      })
+
+      // Add system message about name change
+      await addDoc(collection(db, "chats", activeChat.id, "messages"), {
+        text: `${currentUser.fullName} changed the group name to "${newGroupName.trim()}"`,
+        createdAt: serverTimestamp(),
+        senderId: "system",
+        senderName: "System",
+        isSystemMessage: true,
+      })
+
+      // Update local state
+      setActiveChat((prev) => ({
+        ...prev,
+        name: newGroupName.trim(),
+      }))
+
+      setEditingGroupName(false)
+      setNewGroupName("")
+    } catch (error) {
+      console.error("Error updating group name:", error)
+    }
+  }
+
+  // Add this function to handle changing the chat background color
+  const changeChatBackgroundColor = (color) => {
+    if (!activeChat) return
+
+    setChatBackgroundColors((prev) => {
+      const updatedColors = {
+        ...prev,
+        [activeChat.id]: color,
+      }
+
+      // Save to localStorage immediately
+      try {
+        localStorage.setItem("chatBackgroundColors", JSON.stringify(updatedColors))
+      } catch (error) {
+        console.error("Error saving chat colors:", error)
+      }
+
+      return updatedColors
+    })
+
+    setShowChatColorPicker(false)
+  }
+
   const sendMessage = async (e) => {
     e.preventDefault()
 
@@ -306,6 +656,8 @@ function ChatRoom() {
         senderName: currentUser.fullName,
         senderPhoto: currentUser.photoURL || null,
         senderRole: currentUser.role || currentUser.collection,
+        reactions: {},
+        backgroundColor: selectedMessageColor,
       })
 
       // Update last message in chat document
@@ -322,6 +674,141 @@ function ChatRoom() {
       dummy.current?.scrollIntoView({ behavior: "smooth" })
     } catch (error) {
       console.error("Error sending message:", error)
+    }
+  }
+
+  const editMessage = async (messageId, newText) => {
+    if (!newText.trim() || !activeChat) return
+
+    try {
+      await updateDoc(doc(db, "chats", activeChat.id, "messages", messageId), {
+        text: newText,
+        isEdited: true,
+        editedAt: serverTimestamp(),
+      })
+
+      // Update last message if this was the last message
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage && lastMessage.id === messageId) {
+        await updateDoc(doc(db, "chats", activeChat.id), {
+          lastMessage: {
+            text: newText,
+            sentAt: lastMessage.createdAt,
+            sentBy: lastMessage.senderId,
+          },
+        })
+      }
+
+      setEditingMessage(null)
+      setEditMessageText("")
+    } catch (error) {
+      console.error("Error editing message:", error)
+    }
+  }
+
+  const deleteMessage = async (messageId) => {
+    if (!activeChat) return
+
+    try {
+      // Get the message before deleting it
+      const messageRef = doc(db, "chats", activeChat.id, "messages", messageId)
+      const messageSnap = await getDoc(messageRef)
+
+      if (!messageSnap.exists()) return
+
+      // Delete the message
+      await deleteDoc(messageRef)
+
+      // Add system message about deletion
+      await addDoc(collection(db, "chats", activeChat.id, "messages"), {
+        text: `${currentUser.fullName} deleted a message`,
+        createdAt: serverTimestamp(),
+        senderId: "system",
+        senderName: "System",
+        isSystemMessage: true,
+      })
+
+      // If this was the last message, update the chat's lastMessage
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage && lastMessage.id === messageId) {
+        // Find the new last message
+        const messagesQuery = query(
+          collection(db, "chats", activeChat.id, "messages"),
+          orderBy("createdAt", "desc"),
+          limit(1),
+        )
+
+        const messagesSnapshot = await getDocs(messagesQuery)
+
+        if (!messagesSnapshot.empty) {
+          const newLastMessage = messagesSnapshot.docs[0].data()
+          await updateDoc(doc(db, "chats", activeChat.id), {
+            lastMessage: {
+              text: newLastMessage.text,
+              sentAt: newLastMessage.createdAt,
+              sentBy: newLastMessage.senderId,
+            },
+            updatedAt: serverTimestamp(),
+          })
+        } else {
+          // No messages left
+          await updateDoc(doc(db, "chats", activeChat.id), {
+            lastMessage: {
+              text: "No messages",
+              sentAt: serverTimestamp(),
+              sentBy: "system",
+            },
+            updatedAt: serverTimestamp(),
+          })
+        }
+      }
+
+      setShowMessageOptions(null)
+    } catch (error) {
+      console.error("Error deleting message:", error)
+    }
+  }
+
+  const addReaction = async (messageId, reactionType) => {
+    if (!activeChat || !currentUser) return
+
+    try {
+      const messageRef = doc(db, "chats", activeChat.id, "messages", messageId)
+      const messageSnap = await getDoc(messageRef)
+
+      if (!messageSnap.exists()) return
+
+      const messageData = messageSnap.data()
+      const reactions = messageData.reactions || {}
+
+      // Check if user already reacted with this type
+      const userReactionKey = Object.keys(reactions).find((key) =>
+        reactions[key].some((r) => r.userId === currentUser.id && r.type === reactionType),
+      )
+
+      if (userReactionKey) {
+        // Remove the reaction
+        await updateDoc(messageRef, {
+          [`reactions.${reactionType}`]: arrayRemove({
+            userId: currentUser.id,
+            userName: currentUser.fullName,
+            type: reactionType,
+          }),
+        })
+      } else {
+        // Add the reaction
+        await updateDoc(messageRef, {
+          [`reactions.${reactionType}`]: arrayUnion({
+            userId: currentUser.id,
+            userName: currentUser.fullName,
+            type: reactionType,
+          }),
+        })
+      }
+
+      setShowReactionMenu(null)
+    } catch (error) {
+      console.error("Error adding reaction:", error)
     }
   }
 
@@ -349,6 +836,26 @@ function ChatRoom() {
         ...existingChat.data(),
         participantDetails: [selectedUser],
       })
+      // If there's an existing chat with messages, make sure we update the active chat with the last message
+      const messagesQuery = query(
+        collection(db, "chats", existingChat.id, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(1),
+      )
+
+      const messagesSnapshot = await getDocs(messagesQuery)
+      if (!messagesSnapshot.empty) {
+        const latestMessage = messagesSnapshot.docs[0].data()
+        // Update active chat with the latest message
+        setActiveChat((prevChat) => ({
+          ...prevChat,
+          lastMessage: {
+            text: latestMessage.text,
+            sentAt: latestMessage.createdAt,
+            sentBy: latestMessage.senderId,
+          },
+        }))
+      }
     } else {
       // Create new chat
       const chatName = `${currentUser.fullName} & ${selectedUser.fullName}`
@@ -405,6 +912,41 @@ function ChatRoom() {
     setSelectedUsers([])
   }
 
+  const leaveGroupChat = async () => {
+    if (!currentUser || !activeChat || activeChat.type !== "group") return
+
+    try {
+      // Create a system message that user left the group
+      await addDoc(collection(db, "chats", activeChat.id, "messages"), {
+        text: `${currentUser.fullName} left the group`,
+        createdAt: serverTimestamp(),
+        senderId: "system",
+        senderName: "System",
+        isSystemMessage: true,
+      })
+
+      // Remove user from participants array
+      await updateDoc(doc(db, "chats", activeChat.id), {
+        participants: arrayRemove(currentUser.id),
+        lastMessage: {
+          text: `${currentUser.fullName} left the group`,
+          sentAt: serverTimestamp(),
+          sentBy: "system",
+        },
+        updatedAt: serverTimestamp(),
+      })
+
+      // Clear active chat and close group members panel
+      setActiveChat(null)
+      setShowGroupMembers(false)
+
+      // Remove this chat from the chats array
+      setChats((prevChats) => prevChats.filter((chat) => chat.id !== activeChat.id))
+    } catch (error) {
+      console.error("Error leaving group chat:", error)
+    }
+  }
+
   const handleSelectUser = (user) => {
     if (!selectedUsers.some((selected) => selected.id === user.id)) {
       setSelectedUsers([...selectedUsers, user])
@@ -417,12 +959,60 @@ function ChatRoom() {
 
   const formatTime = (timestamp) => {
     if (!timestamp) return ""
-    const date = timestamp.toDate()
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "numeric",
-      hour12: true,
-    }).format(date)
+    try {
+      const date = timestamp.toDate()
+      return new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      }).format(date)
+    } catch (error) {
+      console.error("Error formatting timestamp:", error)
+      return ""
+    }
+  }
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return ""
+    try {
+      const date = timestamp.toDate()
+      const now = new Date()
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      // Check if date is today
+      if (date.toDateString() === now.toDateString()) {
+        return "Today"
+      }
+
+      // Check if date is yesterday
+      if (date.toDateString() === yesterday.toDateString()) {
+        return "Yesterday"
+      }
+
+      // Otherwise return full date
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+      }).format(date)
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return ""
+    }
+  }
+
+  const shouldShowDate = (currentMsg, prevMsg) => {
+    if (!prevMsg || !currentMsg.createdAt || !prevMsg.createdAt) return true
+
+    try {
+      const currentDate = currentMsg.createdAt.toDate().toDateString()
+      const prevDate = prevMsg.createdAt.toDate().toDateString()
+
+      return currentDate !== prevDate
+    } catch (error) {
+      return false
+    }
   }
 
   const getChatName = (chat) => {
@@ -474,52 +1064,100 @@ function ChatRoom() {
 
         {/* Chat List - Always visible */}
         <div className="overflow-y-auto flex-1">
-          {chats.length > 0 ? (
-            chats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-200 ${
-                  activeChat?.id === chat.id ? "bg-gray-200" : ""
-                }`}
-                onClick={() => {
-                  setActiveChat(chat)
-                  setShowUserSearch(false)
-                  setShowCreateGroup(false)
-                }}
-              >
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
-                    {chat.type === "group" ? (
-                      <Users size={20} />
-                    ) : chat.participantDetails[0]?.photoURL ? (
-                      <img
-                        src={chat.participantDetails[0].photoURL || "/placeholder.svg"}
-                        alt="User"
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      chat.participantDetails[0]?.fullName?.charAt(0) || "?"
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium">{getChatName(chat)}</h3>
-                      {chat.lastMessage?.sentAt && (
-                        <span className="text-xs text-gray-500">{formatTime(chat.lastMessage.sentAt)}</span>
+          {chats.length > 0 || activeChat ? (
+            <>
+              {/* Display all chats */}
+              {chats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-200 ${
+                    activeChat?.id === chat.id ? "bg-gray-200" : ""
+                  }`}
+                  onClick={() => {
+                    setActiveChat(chat)
+                    setShowUserSearch(false)
+                    setShowCreateGroup(false)
+                    setShowGroupMembers(false)
+                    setEditingMessage(null)
+                    setShowReactionMenu(null)
+                    setShowMessageOptions(null)
+                  }}
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
+                      {chat.type === "group" ? (
+                        <Users size={20} />
+                      ) : chat.participantDetails[0]?.photoURL ? (
+                        <img
+                          src={chat.participantDetails[0].photoURL || "/placeholder.svg"}
+                          alt="User"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        chat.participantDetails[0]?.fullName?.charAt(0) || "?"
                       )}
                     </div>
-                    <div className="flex items-center">
-                      {chat.type !== "group" && chat.participantDetails[0] && (
-                        <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded mr-2">
-                          {getUserRole(chat.participantDetails[0])}
-                        </span>
-                      )}
-                      <p className="text-sm text-gray-600 truncate">{chat.lastMessage?.text || "No messages yet"}</p>
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{getChatName(chat)}</h3>
+                        {chat.lastMessage?.sentAt && (
+                          <span className="text-xs text-gray-500">{formatTime(chat.lastMessage.sentAt)}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        {chat.type !== "group" && chat.participantDetails[0] && (
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded mr-2">
+                            {getUserRole(chat.participantDetails[0])}
+                          </span>
+                        )}
+                        <p className="text-sm text-gray-600 truncate">{chat.lastMessage?.text || "No messages yet"}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {/* Display active chat if it's not in the chats array */}
+              {activeChat && !chats.some((chat) => chat.id === activeChat.id) && (
+                <div key={activeChat.id} className="p-3 border-b border-gray-200 cursor-pointer bg-gray-200">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
+                      {activeChat.type === "group" ? (
+                        <Users size={20} />
+                      ) : activeChat.participantDetails[0]?.photoURL ? (
+                        <img
+                          src={activeChat.participantDetails[0].photoURL || "/placeholder.svg"}
+                          alt="User"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{getChatName(activeChat)}</h3>
+                        {activeChat.lastMessage?.sentAt && (
+                          <span className="text-xs text-gray-500">{formatTime(activeChat.lastMessage.sentAt)}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        {activeChat.type !== "group" && activeChat.participantDetails[0] && (
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded mr-2">
+                            {getUserRole(activeChat.participantDetails[0])}
+                          </span>
+                        )}
+                        <p className="text-sm text-gray-600 truncate">
+                          {activeChat.lastMessage?.text || messages.length > 0
+                            ? messages[messages.length - 1]?.text
+                            : "No messages yet"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="p-4 text-center text-gray-500">
               <p>No conversations yet</p>
@@ -689,36 +1327,225 @@ function ChatRoom() {
           </div>
         )}
 
-        {/* Chat Messages */}
-        {activeChat && !showUserSearch && !showCreateGroup && (
-          <div className="w-full h-full flex flex-col bg-white">
-            <div className="p-4 border-b border-gray-300 flex items-center">
-              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
-                {activeChat.type === "group" ? (
-                  <Users size={20} />
-                ) : activeChat.participantDetails[0]?.photoURL ? (
-                  <img
-                    src={activeChat.participantDetails[0].photoURL || "/placeholder.svg"}
-                    alt="User"
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
-                )}
-              </div>
-              <div>
-                <h2 className="font-semibold">{getChatName(activeChat)}</h2>
-                {activeChat.type !== "group" && activeChat.participantDetails[0] && (
-                  <div className="flex items-center">
-                    <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded">
-                      {getUserRole(activeChat.participantDetails[0])}
-                    </span>
-                  </div>
-                )}
-              </div>
+        {/* Group Members Panel */}
+        {showGroupMembers && activeChat && activeChat.type === "group" && (
+          <div className="w-full h-full bg-white">
+            <div className="p-4 border-b border-gray-300 flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Group Members</h2>
+              <button onClick={() => setShowGroupMembers(false)} className="text-gray-500 hover:text-gray-700">
+                &times;
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+            <div className="p-4">
+              {editingGroupName ? (
+                <div className="mb-4 flex items-center">
+                  <input
+                    type="text"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Enter new group name"
+                    className="flex-1 p-2 border border-gray-300 rounded-l-md"
+                  />
+                  <button
+                    onClick={updateGroupName}
+                    disabled={!newGroupName.trim()}
+                    className="bg-blue-600 text-white p-2 rounded-r-md disabled:bg-gray-300"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium">{activeChat.name}</h3>
+                  <button
+                    onClick={() => {
+                      setEditingGroupName(true)
+                      setNewGroupName(activeChat.name)
+                      setShowGroupMembers(true)
+                    }}
+                    className="text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <Edit2 size={16} className="mr-1" />
+                    Edit Name
+                  </button>
+                </div>
+              )}
+
+              <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+                {allGroupMembers.map((member) => (
+                  <div key={member.id} className="p-3 border-b border-gray-200 flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
+                      {member.photoURL ? (
+                        <img
+                          src={member.photoURL || "/placeholder.svg"}
+                          alt="User"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        member.fullName?.charAt(0) || "?"
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <h3 className="font-medium">
+                          {member.fullName} {member.isCurrentUser && "(You)"}
+                        </h3>
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded ml-2">
+                          {member.role}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{member.email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={leaveGroupChat}
+                className="w-full mt-4 py-2 bg-red-600 text-white rounded-md flex items-center justify-center"
+              >
+                <LogOut size={18} className="mr-2" />
+                Leave Group
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Chat Messages */}
+        {activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && (
+          <div className="w-full h-full flex flex-col bg-white">
+            <div className="p-4 border-b border-gray-300 flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white mr-3">
+                  {activeChat.type === "group" ? (
+                    <Users size={20} />
+                  ) : activeChat.participantDetails[0]?.photoURL ? (
+                    <img
+                      src={activeChat.participantDetails[0].photoURL || "/placeholder.svg"}
+                      alt="User"
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
+                  )}
+                </div>
+                <div>
+                  <h2 className="font-semibold">{getChatName(activeChat)}</h2>
+                  {activeChat.type !== "group" && activeChat.participantDetails[0] && (
+                    <div className="flex items-center">
+                      <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded">
+                        {getUserRole(activeChat.participantDetails[0])}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Group chat options */}
+              {activeChat.type === "group" && (
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setShowChatColorPicker(!showChatColorPicker)}
+                    className="p-2 text-gray-600 hover:text-gray-900 bg-gray-500 hover:bg-gray-800 rounded-full"
+                    title="Change Chat Color"
+                  >
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: chatBackgroundColors[activeChat.id] || "#f9fafb" }}
+                    ></div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingGroupName(true)
+                      setNewGroupName(activeChat.name)
+                      setShowGroupMembers(true)
+                    }}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full ml-2"
+                    title="Edit Group"
+                  >
+                    <Edit3 size={20} />
+                  </button>
+                  <button
+                    onClick={() => setShowGroupMembers(true)}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full ml-2"
+                    title="View Group Members"
+                  >
+                    <Users size={20} />
+                  </button>
+                  <button
+                    onClick={leaveGroupChat}
+                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-full ml-2"
+                    title="Leave Group"
+                  >
+                    <LogOut size={20} />
+                  </button>
+                </div>
+              )}
+
+              {/* For direct chats, add the color picker button too */}
+              {activeChat.type !== "group" && (
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setShowChatColorPicker(!showChatColorPicker)}
+                    className="p-2 text-gray-600 hover:text-gray-900 bg-gray-500 hover:bg-gray-800 rounded-full"
+                    title="Change Chat Color"
+                  >
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: chatBackgroundColors[activeChat.id] || "#f9fafb" }}
+                    ></div>
+                  </button>
+                </div>
+              )}
+
+              {/* Add the color picker dropdown in the header */}
+              {showChatColorPicker && (
+                <div className="absolute top-16 right-4 bg-white shadow-md rounded-md p-2 z-20 color-picker">
+                  <div className="text-sm font-medium mb-2">Chat Background Color</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => changeChatBackgroundColor("#f9fafb")} // default gray-50
+                      className="w-8 h-8 rounded-md bg-gray-50 border border-gray-300"
+                      title="Default"
+                    />
+                    <button
+                      onClick={() => changeChatBackgroundColor("#fee2e2")} // red-100
+                      className="w-8 h-8 rounded-md bg-red-100"
+                      title="Red"
+                    />
+                    <button
+                      onClick={() => changeChatBackgroundColor("#dbeafe")} // blue-100
+                      className="w-8 h-8 rounded-md bg-blue-100"
+                      title="Blue"
+                    />
+                    <button
+                      onClick={() => changeChatBackgroundColor("#e0e7ff")} // indigo-100
+                      className="w-8 h-8 rounded-md bg-indigo-100"
+                      title="Indigo"
+                    />
+                    <button
+                      onClick={() => changeChatBackgroundColor("#ede9fe")} // purple-100
+                      className="w-8 h-8 rounded-md bg-purple-100"
+                      title="Purple"
+                    />
+                    <button
+                      onClick={() => changeChatBackgroundColor("#dcfce7")} // green-100
+                      className="w-8 h-8 rounded-md bg-green-100"
+                      title="Green"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Update the chat messages area to use the selected background color */}
+            {/* Find the div with className="flex-1 overflow-y-auto p-4 bg-gray-50" */}
+            {/* and replace it with: */}
+            <div
+              className="flex-1 overflow-y-auto p-4"
+              style={{ backgroundColor: chatBackgroundColors[activeChat?.id] || "#f9fafb" }}
+            >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
                   <MessageCircle size={48} />
@@ -726,50 +1553,173 @@ function ChatRoom() {
                   <p className="text-sm">Start the conversation!</p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                messages.map((msg, index) => {
                   const isCurrentUser = msg.senderId === currentUser?.id
+                  const isSystemMessage = msg.senderId === "system" || msg.isSystemMessage
+                  const prevMsg = index > 0 ? messages[index - 1] : null
+                  const showDateHeader = shouldShowDate(msg, prevMsg)
 
+                  // Render date header if needed
                   return (
-                    <div key={msg.id} className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
-                      <div className={`flex max-w-[75%] ${isCurrentUser ? "flex-row-reverse" : ""}`}>
-                        {!isCurrentUser && (
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2">
-                            {msg.senderPhoto ? (
-                              <img
-                                src={msg.senderPhoto || "/placeholder.svg"}
-                                alt="User"
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              msg.senderName?.charAt(0) || "?"
-                            )}
-                          </div>
-                        )}
-
-                        <div>
-                          <div className={`flex items-center mb-1 ${isCurrentUser ? "justify-end" : ""}`}>
-                            <span className="text-xs font-medium">{isCurrentUser ? "You" : msg.senderName}</span>
-                            {!isCurrentUser && msg.senderRole && (
-                              <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded ml-1">
-                                {msg.senderRole}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500 ml-2">
-                              {msg.createdAt && formatTime(msg.createdAt)}
-                            </span>
-                          </div>
-
-                          <div
-                            className={`p-3 rounded-lg ${
-                              isCurrentUser
-                                ? "bg-blue-600 text-white rounded-tr-none"
-                                : "bg-gray-200 text-gray-800 rounded-tl-none"
-                            }`}
-                          >
-                            {msg.text}
+                    <div key={msg.id}>
+                      {showDateHeader && msg.createdAt && (
+                        <div className="flex justify-center my-4">
+                          <div className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full flex items-center">
+                            <Calendar size={12} className="mr-1" />
+                            {formatDate(msg.createdAt)}
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {isSystemMessage ? (
+                        <div className="mb-4 flex justify-center">
+                          <div className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">{msg.text}</div>
+                        </div>
+                      ) : (
+                        <div className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex max-w-[75%] ${isCurrentUser ? "flex-row-reverse" : ""}`}>
+                            {!isCurrentUser && (
+                              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2">
+                                {msg.senderPhoto ? (
+                                  <img
+                                    src={msg.senderPhoto || "/placeholder.svg"}
+                                    alt="User"
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  msg.senderName?.charAt(0) || "?"
+                                )}
+                              </div>
+                            )}
+
+                            <div>
+                              <div className={`flex items-center mb-1 ${isCurrentUser ? "justify-end" : ""}`}>
+                                {!isCurrentUser && (
+                                  <>
+                                    <span className="text-xs font-medium">{msg.senderName}</span>
+                                    {msg.senderRole && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded ml-1">
+                                        {msg.senderRole}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {msg.createdAt && formatTime(msg.createdAt)}
+                                </span>
+                                {isCurrentUser && <span className="text-xs font-medium ml-2">You</span>}
+                                {msg.isEdited && <span className="text-xs text-gray-500 ml-1">(edited)</span>}
+                              </div>
+
+                              {editingMessage === msg.id ? (
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    value={editMessageText}
+                                    onChange={(e) => setEditMessageText(e.target.value)}
+                                    className="p-2 border border-gray-300 rounded-l-md w-full"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => editMessage(msg.id, editMessageText)}
+                                    disabled={!editMessageText.trim()}
+                                    className="bg-blue-600 text-white p-2 rounded-r-md disabled:bg-gray-300"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="relative group">
+                                  <div
+                                    className={`p-3 rounded-lg ${
+                                      isCurrentUser
+                                        ? `${messageColors[msg.backgroundColor || "blue"]} rounded-tr-none`
+                                        : "bg-gray-200 text-gray-800 rounded-tl-none"
+                                    }`}
+                                  >
+                                    {msg.text}
+                                  </div>
+
+                                  {/* Message options button for current user's messages */}
+                                  {isCurrentUser && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)
+                                      }}
+                                      className="absolute top-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <MoreHorizontal size={16} />
+                                    </button>
+                                  )}
+
+                                  {/* Message options menu */}
+                                  {showMessageOptions === msg.id && (
+                                    <div className="absolute top-0 right-8 bg-white shadow-md rounded-md py-1 z-10 message-options">
+                                      <button
+                                        onClick={() => {
+                                          setEditingMessage(msg.id)
+                                          setEditMessageText(msg.text)
+                                          setShowMessageOptions(null)
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center"
+                                      >
+                                        <Edit2 size={14} className="mr-2" /> Edit
+                                      </button>
+                                      <button
+                                        onClick={() => deleteMessage(msg.id)}
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center"
+                                      >
+                                        <Trash2 size={14} className="mr-2" /> Delete
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* Reaction button */}
+                                  <button
+                                    onClick={() => setShowReactionMenu(showReactionMenu === msg.id ? null : msg.id)}
+                                    className="absolute bottom-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Smile size={16} />
+                                  </button>
+
+                                  {/* Reaction menu */}
+                                  {showReactionMenu === msg.id && (
+                                    <div className="absolute bottom-8 right-0 bg-white shadow-md rounded-full py-1 px-2 flex space-x-2 z-10 reaction-menu">
+                                      {Object.entries(reactionEmojis).map(([type, emoji]) => (
+                                        <button
+                                          key={type}
+                                          onClick={() => addReaction(msg.id, type)}
+                                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full text-lg"
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Display reactions */}
+                                  {msg.reactions && Object.entries(msg.reactions).length > 0 && (
+                                    <div className="flex mt-1 flex-wrap">
+                                      {Object.entries(msg.reactions).map(([type, users]) =>
+                                        users && users.length > 0 ? (
+                                          <div
+                                            key={type}
+                                            className="bg-white rounded-full px-2 py-0.5 text-xs flex items-center mr-1 mb-1 border border-gray-200"
+                                            title={users.map((u) => u.userName).join(", ")}
+                                          >
+                                            {reactionEmojis[type]} {users.length}
+                                          </div>
+                                        ) : null,
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })
@@ -777,6 +1727,8 @@ function ChatRoom() {
               <div ref={dummy}></div>
             </div>
 
+            {/* Remove the message color picker from the form since we're now focusing on chat background color */}
+            {/* Find the message color picker in the form and remove it: */}
             <form onSubmit={sendMessage} className="border-t border-gray-300 p-4 bg-white">
               <div className="flex items-center">
                 <input
@@ -799,7 +1751,7 @@ function ChatRoom() {
         )}
 
         {/* Empty State */}
-        {!activeChat && !showUserSearch && !showCreateGroup && (
+        {!activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && (
           <div className="w-full h-full flex flex-col items-center justify-center bg-white">
             <MessageCircle size={64} className="text-gray-300 mb-4" />
             <h2 className="text-xl font-semibold mb-2">Welcome to Chat</h2>

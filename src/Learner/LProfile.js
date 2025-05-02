@@ -55,12 +55,15 @@ function Profile() {
   useEffect(() => {
     const fetchComments = async () => {
       if (user && activeTab === "Comments") {
-        const commentsRef = collection(db, "comments")
+        const commentsRef = collection(db, "courseComments")
         const q = query(commentsRef, where("userId", "==", user.uid))
         const querySnapshot = await getDocs(q)
         const commentsData = []
         querySnapshot.forEach((doc) => {
-          commentsData.push(doc.data())
+          commentsData.push({
+            id: doc.id,
+            ...doc.data(),
+          })
         })
         setComments(commentsData)
       }
@@ -158,7 +161,7 @@ function Profile() {
             onClick={() => setActiveTab("History")}
             className={`text-blue-950 ${activeTab === "History" ? "underline" : ""}`}
           >
-            History
+            Completed Courses
           </button>
           <button
             onClick={() => setActiveTab("Comments")}
@@ -247,8 +250,7 @@ function Profile() {
             ) : (
               <div>
                 <p className="text-gray-500">
-                  <strong>Phone Number:</strong>{" "}
-                  <span className="text-blue-500 text-sm"> {userData.phoneNumber}</span>
+                  <strong>Phone Number:</strong> <span className="text-blue-500 text-sm"> {userData.phoneNumber}</span>
                 </p>
                 <p className="text-gray-500">
                   <strong>Address:</strong> <span className="text-blue-500 text-sm">{userData.address}</span>
@@ -294,12 +296,42 @@ function Profile() {
           <div className="bg p-4 rounded-lg shadow-inner">
             <h3 className="text-lg font-semibold mb-2 text-blue-950">Comments</h3>
             {comments.length > 0 ? (
-              comments.map((comment, index) => (
-                <div key={index} className="mb-2">
-                  <p className="text-gray-700">{comment.text}</p>
-                  <p className="text-gray-500 text-sm">{new Date(comment.timestamp?.toDate()).toLocaleString()}</p>
-                </div>
-              ))
+              <div className="space-y-4">
+                {comments.map((comment, index) => (
+                  <div key={index} className="p-4 border rounded-lg bg-gray-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-medium text-blue-950">
+                        Course: <span className="text-indigo-600">{comment.courseTitle || "Unknown Course"}</span>
+                      </h4>
+                      {comment.rating && (
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                            <svg
+                              key={i}
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill={i < comment.rating ? "currentColor" : "none"}
+                              stroke="currentColor"
+                              className={`w-4 h-4 ${i < comment.rating ? "text-yellow-500" : "text-gray-300"}`}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                              />
+                            </svg>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-700">{comment.comment}</p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      {comment.createdAt?.toDate ? new Date(comment.createdAt?.toDate()).toLocaleString() : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-gray-500">No comments available.</p>
             )}
@@ -355,3 +387,4 @@ function Profile() {
 }
 
 export default Profile
+

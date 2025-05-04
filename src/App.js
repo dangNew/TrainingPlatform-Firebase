@@ -17,6 +17,9 @@ import Courses from "./adviser/courses";
 import FileLibrary from "./adviser/filelibrary";
 import Adviser from "./adviser/sidebar";
 import UploadContent from "./adviser/uploadcontent";
+import AdviserChatroom from "./adviser/AdChatroom";
+
+
 import NavBar from "./components/Navbar";
 import "./index.css";
 
@@ -30,11 +33,22 @@ import ModuleViewer from "./Learner/LModuleView";
 import ModuleDisplay from "./Learner/LModules";
 import LProfile from "./Learner/LProfile";
 import UserDashboard from "./Learner/userdashboard";
+import QuizTaker from "./Learner/quiz-taker";
 
 // Create a wrapper component for the NavBar
 const NavBarWrapper = () => {
   const location = useLocation();
-  const showNavBar = ["/", "/login", "/signup"].includes(location.pathname);
+  const showNavBar = 
+  ["/", 
+    "/login",
+    "/signup",
+    "/user-dashboard",
+    "/chatroom",
+    "/lprofile",
+    "/lcourses",
+    "/certificates",
+    "/module-viewer",
+    "/quiz-taker", ].includes(location.pathname);
   return showNavBar ? <NavBar /> : null;
 };
 
@@ -56,6 +70,7 @@ function App() {
         <Route path="/modules/:courseId" element={<Moduledisplay />} />
         <Route path="/course/:courseId/module/:moduleId" element={<ModuleDetails />} />
         <Route path="/addquiz" element={<AddQuiz />} />
+        <Route path="/Achat" element={<AdviserChatroom />} />
 
 
 
@@ -67,7 +82,8 @@ function App() {
         <Route path="/lcourse/:courseId" element={<ModuleDisplay />} />
         <Route path="/lmodules/:courseId" element={<ModuleDisplay />} />
         <Route path="/certificates" element={<CertificatePage />} /> 
-        <Route path="/module-viewer" element={<ModuleViewer />} />     
+        <Route path="/module-viewer" element={<ModuleViewer />} />    
+        <Route path="/quiz-taker" element={<QuizTaker />} /> 
       </Routes>
     </Router>
   );

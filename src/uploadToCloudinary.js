@@ -9,19 +9,25 @@ const uploadToCloudinary = async (file) => {
     return null;
   }
 
+  // Remove the file extension (e.g., .mp4, .pdf) from the filename
+  const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
   formData.append("folder", "modules"); // Organize files in a Cloudinary folder
-  formData.append("public_id", `module_file_${Date.now()}_${file.name}`); // Unique public ID
+  formData.append("public_id", `module_file_${Date.now()}_${fileNameWithoutExt}`); // Unique and clean public ID
 
   let uploadUrl;
   if (file.type?.startsWith("image")) {
     uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
   } else if (file.type?.startsWith("video")) {
     uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
-  } else {
+  } else if (file.type === "application/pdf" || file.type === "application/vnd.ms-powerpoint" || file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
     uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`; // For PDFs and slides
+  } else {
+    console.error("Unsupported file type:", file.type);
+    return null;
   }
 
   try {

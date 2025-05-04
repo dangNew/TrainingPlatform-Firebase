@@ -242,10 +242,10 @@ const LearnerDashboard = () => {
 
   if (loading || dashboardLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading dashboard...</p>
+          <p className="text-gray-800 text-lg">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -253,8 +253,8 @@ const LearnerDashboard = () => {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
+      <div className="flex items-center justify-center h-screen bg-white text-gray-800">
+        <div className="text-center max-w-md p-8 bg-gray-100 rounded-xl shadow-2xl">
           <FaUser className="text-5xl text-blue-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold mb-4">Login Required</h2>
           <p className="mb-6">You need to be logged in to view your dashboard.</p>
@@ -270,7 +270,7 @@ const LearnerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex">
+    <div className="min-h-screen bg-white text-gray-800 flex">
       <Sidebar />
       <MainContent>
         {/* Header */}
@@ -288,13 +288,13 @@ const LearnerDashboard = () => {
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-2xl font-bold ">
                 Welcome, {learnerData?.fullName || user.email?.split("@")[0] || "Learner"}
               </h1>
-              <p className="text-gray-400">{learnerData?.email || user.email}</p>
+              <p className="text-gray-500">{learnerData?.email || user.email}</p>
             </div>
           </div>
-          <div className="bg-blue-900 px-4 py-2 rounded-lg">
+          <div className="bg-blue-900 px-4 py-2 rounded-lg text-white shadow-md">
             <p className="text-sm">
               Last login:{" "}
               {user.metadata?.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleString() : "Unknown"}
@@ -304,7 +304,7 @@ const LearnerDashboard = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-gray-200 rounded-xl p-6 shadow-lg">
             <div className="flex items-center mb-4">
               <FaBook className="text-blue-500 text-2xl mr-3" />
               <h2 className="text-xl font-semibold">Course Progress</h2>
@@ -312,20 +312,20 @@ const LearnerDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-3xl font-bold">{stats.completedCourses}</p>
-                <p className="text-gray-400">Completed</p>
+                <p className="text-gray-500">Completed</p>
               </div>
               <div>
                 <p className="text-3xl font-bold">{stats.inProgressCourses}</p>
-                <p className="text-gray-400">In Progress</p>
+                <p className="text-gray-500">In Progress</p>
               </div>
               <div>
                 <p className="text-3xl font-bold">{stats.totalCourses}</p>
-                <p className="text-gray-400">Total</p>
+                <p className="text-gray-500">Total</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-gray-200 rounded-xl p-6 shadow-lg">
             <div className="flex items-center mb-4">
               <FaCheckCircle className="text-green-500 text-2xl mr-3" />
               <h2 className="text-xl font-semibold">Module Completion</h2>
@@ -333,20 +333,20 @@ const LearnerDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-3xl font-bold">{stats.completedModules}</p>
-                <p className="text-gray-400">Completed</p>
+                <p className="text-gray-500">Completed</p>
               </div>
               <div>
                 <p className="text-3xl font-bold">{stats.totalModules - stats.completedModules}</p>
-                <p className="text-gray-400">Remaining</p>
+                <p className="text-gray-500">Remaining</p>
               </div>
               <div>
                 <p className="text-3xl font-bold">{stats.totalModules}</p>
-                <p className="text-gray-400">Total</p>
+                <p className="text-gray-500">Total</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-gray-200 rounded-xl p-6 shadow-lg">
             <div className="flex items-center mb-4">
               <FaMedal className="text-yellow-500 text-2xl mr-3" />
               <h2 className="text-xl font-semibold">Certificates</h2>
@@ -354,11 +354,11 @@ const LearnerDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-3xl font-bold">{stats.certificatesEarned}</p>
-                <p className="text-gray-400">Earned</p>
+                <p className="text-gray-500">Earned</p>
               </div>
               <div>
                 <p className="text-3xl font-bold">{stats.completedCourses - stats.certificatesEarned}</p>
-                <p className="text-gray-400">Available</p>
+                <p className="text-gray-500">Available</p>
               </div>
             </div>
           </div>
@@ -367,7 +367,7 @@ const LearnerDashboard = () => {
         {/* Charts and Course Progress */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Course Progress Chart */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Course Progress</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -393,7 +393,7 @@ const LearnerDashboard = () => {
           </div>
 
           {/* Module Completion Chart */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Module Completion</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -419,7 +419,7 @@ const LearnerDashboard = () => {
           </div>
 
           {/* Course Progress Bar Chart */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Top Courses Progress</h2>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -441,7 +441,7 @@ const LearnerDashboard = () => {
         {/* Recent Activity and Courses */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Recent Activity */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center mb-4">
               <FaClock className="text-blue-500 text-xl mr-3" />
               <h2 className="text-xl font-semibold">Recent Activity</h2>
@@ -451,18 +451,18 @@ const LearnerDashboard = () => {
                 {recentActivities.map((activity) => (
                   <li key={activity.id} className="border-l-2 border-blue-500 pl-4 py-1">
                     <p className="font-medium">{activity.moduleTitle}</p>
-                    <p className="text-sm text-gray-400">Completed module in {activity.courseTitle}</p>
-                    <p className="text-xs text-gray-500">{formatDate(activity.completedAt)}</p>
+                    <p className="text-sm text-gray-500">Completed module in {activity.courseTitle}</p>
+                    <p className="text-xs text-gray-600">{formatDate(activity.completedAt)}</p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-400">No recent activity found.</p>
+              <p className="text-gray-500">No recent activity found.</p>
             )}
           </div>
 
           {/* Your Courses */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center mb-4">
               <FaGraduationCap className="text-green-500 text-xl mr-3" />
               <h2 className="text-xl font-semibold">Your Courses</h2>
@@ -472,12 +472,12 @@ const LearnerDashboard = () => {
                 {courses.slice(0, 5).map((course) => {
                   const progressPercent = calculateCourseProgress(course.id)
                   return (
-                    <li key={course.id} className="border-b border-gray-700 pb-3 last:border-0">
+                    <li key={course.id} className="border-b border-gray-200 pb-3 last:border-0">
                       <div className="flex justify-between items-center mb-1">
                         <p className="font-medium">{course.title}</p>
                         <span className="text-sm bg-blue-900 px-2 py-1 rounded">{progressPercent}% Complete</span>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
                         <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progressPercent}%` }}></div>
                       </div>
                     </li>
@@ -485,7 +485,7 @@ const LearnerDashboard = () => {
                 })}
               </ul>
             ) : (
-              <p className="text-gray-400">No courses found.</p>
+              <p className="text-gray-500">No courses found.</p>
             )}
             {courses.length > 5 && (
               <button
@@ -499,7 +499,7 @@ const LearnerDashboard = () => {
         </div>
 
         {/* Certificates */}
-        <div className="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
+        <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <FaMedal className="text-yellow-500 text-xl mr-3" />
@@ -517,9 +517,9 @@ const LearnerDashboard = () => {
           {certificates.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {certificates.map((certificate) => (
-                <div key={certificate.id} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors">
+                <div key={certificate.id} className="bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-colors">
                   <h3 className="font-medium mb-2">{certificate.courseName || "Certificate"}</h3>
-                  <p className="text-sm text-gray-400 mb-2">
+                  <p className="text-sm text-gray-500 mb-2">
                     Issued on:{" "}
                     {certificate.issuedDate ? new Date(certificate.issuedDate.toDate()).toLocaleDateString() : "N/A"}
                   </p>
@@ -533,7 +533,7 @@ const LearnerDashboard = () => {
               ))}
             </div>
           ) : (
-            <p className="text-gray-400">Complete courses to earn certificates.</p>
+            <p className="text-gray-500">Complete courses to earn certificates.</p>
           )}
         </div>
       </MainContent>

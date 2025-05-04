@@ -123,7 +123,10 @@ const AddModule = () => {
       const chaptersData = chapters.map((chapter, index) => ({
         title: chapter.title,
         description: chapter.description,
-        fileUrl: uploadedUrls[index],
+        fileUrl: {
+          url: uploadedUrls[index].url,
+          publicId: uploadedUrls[index].publicId,
+        },
       }));
 
       await setDoc(doc(modulesCollectionRef, newModuleId), {
@@ -165,7 +168,10 @@ const AddModule = () => {
       const newChapterData = {
         title: newChapter.title,
         description: newChapter.description,
-        fileUrl: url,
+        fileUrl: {
+          url: url.url,
+          publicId: url.publicId,
+        },
       };
 
       await updateDoc(moduleDocRef, {

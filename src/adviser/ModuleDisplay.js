@@ -76,9 +76,13 @@ const ModuleDisplay = () => {
     e.preventDefault();
     try {
       const courseDocRef = doc(db, "courses", courseId);
-      await updateDoc(doc(courseDocRef, "modules", editingModule.id), {
-        ...formData,
-      });
+      const moduleDocRef = doc(courseDocRef, "modules", editingModule.id);
+
+      console.log("Updating module with ID:", editingModule.id);
+      console.log("New data:", formData);
+
+      await updateDoc(moduleDocRef, formData);
+
       setModules(modules.map((module) =>
         module.id === editingModule.id ? { ...module, ...formData } : module
       ));
@@ -125,7 +129,7 @@ const ModuleDisplay = () => {
               <h1 className="text-3xl font-bold text-blue-600">{course.title}</h1>
             </div>
             <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg">
-              <img src={course.fileUrl} alt={course.title} className="w-full h-full object-cover rounded-2xl" />
+              <img src={course.fileUrl?.url || "https://res.cloudinary.com/trainingplat-a/image/upload/v1743084091/modules/module_file_1743084087558_download%20(1).jpg"} alt={course.title} className="w-full h-full object-cover rounded-2xl" />
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white text-center p-4 rounded-2xl">
                 <p className="text-lg">{course.description}</p>
               </div>

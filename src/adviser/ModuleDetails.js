@@ -61,57 +61,72 @@ const ModuleDetails = () => {
   }, [courseId, moduleId]);
 
   const inferContentType = (fileUrl) => {
-    if (!fileUrl || typeof fileUrl !== "string") {
+    let url = fileUrl;
+    if (typeof fileUrl === "object" && fileUrl !== null && 'url' in fileUrl) {
+      url = fileUrl.url;
+    }
+
+    if (!url || typeof url !== "string") {
       return "application/octet-stream"; // Default unknown type
     }
-    if (fileUrl.endsWith(".pdf")) return "application/pdf";
-    if (fileUrl.match(/\.(jpg|jpeg|png)$/)) return "image/jpeg";
-    if (fileUrl.match(/\.(mp4|mov)$/)) return "video/mp4";
-    if (fileUrl.match(/\.(ppt|pptx)$/)) return "application/vnd.ms-powerpoint";
+    if (url.endsWith(".pdf")) return "application/pdf";
+    if (url.match(/\.(jpg|jpeg|png)$/)) return "image/jpeg";
+    if (url.match(/\.(mp4|mov)$/)) return "video/mp4";
+    if (url.match(/\.(ppt|pptx)$/)) return "application/vnd.ms-powerpoint";
     return "application/octet-stream";
   };
 
   const renderFile = (fileUrl, contentType) => {
     if (!fileUrl) return <p className="text-red-500">No file available</p>;
 
-    console.log("Rendering file:", fileUrl, "Type:", contentType);
+    // Ensure fileUrl is a string
+    const url = typeof fileUrl === "object" ? fileUrl.url : fileUrl;
+
+    console.log("Rendering file with URL:", url, "Type:", contentType);
 
     if (contentType === "application/pdf") {
       return (
-        <div className="border rounded" style={{ height: '600px' }}>
+        <div className="border rounded" style={{ height: '600px' }} key={url}>
           <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`}>
-            <Viewer fileUrl={fileUrl} plugins={[defaultLayoutPluginInstance]} />
+            <Viewer fileUrl={url} plugins={[defaultLayoutPluginInstance]} />
           </Worker>
         </div>
       );
     }
 
     if (contentType.startsWith("video/")) {
+      console.log("Rendering video with URL:", url);
       return (
-        <video controls width="100%" height="600px" className="border rounded">
-          <source src={fileUrl} type={contentType} />
+        <video controls width="100%" height="600px" className="border rounded" key={url}>
+          <source src={url} type={contentType} />
           Your browser does not support the video tag.
         </video>
       );
     }
 
     if (contentType.startsWith("image/")) {
-      return <img src={fileUrl} alt="Illustration" width="100%" className="border rounded" />;
+      return <img src={url} alt="Illustration" width="100%" className="border rounded" key={url} />;
     }
 
     if (contentType.includes("powerpoint")) {
       return (
         <iframe
-          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
+          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
           width="100%"
           height="600px"
           className="border rounded"
           title="PowerPoint Presentation"
+          key={url}
         />
       );
     }
 
     return <p className="text-yellow-400">Unsupported file type.</p>;
+  };
+
+  const handleChapterClick = (index) => {
+    console.log("Selected Chapter Index:", index);
+    setSelectedChapterIndex(index);
   };
 
   return (
@@ -129,7 +144,7 @@ const ModuleDetails = () => {
               className={`p-2 cursor-pointer rounded ${
                 index === selectedChapterIndex ? "bg-gray-800 text-blue-300" : "hover:bg-gray-700"
               }`}
-              onClick={() => setSelectedChapterIndex(index)}
+              onClick={() => handleChapterClick(index)}
             >
               {chapter.title}
             </li>
@@ -145,6 +160,7 @@ const ModuleDetails = () => {
             <p className="text-gray-400">{module.chapters[selectedChapterIndex].description}</p>
 
             {/* Debugging: Display raw file URL */}
+            <p className="text-gray-400">File URL: {module.chapters[selectedChapterIndex].fileUrl?.url || module.chapters[selectedChapterIndex].fileUrl}</p>
 
             {/* Render File */}
             {module.chapters[selectedChapterIndex].fileUrl && (

@@ -7,6 +7,7 @@ import { useAuthState } from "react-firebase-hooks/auth"
 import { FaCheck, FaLock, FaLockOpen, FaSignInAlt } from "react-icons/fa"
 import { useLocation, useNavigate } from "react-router-dom"
 import { auth, db } from "../firebase.config"
+import VideoPlayer from "./video-player"
 
 // Add this CSS for animations
 const styles = `
@@ -42,7 +43,7 @@ const styles = `
 const ModuleView = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const [user, loading, authError] = useAuthState(auth)
+  const [user, loading] = useAuthState(auth) // Removed unused authError variable
   const searchParams = new URLSearchParams(location.search)
   const courseId = searchParams.get("courseId")
   const moduleId = searchParams.get("moduleId")
@@ -50,7 +51,7 @@ const ModuleView = () => {
 
   const [module, setModule] = useState(null)
   const [course, setCourse] = useState(null)
-  const [userData, setUserData] = useState(null)
+  const [userData, setUserData] = useState(null) // Keep this for future use
   const [contentLoading, setContentLoading] = useState(true)
   const [selectedChapterIndex, setSelectedChapterIndex] = useState(initialChapterIndex)
   const [error, setError] = useState(null)
@@ -59,9 +60,31 @@ const ModuleView = () => {
   const [savingCompletion, setSavingCompletion] = useState(false)
   const [showCompletionAlert, setShowCompletionAlert] = useState(false)
   const [moduleAlreadyCompleted, setModuleAlreadyCompleted] = useState(false)
-  const [historyDocId, setHistoryDocId] = useState(null)
+  const [historyDocId, setHistoryDocId] = useState(null) // Keep this for future use
   const contentRef = useRef(null)
   const [authChecked, setAuthChecked] = useState(false)
+  const [videoCompleted, setVideoCompleted] = useState(false)
+
+  // Function to check if the content is a video
+  const isVideoContent = (fileUrl) => {
+    if (!fileUrl) return false
+    return (
+      fileUrl.toLowerCase().endsWith(".mp4") ||
+      fileUrl.toLowerCase().includes("/video/upload/") ||
+      (fileUrl.toLowerCase().includes("cloudinary") && fileUrl.toLowerCase().includes(".mp4"))
+    )
+  }
+
+  // Reset video completion status when changing chapters
+  useEffect(() => {
+    setVideoCompleted(false)
+
+    // Check if this chapter is already completed
+    const moduleChapters = unlockedChapters[moduleId] || []
+    if (moduleChapters.includes(selectedChapterIndex)) {
+      setVideoCompleted(true)
+    }
+  }, [selectedChapterIndex, unlockedChapters, moduleId])
 
   // Check authentication status
   useEffect(() => {
@@ -148,37 +171,6 @@ const ModuleView = () => {
     fetchData()
   }, [courseId, moduleId, user, authChecked])
 
-  // Set up scroll tracking
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!contentRef.current || !module) return
-
-      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
-      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50
-
-      if (scrolledToBottom) {
-        // Mark current chapter as completed
-        markChapterAsCompleted()
-
-        // If this is the last chapter, enable the Finish button
-        if (selectedChapterIndex === module.chapters.length - 1) {
-          setIsLastChapterScrolledToBottom(true)
-        }
-      }
-    }
-
-    const contentElement = contentRef.current
-    if (contentElement) {
-      contentElement.addEventListener("scroll", handleScroll)
-    }
-
-    return () => {
-      if (contentElement) {
-        contentElement.removeEventListener("scroll", handleScroll)
-      }
-    }
-  }, [selectedChapterIndex, module])
-
   // Function to mark the current chapter as completed
   const markChapterAsCompleted = async () => {
     if (!module || !user) return
@@ -215,6 +207,43 @@ const ModuleView = () => {
       console.error("Error saving chapter completion:", error)
     }
   }
+
+  // Set up scroll tracking
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current || !module) return
+
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current
+      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50
+
+      if (scrolledToBottom) {
+        // Only mark non-video content as completed via scrolling
+        const selectedChapter = module.chapters[selectedChapterIndex]
+        const isVideo = isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl)
+
+        if (!isVideo) {
+          // Mark current chapter as completed
+          markChapterAsCompleted()
+        }
+
+        // If this is the last chapter, enable the Finish button
+        if (selectedChapterIndex === module.chapters.length - 1) {
+          setIsLastChapterScrolledToBottom(true)
+        }
+      }
+    }
+
+    const contentElement = contentRef.current
+    if (contentElement) {
+      contentElement.addEventListener("scroll", handleScroll)
+    }
+
+    return () => {
+      if (contentElement) {
+        contentElement.removeEventListener("scroll", handleScroll)
+      }
+    }
+  }, [selectedChapterIndex, module])
 
   // Function to check if a chapter is unlocked
   const isChapterUnlocked = (index) => {
@@ -292,6 +321,12 @@ const ModuleView = () => {
     } finally {
       setSavingCompletion(false)
     }
+  }
+
+  // Handle video completion
+  const handleVideoComplete = () => {
+    setVideoCompleted(true)
+    markChapterAsCompleted()
   }
 
   // Handle login redirect
@@ -374,7 +409,16 @@ const ModuleView = () => {
   const moduleChapters = unlockedChapters[moduleId] || []
   const isCurrentChapterCompleted = moduleChapters.includes(selectedChapterIndex)
   const isLastChapter = selectedChapterIndex === module.chapters.length - 1
-  const canFinish = isLastChapter && (isCurrentChapterCompleted || isLastChapterScrolledToBottom)
+  const isLastChapterVideo =
+    isLastChapter &&
+    module &&
+    module.chapters &&
+    isVideoContent(
+      module.chapters[selectedChapterIndex]?.fileUrl?.url || module.chapters[selectedChapterIndex]?.fileUrl,
+    )
+  const canFinish =
+    isLastChapter &&
+    (isCurrentChapterCompleted || (isLastChapterVideo ? videoCompleted : isLastChapterScrolledToBottom))
 
   return (
     <>
@@ -447,29 +491,45 @@ const ModuleView = () => {
           <h1 className="text-3xl font-bold text-blue-300 mb-4">{selectedChapter.title}</h1>
           <p className="text-gray-400 mb-6">{selectedChapter.description}</p>
 
-          <div className="bg-white rounded-lg p-4 mb-6">
-            <iframe
-              src={selectedChapter.fileUrl}
-              width="100%"
-              height="600px"
-              className="border rounded"
-              title="Chapter Content"
-            />
-          </div>
-
-          {isCurrentChapterCompleted && !isLastChapter && (
-            <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
-              <p className="font-medium">You've completed this chapter! You can now proceed to the next chapter.</p>
+          {/* Content Display - Video or iframe based on content type */}
+          {isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl) ? (
+            <div className="bg-gray-800 rounded-lg p-4 mb-6">
+              <VideoPlayer
+                src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
+                onComplete={handleVideoComplete}
+                isCompleted={isCurrentChapterCompleted}
+                className="max-h-[600px]"
+              />
+              {videoCompleted && !isCurrentChapterCompleted && (
+                <div className="mt-3 bg-green-800 text-white p-3 rounded animate-pulse">
+                  <p className="text-sm">Video completed!</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg p-4 mb-6">
+              <iframe
+                src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
+                width="100%"
+                height="600px"
+                className="border rounded"
+                title="Chapter Content"
+              />
             </div>
           )}
 
-          {canFinish && (
+          {isCurrentChapterCompleted && !isLastChapter && (
+            <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
+              <p className="font-medium">You've completed this chapter!</p>
+            </div>
+          )}
+
+          {isLastChapter && canFinish && (
             <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
               <p className="font-medium">
                 Congratulations! You've completed all chapters in this module. Click "Finish" to mark the module as
                 complete and save your progress.
               </p>
-
               {moduleAlreadyCompleted && (
                 <p className="text-green-300 mt-2 text-sm">
                   <FaCheck className="inline mr-1" /> You've already completed this module
@@ -494,7 +554,10 @@ const ModuleView = () => {
               disabled={
                 (isLastChapter && !canFinish) ||
                 (!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1)) ||
-                savingCompletion
+                savingCompletion ||
+                (isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl) &&
+                  !videoCompleted &&
+                  !isCurrentChapterCompleted)
               }
               onClick={() => {
                 if (isLastChapter && canFinish) {
@@ -507,18 +570,6 @@ const ModuleView = () => {
               {isLastChapter ? (savingCompletion ? "Saving..." : "Finish") : "Next"}
             </button>
           </div>
-
-          {!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1) && (
-            <p className="text-center text-gray-400 mt-4">
-              Scroll to the bottom of this chapter to unlock the next one
-            </p>
-          )}
-
-          {isLastChapter && !canFinish && (
-            <p className="text-center text-gray-400 mt-4">
-              Scroll to the bottom of this chapter to enable the Finish button
-            </p>
-          )}
         </div>
 
         {/* Module Completion Alert */}
@@ -562,4 +613,3 @@ const ModuleView = () => {
 }
 
 export default ModuleView
-

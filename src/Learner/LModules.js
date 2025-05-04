@@ -15,7 +15,17 @@ import {
 } from "firebase/firestore"
 import { useEffect, useState } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { FaCertificate, FaCheck, FaChevronDown, FaChevronRight, FaLock, FaLockOpen, FaTrophy } from "react-icons/fa"
+import {
+  FaCertificate,
+  FaCheck,
+  FaChevronDown,
+  FaChevronRight,
+  FaLock,
+  FaLockOpen,
+  FaTrophy,
+  FaClipboardList,
+  FaEdit,
+} from "react-icons/fa"
 import { useNavigate, useParams } from "react-router-dom"
 import styled from "styled-components"
 import Sidebar from "../components/LSidebar"
@@ -42,6 +52,8 @@ const ModuleDisplay = () => {
   const [completedChapters, setCompletedChapters] = useState({})
   const [expandedModules, setExpandedModules] = useState({})
   const [loading, setLoading] = useState(true)
+  const [quizzes, setQuizzes] = useState([])
+  const [quizScores, setQuizScores] = useState({})
 
   // Add state variables for certificate functionality
   const [showCertificateAlert, setShowCertificateAlert] = useState(false)
@@ -56,6 +68,24 @@ const ModuleDisplay = () => {
   const [submittingComment, setSubmittingComment] = useState(false)
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
+
+  // Helper function to get the image URL from the course data
+  const getCourseImageUrl = (course) => {
+    if (!course) return "/placeholder.svg?height=200&width=800"
+
+    // Check if fileUrl exists and has a url property (nested structure)
+    if (course.fileUrl && course.fileUrl.url) {
+      return course.fileUrl.url
+    }
+
+    // If fileUrl is a direct string
+    if (typeof course.fileUrl === "string") {
+      return course.fileUrl
+    }
+
+    // Fallback to a placeholder image
+    return "/placeholder.svg?height=200&width=800"
+  }
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -81,6 +111,45 @@ const ModuleDisplay = () => {
         }
       } catch (error) {
         console.error("Error fetching course data:", error)
+      }
+    }
+
+    // Fetch quizzes for the course
+    const fetchQuizzes = async () => {
+      try {
+        const quizzesCollection = collection(db, "courses", courseId, "quizzes")
+        const querySnapshot = await getDocs(quizzesCollection)
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setQuizzes(data)
+      } catch (error) {
+        console.error("Error fetching quizzes:", error)
+      }
+    }
+
+    // Fetch quiz scores for the user
+    const fetchQuizScores = async () => {
+      if (!user) return
+
+      try {
+        const scoresCollection = collection(db, "learner", user.uid, "quizScores")
+        const scoresQuery = query(scoresCollection, where("courseId", "==", courseId))
+        const querySnapshot = await getDocs(scoresQuery)
+
+        const scoresData = {}
+        querySnapshot.docs.forEach((doc) => {
+          const data = doc.data()
+          scoresData[data.quizId] = {
+            score: data.score,
+            totalPoints: data.totalPoints,
+            percentage: data.percentage,
+            completedAt: data.completedAt,
+            passed: data.passed,
+          }
+        })
+
+        setQuizScores(scoresData)
+      } catch (error) {
+        console.error("Error fetching quiz scores:", error)
       }
     }
 
@@ -163,16 +232,22 @@ const ModuleDisplay = () => {
       }
     }
 
-    Promise.all([fetchModules(), fetchCourseData(), loadProgress(), loadCertificateData(), fetchComments()]).finally(
-      () => {
-        setLoading(false)
+    Promise.all([
+      fetchModules(),
+      fetchCourseData(),
+      loadProgress(),
+      loadCertificateData(),
+      fetchComments(),
+      fetchQuizzes(),
+      fetchQuizScores(),
+    ]).finally(() => {
+      setLoading(false)
 
-        // Check if all modules are completed
-        if (modules.length > 0 && completedModules.length >= modules.length) {
-          setAllModulesCompleted(true)
-        }
-      },
-    )
+      // Check if all modules are completed
+      if (modules.length > 0 && completedModules.length >= modules.length) {
+        setAllModulesCompleted(true)
+      }
+    })
   }, [courseId, user])
 
   // Add a useEffect to check if all modules are completed when modules or completedModules change
@@ -245,6 +320,11 @@ const ModuleDisplay = () => {
   const handleStartModule = (module) => {
     // Open module viewer in a new tab
     window.open(`/module-viewer?courseId=${courseId}&moduleId=${module.id}`, "_blank")
+  }
+
+  const handleStartQuiz = (quiz) => {
+    // Navigate to quiz-taker page with the necessary parameters
+    navigate(`/quiz-taker?courseId=${courseId}&quizId=${quiz.id}`)
   }
 
   const isModuleUnlocked = (moduleId, index) => {
@@ -327,6 +407,17 @@ const ModuleDisplay = () => {
     }
   }
 
+  // Calculate total points for a quiz
+  const calculateTotalPoints = (quiz) => {
+    let totalPoints = 0
+    quiz.sections.forEach((section) => {
+      section.questions.forEach((question) => {
+        totalPoints += question.points || 0
+      })
+    })
+    return totalPoints
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen">
@@ -398,7 +489,7 @@ const ModuleDisplay = () => {
           {/* Header with Background Image */}
           <div
             className="h-48 bg-cover bg-center mb-6 relative rounded-xl overflow-hidden"
-            style={{ backgroundImage: `url(${courseData.fileUrl})` }}
+            style={{ backgroundImage: `url(${getCourseImageUrl(courseData)})` }}
           >
             {/* Back Button */}
             <button
@@ -541,6 +632,86 @@ const ModuleDisplay = () => {
               )
             })}
           </div>
+
+          {/* Quizzes Section */}
+          {quizzes.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold mb-4 flex items-center">
+                <FaClipboardList className="mr-2 text-blue-600" />
+                Course Quizzes
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {quizzes.map((quiz) => {
+                  const quizScore = quizScores[quiz.id]
+                  const totalPoints = calculateTotalPoints(quiz)
+                  const isCompleted = !!quizScore
+                  const isPassed = quizScore?.passed
+
+                  return (
+                    <div
+                      key={quiz.id}
+                      className={`bg-white rounded-xl shadow-md overflow-hidden border-l-4 ${
+                        isCompleted ? (isPassed ? "border-green-500" : "border-red-500") : "border-blue-500"
+                      }`}
+                    >
+                      <div className="p-5">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xl font-semibold">{quiz.title}</h3>
+                          {isCompleted && (
+                            <div
+                              className={`text-sm font-medium px-3 py-1 rounded-full ${
+                                isPassed ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {isPassed ? "Passed" : "Failed"}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-2 text-gray-600">
+                          <p className="text-sm">
+                            {quiz.description ||
+                              `This quiz contains ${quiz.sections.reduce((acc, section) => acc + section.questions.length, 0)} questions`}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 flex justify-between items-center">
+                          <div>
+                            <div className="text-sm text-gray-500">Total Points: {totalPoints}</div>
+                            {isCompleted && (
+                              <div className="mt-1 font-medium">
+                                Score: {quizScore.score}/{quizScore.totalPoints} ({quizScore.percentage}%)
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => handleStartQuiz(quiz)}
+                            className={`px-4 py-2 rounded-lg flex items-center ${
+                              isCompleted
+                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                : "bg-blue-600 text-white hover:bg-blue-700"
+                            }`}
+                          >
+                            {isCompleted ? (
+                              <>
+                                <FaEdit className="mr-2" /> Retake Quiz
+                              </>
+                            ) : (
+                              <>
+                                <FaClipboardList className="mr-2" /> Start Quiz
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Certificate Section - Always visible but locked if not completed */}
           <div className="mt-8 p-4 bg-gradient-to-r from-blue-900 to-purple-900 rounded-lg text-white">
             <div className="flex items-center justify-between">
@@ -764,4 +935,3 @@ const ModuleDisplay = () => {
 }
 
 export default ModuleDisplay
-

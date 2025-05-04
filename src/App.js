@@ -33,11 +33,22 @@ import ModuleViewer from "./Learner/LModuleView";
 import ModuleDisplay from "./Learner/LModules";
 import LProfile from "./Learner/LProfile";
 import UserDashboard from "./Learner/userdashboard";
+import QuizTaker from "./Learner/quiz-taker";
 
 // Create a wrapper component for the NavBar
 const NavBarWrapper = () => {
   const location = useLocation();
-  const showNavBar = ["/", "/login", "/signup"].includes(location.pathname);
+  const showNavBar = 
+  ["/", 
+    "/login",
+    "/signup",
+    "/user-dashboard",
+    "/chatroom",
+    "/lprofile",
+    "/lcourses",
+    "/certificates",
+    "/module-viewer",
+    "/quiz-taker", ].includes(location.pathname);
   return showNavBar ? <NavBar /> : null;
 };
 
@@ -71,7 +82,8 @@ function App() {
         <Route path="/lcourse/:courseId" element={<ModuleDisplay />} />
         <Route path="/lmodules/:courseId" element={<ModuleDisplay />} />
         <Route path="/certificates" element={<CertificatePage />} /> 
-        <Route path="/module-viewer" element={<ModuleViewer />} />     
+        <Route path="/module-viewer" element={<ModuleViewer />} />    
+        <Route path="/quiz-taker" element={<QuizTaker />} /> 
       </Routes>
     </Router>
   );

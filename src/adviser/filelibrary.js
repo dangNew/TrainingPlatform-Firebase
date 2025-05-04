@@ -90,14 +90,14 @@ const FileLibrary = () => {
 
         {/* File Library Content */}
         <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
-          <div className="p-8 bg-blue-100 rounded-lg shadow-lg mb-6">
+          <div className="p-6 bg-white rounded-lg shadow-md mb-6">
             <div className="flex items-center mb-4">
-              <FaFolder className="text-blue-500 text-4xl mr-4" />
-              <h1 className="text-4xl font-bold text-blue-600">File Library</h1>
+              <FaFolder className="text-blue-500 text-3xl mr-4" />
+              <h1 className="text-2xl font-bold text-blue-600">File Library</h1>
             </div>
             <button
               onClick={handleUpload}
-              className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition duration-300"
+              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300"
             >
               <FaUpload className="mr-2" /> Upload File
             </button>
@@ -109,14 +109,14 @@ const FileLibrary = () => {
               <input
                 type="text"
                 placeholder="Search files..."
-                className="w-full px-4 py-2 text-gray-900 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
+                className="w-full px-4 py-2 text-gray-900 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <BsSearch className="absolute top-3 right-4 text-gray-600" />
             </div>
             <button
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg flex items-center space-x-2 hover:bg-gray-700"
+              className="px-4 py-2 bg-gray-800 text-white rounded-md flex items-center space-x-2 hover:bg-gray-700"
               onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
             >
               {sortOrder === "asc" ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
@@ -130,16 +130,16 @@ const FileLibrary = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {sortedFiles.map((file) => (
-                <div key={file.id} className="relative">
+                <div key={file.id} className="relative bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition duration-300">
                   {/* Folder Item */}
                   <div
-                    className="bg-gray-200 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-300"
+                    className="flex items-center justify-between cursor-pointer"
                     onClick={() => window.open(file.fileURL, "_blank")}
                   >
                     <div className="flex items-center space-x-3">
-                      <FaFolder className="text-gray-600 text-3xl" />
+                      <FaFolder className="text-blue-500 text-2xl" />
                       <h3
-                        className="text-lg font-semibold text-gray-900 truncate w-40"
+                        className="text-md font-semibold text-gray-900 truncate w-40"
                         title={file.title} // Tooltip for full title
                       >
                         {file.title.length > 20 ? `${file.title.substring(0, 20)}...` : file.title}
@@ -159,7 +159,7 @@ const FileLibrary = () => {
 
                   {/* Dropdown Menu (Edit, Delete) */}
                   {menuOpen === file.id && (
-                    <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-lg z-10 border">
+                    <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md z-10 border">
                       <button
                         onClick={() => handleEdit(file)}
                         className="block w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"

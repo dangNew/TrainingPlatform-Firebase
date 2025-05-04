@@ -55,7 +55,7 @@ export default function Sidebar() {
       "/resources": "Resources",
       "/settings": "Settings",
       "/help": "Help",
-      "/chat": "Chat", // Add chat route
+      "/chatroom": "Chat", // Add chat route
     }
 
     // Ensure "Courses" stays active when navigating to a module

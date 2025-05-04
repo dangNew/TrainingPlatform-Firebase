@@ -1,65 +1,95 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, createContext, useContext } from "react";
 import {
-  FaBook,
   FaTachometerAlt,
-  FaUsers,
-  FaFileAlt,
-  FaUserCircle,
+  FaBook,
+  FaBookOpen,
+  FaComments,
+  FaFolder,
+  FaPlusCircle,
+  FaPuzzlePiece,
+  FaCalendarCheck,
   FaEnvelope,
   FaCog,
-  FaSignOutAlt,
   FaUserShield,
+  FaSignOutAlt,
   FaArrowUp,
   FaArrowDown,
+  FaBars
 } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { auth, db } from "../firebase.config"; // Ensure Firestore is imported
+import { auth, db } from "../firebase.config";
 import { doc, getDoc } from "firebase/firestore";
+
+const SidebarContext = createContext();
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const sidebarRef = useRef(null);
+  const [expanded, setExpanded] = useState(true);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
+  const [userData, setUserData] = useState({ fullName: "", email: "" });
+  const [activeItem, setActiveItem] = useState(() => {
+    return localStorage.getItem("activeItem") || "Dashboard";
+  });
 
   useEffect(() => {
-    const fetchUserEmail = async () => {
+    const fetchUserData = async () => {
       const user = auth.currentUser;
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
-          setUserEmail(userDocSnap.data().email);
+          setUserData(userDocSnap.data());
         }
       }
     };
 
-    fetchUserEmail();
+    fetchUserData();
   }, []);
 
+  useEffect(() => {
+    const routeToText = {
+      "/dashboard": "Dashboard",
+      "/courses": "Courses",
+      "/addcourse": "Add Course",
+      "/Achat": "Chat",
+      "/file-library": "File Library",
+      "/addmodule": "Add Module",
+      "/addquiz": "Quizzes",
+      "/attendance": "Attendance",
+      "/messages": "Messages",
+      "/settings": "Settings",
+      "/admin": "Admin",
+    };
+
+    setActiveItem(routeToText[location.pathname] || "Dashboard");
+  }, [location.pathname]);
+
+  useEffect(() => {
+    localStorage.setItem("activeItem", activeItem);
+  }, [activeItem]);
+
   const handleLogout = () => {
-    localStorage.removeItem("userToken");
-    navigate("/login");
+    auth.signOut().then(() => {
+      navigate("/login");
+    });
   };
 
-  // Scroll Up Function
   const scrollUp = () => {
     if (sidebarRef.current) {
       sidebarRef.current.scrollBy({ top: -100, behavior: "smooth" });
     }
   };
 
-  // Scroll Down Function
   const scrollDown = () => {
     if (sidebarRef.current) {
       sidebarRef.current.scrollBy({ top: 100, behavior: "smooth" });
     }
   };
 
-  // Check if scrolling is needed
   useEffect(() => {
     const handleScroll = () => {
       if (sidebarRef.current) {
@@ -84,67 +114,102 @@ const Sidebar = () => {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-64 bg-white text-blue-900 shadow-lg border-r-2 border-red-700">
-      {/* Profile Section */}
-      <div className="flex flex-col items-center p-6 border-b-2 border-red-700">
-        <div className="bg-blue-600 rounded-full w-20 h-20 flex items-center justify-center text-white text-2xl font-bold">
-          TA
-        </div>
-        <p className="mt-2 font-semibold text-blue-900">Training Academy</p>
-        <p className="text-sm text-gray-600">{userEmail}</p>
-        <Link to="/profile" className="text-red-900 text-sm hover:underline">
-          View Profile
-        </Link>
-      </div>
-
-      {/* Scroll Up Button */}
-      {canScrollUp && (
-        <button className="w-full py-2 text-red-700 hover:text-white hover:bg-red-700" onClick={scrollUp}>
-          <FaArrowUp className="mx-auto" />
-        </button>
-      )}
-
-      {/* Sidebar Menu */}
-      <div ref={sidebarRef} className="flex-grow overflow-y-auto p-4">
-        <ul className="space-y-2">
-          <SidebarItem to="/dashboard" icon={<FaTachometerAlt />} label="Dashboard" active={location.pathname === "/dashboard"} />
-          <SidebarItem to="/courses" icon={<FaBook />} label="Courses" active={location.pathname === "/courses"} />
-          <SidebarItem to="/addcourse" icon={<FaBook />} label="Add Course" active={location.pathname === "/addcourse"} />
-          <SidebarItem to="/Achat" icon={<FaBook />} label="Chat" active={location.pathname === "/Achat"} />
-          <SidebarItem to="/file-library" icon={<FaFileAlt />} label="File Library" active={location.pathname === "/file-library"} />
-          <SidebarItem to="/addmodule" icon={<FaFileAlt />} label="Add Module" active={location.pathname === "/addmodule"} />
-          <SidebarItem to="/addquiz" icon={<FaUsers />} label="Quizzes" active={location.pathname === "/addquiz"} />
-          <SidebarItem to="/attendance" icon={<FaUserCircle />} label="Attendance" active={location.pathname === "/attendance"} />
-          <SidebarItem to="/messages" icon={<FaEnvelope />} label="Messages" active={location.pathname === "/messages"} />
-          <SidebarItem to="/settings" icon={<FaCog />} label="Settings" active={location.pathname === "/settings"} />
-          <SidebarItem to="/admin" icon={<FaUserShield />} label="Admin" active={location.pathname === "/admin"} />
-
-          {/* Logout Button */}
-          <li className="p-2 rounded-md bg-red-700 text-white hover:bg-red-600 cursor-pointer" onClick={handleLogout}>
-            <div className="flex items-center space-x-2">
-              <FaSignOutAlt /> <span>Logout</span>
+    <SidebarContext.Provider value={{ expanded, activeItem, setActiveItem }}>
+      <div className="flex">
+        <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
+          <nav className="h-full flex flex-col bg-blue-950 border-r shadow-sm text-gray-200">
+            <div className="p-4 pb-2 flex justify-between items-center">
+              <button
+                onClick={() => setExpanded((curr) => !curr)}
+                className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600"
+              >
+                <FaBars className="text-gray-200" size={32} />
+              </button>
             </div>
-          </li>
-        </ul>
-      </div>
 
-      {/* Scroll Down Button */}
-      {canScrollDown && (
-        <button className="w-full py-2 text-red-700 hover:text-white hover:bg-red-700" onClick={scrollDown}>
-          <FaArrowDown className="mx-auto" />
-        </button>
-      )}
-    </div>
+            <Link to="/profile" className="flex flex-col items-center p-3">
+              <div className={`rounded-full overflow-hidden ${expanded ? "w-24 h-24" : "w-12 h-12"}`}>
+                <img
+                  src={userData.photoURL || "/placeholder.svg"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className={`text-center ${expanded ? "block" : "hidden"}`}>
+                <h4 className="font-bold text-lg text-gray-200">{userData.fullName}</h4>
+                <span className="text-sm text-gray-400">{userData.email}</span>
+              </div>
+            </Link>
+
+            <hr className="my-3 border-gray-700" />
+
+            {canScrollUp && (
+              <button className="w-full py-2 text-gray-200 hover:text-white hover:bg-gray-700" onClick={scrollUp}>
+                <FaArrowUp className="mx-auto" />
+              </button>
+            )}
+
+            <div ref={sidebarRef} className="flex-grow overflow-y-auto p-4">
+              <ul className="space-y-2">
+                <SidebarItem icon={<FaTachometerAlt size={24} />} text="Dashboard" route="/dashboard" />
+                <SidebarItem icon={<FaBook size={24} />} text="Courses" route="/courses" />
+                <SidebarItem icon={<FaBookOpen size={24} />} text="Add Course" route="/addcourse" />
+                <SidebarItem icon={<FaComments size={24} />} text="Chat" route="/Achat" />
+                <SidebarItem icon={<FaFolder size={24} />} text="File Library" route="/file-library" />
+                <SidebarItem icon={<FaPlusCircle size={24} />} text="Add Module" route="/addmodule" />
+                <SidebarItem icon={<FaPuzzlePiece size={24} />} text="Quizzes" route="/addquiz" />
+                <SidebarItem icon={<FaCalendarCheck size={24} />} text="Attendance" route="/attendance" />
+                <SidebarItem icon={<FaEnvelope size={24} />} text="Messages" route="/messages" />
+                <SidebarItem icon={<FaCog size={24} />} text="Settings" route="/settings" />
+                <SidebarItem icon={<FaUserShield size={24} />} text="Admin" route="/admin" />
+
+                <li
+                  onClick={handleLogout}
+                  className="p-2 rounded-md bg-red-700 text-white hover:bg-red-600 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-2">
+                    <FaSignOutAlt /> <span>Logout</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {canScrollDown && (
+              <button className="w-full py-2 text-gray-200 hover:text-white hover:bg-gray-700" onClick={scrollDown}>
+                <FaArrowDown className="mx-auto" />
+              </button>
+            )}
+          </nav>
+        </aside>
+        <main className={`transition-all ${expanded ? "ml-64" : "ml-16"}`}>{/* Main content goes here */}</main>
+      </div>
+    </SidebarContext.Provider>
   );
 };
 
-// Sidebar Item Component
-const SidebarItem = ({ to, icon, label, active }) => {
+const SidebarItem = ({ icon, text, route }) => {
+  const { expanded, activeItem, setActiveItem } = useContext(SidebarContext);
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    setActiveItem(text);
+    localStorage.setItem("activeItem", text);
+    if (route) {
+      navigate(route);
+    }
+  };
+
   return (
-    <li className={`p-2 rounded-md ${active ? "bg-red-700 text-white" : "hover:bg-gray-200 hover:text-red-700"}`}>
-      <Link to={to} className="flex items-center space-x-2">
-        {icon} <span>{label}</span>
-      </Link>
+    <li
+      onClick={handleClick}
+      className={`relative flex items-center py-1 px-2 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
+        activeItem === text
+          ? "bg-gradient-to-tr from-yellow-200 to-yellow-100 text-yellow-800"
+          : "hover:bg-yellow-50 text-gray-200"
+      }`}
+    >
+      {icon}
+      <span className={`overflow-hidden transition-all ${expanded ? "w-40 ml-3 text-sm" : "w-0"}`}>{text}</span>
     </li>
   );
 };

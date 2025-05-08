@@ -13,7 +13,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
 import {
   FaCertificate,
@@ -25,26 +25,31 @@ import {
   FaTrophy,
   FaClipboardList,
   FaEdit,
+  FaEye,
 } from "react-icons/fa"
 import { useNavigate, useParams } from "react-router-dom"
 import styled from "styled-components"
 import Sidebar from "../components/LSidebar"
 import { auth, db } from "../firebase.config"
 import CertificateImage from "./certificate-image"
+import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+
 
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
-  background-color: #fff;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  margin-left: 10px;
-`
+  transition: margin-left 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
 
 const ModuleDisplay = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
+    const { expanded } = useContext(SidebarToggleContext);
   const [user] = useAuthState(auth)
   const [modules, setModules] = useState([])
   const [courseData, setCourseData] = useState(null)
@@ -54,6 +59,7 @@ const ModuleDisplay = () => {
   const [loading, setLoading] = useState(true)
   const [quizzes, setQuizzes] = useState([])
   const [quizScores, setQuizScores] = useState({})
+  const [quizAttempts, setQuizAttempts] = useState({}) // Track quiz attempts
 
   // Add state variables for certificate functionality
   const [showCertificateAlert, setShowCertificateAlert] = useState(false)
@@ -126,11 +132,12 @@ const ModuleDisplay = () => {
       }
     }
 
-    // Fetch quiz scores for the user
+    // Fetch quiz scores and attempts for the user
     const fetchQuizScores = async () => {
       if (!user) return
 
       try {
+        // Get quiz scores
         const scoresCollection = collection(db, "learner", user.uid, "quizScores")
         const scoresQuery = query(scoresCollection, where("courseId", "==", courseId))
         const querySnapshot = await getDocs(scoresQuery)
@@ -146,10 +153,24 @@ const ModuleDisplay = () => {
             passed: data.passed,
           }
         })
-
         setQuizScores(scoresData)
+
+        // Get quiz attempts
+        const attemptsCollection = collection(db, "learner", user.uid, "course score")
+        const attemptsQuery = query(attemptsCollection, where("courseId", "==", courseId))
+        const attemptsSnapshot = await getDocs(attemptsQuery)
+
+        const attemptsData = {}
+        attemptsSnapshot.docs.forEach((doc) => {
+          const data = doc.data()
+          if (!attemptsData[data.quizId]) {
+            attemptsData[data.quizId] = 0
+          }
+          attemptsData[data.quizId]++
+        })
+        setQuizAttempts(attemptsData)
       } catch (error) {
-        console.error("Error fetching quiz scores:", error)
+        console.error("Error fetching quiz scores and attempts:", error)
       }
     }
 
@@ -324,7 +345,9 @@ const ModuleDisplay = () => {
 
   const handleStartQuiz = (quiz) => {
     // Navigate to quiz-taker page with the necessary parameters
-    navigate(`/quiz-taker?courseId=${courseId}&quizId=${quiz.id}`)
+    const hasRetaken = quizAttempts[quiz.id] >= 1
+    const mode = hasRetaken ? "review" : "take"
+    navigate(`/quiz-taker?courseId=${courseId}&quizId=${quiz.id}&mode=${mode}`)
   }
 
   const isModuleUnlocked = (moduleId, index) => {
@@ -421,7 +444,6 @@ const ModuleDisplay = () => {
   if (loading) {
     return (
       <div className="flex h-screen">
-        <Sidebar />
         <MainContent>
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -435,7 +457,7 @@ const ModuleDisplay = () => {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <MainContent>
+        <MainContent >
           <div className="text-center p-8">
             <h2 className="text-xl font-semibold">No modules found for this course</h2>
             <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
@@ -483,9 +505,11 @@ const ModuleDisplay = () => {
       {/* Add the styles */}
       <style dangerouslySetInnerHTML={{ __html: styles }} />
 
+
+
       <div className="flex h-screen">
         <Sidebar />
-        <MainContent>
+        <MainContent expanded={expanded}>
           {/* Header with Background Image */}
           <div
             className="h-48 bg-cover bg-center mb-6 relative rounded-xl overflow-hidden"
@@ -493,7 +517,7 @@ const ModuleDisplay = () => {
           >
             {/* Back Button */}
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/lcourses")}
               className="absolute top-4 left-4 bg-white bg-opacity-30 backdrop-blur-md text-white px-4 py-2 rounded-lg shadow-md hover:bg-opacity-40 transition"
             >
               ← Back
@@ -646,6 +670,7 @@ const ModuleDisplay = () => {
                   const totalPoints = calculateTotalPoints(quiz)
                   const isCompleted = !!quizScore
                   const isPassed = quizScore?.passed
+                  const hasRetaken = quizAttempts[quiz.id] >= 1
 
                   return (
                     <div
@@ -689,14 +714,22 @@ const ModuleDisplay = () => {
                             onClick={() => handleStartQuiz(quiz)}
                             className={`px-4 py-2 rounded-lg flex items-center ${
                               isCompleted
-                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                ? hasRetaken
+                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                  : "bg-blue-600 text-white hover:bg-blue-700"
                                 : "bg-blue-600 text-white hover:bg-blue-700"
                             }`}
                           >
                             {isCompleted ? (
-                              <>
-                                <FaEdit className="mr-2" /> Retake Quiz
-                              </>
+                              hasRetaken ? (
+                                <>
+                                  <FaEye className="mr-2" /> Review Quiz
+                                </>
+                              ) : (
+                                <>
+                                  <FaEdit className="mr-2" /> Retake Quiz
+                                </>
+                              )
                             ) : (
                               <>
                                 <FaClipboardList className="mr-2" /> Start Quiz

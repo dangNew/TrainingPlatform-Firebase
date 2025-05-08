@@ -34,41 +34,44 @@ function Login() {
     e.preventDefault();
     setLoading(true);
     setError("");
+  
     try {
-      // Sign in with Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Check if the user exists in the 'users' collection
+  
+      // Check if user exists in 'users'
       const usersRef = collection(db, "users");
       const qUsers = query(usersRef, where("email", "==", email));
-      const querySnapshotUsers = await getDocs(qUsers);
-
-      if (!querySnapshotUsers.empty) {
-        navigate("/dashboard"); // Redirect to Dashboard
+      const usersSnapshot = await getDocs(qUsers);
+  
+      if (!usersSnapshot.empty) {
+        navigate("/dashboard");
         return;
       }
-
-      // Check if the user exists in the 'learner' collection
+  
+      // Check if user exists in 'learner'
       const learnersRef = collection(db, "learner");
       const qLearners = query(learnersRef, where("email", "==", email));
-      const querySnapshotLearners = await getDocs(qLearners);
-
-      if (!querySnapshotLearners.empty) {
-        navigate("/user-dashboard"); // Redirect to User Dashboard
+      const learnersSnapshot = await getDocs(qLearners);
+  
+      if (!learnersSnapshot.empty) {
+        navigate("/user-dashboard");
         return;
       }
-
+  
+      // Check if user exists in 'intern'
+      const internRef = collection(db, "intern");
+      const qIntern = query(internRef, where("email", "==", email));
+      const internSnapshot = await getDocs(qIntern);
+  
+      if (!internSnapshot.empty) {
+        navigate("/user-dashboard");
+        return;
+      }
+  
       setError("User not found. Please check your email and password.");
     } catch (err) {
-      if (
-        err.code === "auth/invalid-email" ||
-        err.code === "auth/user-not-found"
-      ) {
+      if (err.code === "auth/invalid-email" || err.code === "auth/user-not-found") {
         setError("Invalid email address. Please check your email.");
       } else if (err.code === "auth/wrong-password") {
         setError("Incorrect password. Please try again.");
@@ -80,6 +83,7 @@ function Login() {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">

@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 import React, { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import logo from "../assets/Logo-removebg-preview.png"; // Adjust the path as necessary
+=======
+import React from "react";
+import { Link } from "react-router-dom";
+import logo from "../assets/logo2.png"; // Adjust the path as necessary
+>>>>>>> 504e5c7 (Updated sidebar and more)
 
 const Header = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);

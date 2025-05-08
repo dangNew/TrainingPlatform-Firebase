@@ -1,24 +1,29 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { auth, db } from "../firebase.config"
 import { FaBook, FaCheckCircle, FaClock, FaGraduationCap, FaMedal, FaUser } from "react-icons/fa"
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
-
-// At the top of the file, add these imports
 import styled from "styled-components"
-import Sidebar from "../components/LSidebar" // Adjust the import path as needed
+import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
+import Sidebar from "../components/LSidebar" // Import the sidebar component
 
-// Add the MainContent styled component
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  margin-left: 10px;
+  transition: margin-left 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`
+
+const SidebarWrapper = styled.div`
+  height: 100%;
+  z-index: 5;
 `
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
@@ -26,6 +31,7 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 const LearnerDashboard = () => {
   const [user, loading] = useAuthState(auth)
   const [learnerData, setLearnerData] = useState(null)
+  const [userCollection, setUserCollection] = useState(null) // 'learner' or 'intern'
   const [courses, setCourses] = useState([])
   const [progress, setProgress] = useState({})
   const [history, setHistory] = useState([])
@@ -41,24 +47,36 @@ const LearnerDashboard = () => {
   })
   const [dashboardLoading, setDashboardLoading] = useState(true)
 
+  // Use the expanded state from the context
+  const { expanded } = useContext(SidebarToggleContext)
+
   // Fetch learner data
   useEffect(() => {
     if (!user) return
 
-    const fetchLearnerData = async () => {
+    const fetchUserData = async () => {
       try {
         const learnerRef = doc(db, "learner", user.uid)
         const learnerSnap = await getDoc(learnerRef)
 
         if (learnerSnap.exists()) {
           setLearnerData(learnerSnap.data())
+          setUserCollection("learner")
+        } else {
+          const internRef = doc(db, "intern", user.uid)
+          const internSnap = await getDoc(internRef)
+
+          if (internSnap.exists()) {
+            setLearnerData(internSnap.data())
+            setUserCollection("intern")
+          }
         }
       } catch (error) {
-        console.error("Error fetching learner data:", error)
+        console.error("Error fetching user data:", error)
       }
     }
 
-    fetchLearnerData()
+    fetchUserData()
   }, [user])
 
   // Subscribe to real-time updates for courses
@@ -79,49 +97,70 @@ const LearnerDashboard = () => {
 
   // Subscribe to real-time updates for learner progress
   useEffect(() => {
-    if (!user) return
+    if (!user || !userCollection) return
 
-    const progressCollection = collection(db, "learner", user.uid, "progress")
-    const unsubscribeProgress = onSnapshot(progressCollection, (snapshot) => {
-      const progressData = {}
-      snapshot.docs.forEach((doc) => {
-        progressData[doc.id] = doc.data()
-      })
-      setProgress(progressData)
-    })
+    const progressCollection = collection(db, userCollection, user.uid, "progress")
+    const unsubscribeProgress = onSnapshot(
+      progressCollection,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setProgress({}) // Set to empty object instead of null
+          return
+        }
+
+        const progressData = {}
+        snapshot.docs.forEach((doc) => {
+          progressData[doc.id] = doc.data()
+        })
+        setProgress(progressData)
+      },
+      (error) => {
+        console.error("Error fetching progress:", error)
+        setProgress({}) // Set to empty object on error
+      },
+    )
 
     return () => unsubscribeProgress()
-  }, [user])
+  }, [user, userCollection])
 
   // Subscribe to real-time updates for learner history
   useEffect(() => {
-    if (!user) return
+    if (!user || !userCollection) return
 
-    const historyCollection = collection(db, "learner", user.uid, "history")
-    const unsubscribeHistory = onSnapshot(historyCollection, (snapshot) => {
-      const historyData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+    const historyCollection = collection(db, userCollection, user.uid, "history")
+    const unsubscribeHistory = onSnapshot(
+      historyCollection,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setHistory([]) // Set to empty array instead of null
+          setRecentActivities([]) // Clear recent activities
+          return
+        }
 
-      // Sort by completion date (newest first)
-      historyData.sort((a, b) => {
-        return b.completedAt?.toDate() - a.completedAt?.toDate()
-      })
+        const historyData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
 
-      setHistory(historyData)
+        historyData.sort((a, b) => b.completedAt?.toDate() - a.completedAt?.toDate())
 
-      // Set recent activities based on history
-      const recentActivitiesData = historyData.slice(0, 5).map((item) => ({
-        ...item,
-        type: "module_completion",
-      }))
-
-      setRecentActivities(recentActivitiesData)
-    })
+        setHistory(historyData)
+        setRecentActivities(
+          historyData.slice(0, 5).map((item) => ({
+            ...item,
+            type: "module_completion",
+          })),
+        )
+      },
+      (error) => {
+        console.error("Error fetching history:", error)
+        setHistory([]) // Set to empty array on error
+        setRecentActivities([])
+      },
+    )
 
     return () => unsubscribeHistory()
-  }, [user])
+  }, [user, userCollection])
 
   // Fetch certificates
   useEffect(() => {
@@ -143,7 +182,13 @@ const LearnerDashboard = () => {
 
   // Calculate statistics
   useEffect(() => {
-    if (!courses.length || !Object.keys(progress).length) return
+    if (!courses.length) {
+      setDashboardLoading(false)
+      return
+    }
+
+    // Ensure progress is an object and not null/undefined
+    const progressData = progress || {}
 
     const totalCourses = courses.length
     let completedCourses = 0
@@ -152,7 +197,7 @@ const LearnerDashboard = () => {
     let completedModules = 0
 
     courses.forEach((course) => {
-      const courseProgress = progress[course.id]
+      const courseProgress = progressData[course.id]
 
       if (!courseProgress) {
         return
@@ -202,7 +247,7 @@ const LearnerDashboard = () => {
   // Calculate course progress percentage
   const calculateCourseProgress = (courseId) => {
     const course = courses.find((c) => c.id === courseId)
-    const courseProgress = progress[courseId]
+    const courseProgress = progress && progress[courseId]
 
     if (!course || !courseProgress) return 0
 
@@ -269,10 +314,16 @@ const LearnerDashboard = () => {
     )
   }
 
+  // Check if progress and history exist
+  const hasProgress = progress && Object.keys(progress).length > 0
+  const hasHistory = history && history.length > 0
+
   return (
     <div className="min-h-screen bg-white text-gray-800 flex">
-      <Sidebar />
-      <MainContent>
+      <SidebarWrapper>
+        <Sidebar />
+      </SidebarWrapper>
+      <MainContent expanded={expanded}>
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div className="flex items-center mb-4 md:mb-0">
@@ -292,6 +343,11 @@ const LearnerDashboard = () => {
                 Welcome, {learnerData?.fullName || user.email?.split("@")[0] || "Learner"}
               </h1>
               <p className="text-gray-500">{learnerData?.email || user.email}</p>
+              {userCollection && (
+                <p className="text-sm text-blue-600 mt-1">
+                  Account Type: {userCollection.charAt(0).toUpperCase() + userCollection.slice(1)}
+                </p>
+              )}
             </div>
           </div>
           <div className="bg-blue-900 px-4 py-2 rounded-lg text-white shadow-md">
@@ -309,20 +365,24 @@ const LearnerDashboard = () => {
               <FaBook className="text-blue-500 text-2xl mr-3" />
               <h2 className="text-xl font-semibold">Course Progress</h2>
             </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-3xl font-bold">{stats.completedCourses}</p>
-                <p className="text-gray-500">Completed</p>
+            {hasProgress ? (
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-3xl font-bold">{stats.completedCourses}</p>
+                  <p className="text-gray-500">Completed</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold">{stats.inProgressCourses}</p>
+                  <p className="text-gray-500">In Progress</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold">{stats.totalCourses}</p>
+                  <p className="text-gray-500">Total</p>
+                </div>
               </div>
-              <div>
-                <p className="text-3xl font-bold">{stats.inProgressCourses}</p>
-                <p className="text-gray-500">In Progress</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold">{stats.totalCourses}</p>
-                <p className="text-gray-500">Total</p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-gray-500">No progress data available.</p>
+            )}
           </div>
 
           <div className="bg-gray-200 rounded-xl p-6 shadow-lg">
@@ -330,20 +390,24 @@ const LearnerDashboard = () => {
               <FaCheckCircle className="text-green-500 text-2xl mr-3" />
               <h2 className="text-xl font-semibold">Module Completion</h2>
             </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-3xl font-bold">{stats.completedModules}</p>
-                <p className="text-gray-500">Completed</p>
+            {hasProgress ? (
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-3xl font-bold">{stats.completedModules}</p>
+                  <p className="text-gray-500">Completed</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold">{stats.totalModules - stats.completedModules}</p>
+                  <p className="text-gray-500">Remaining</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-bold">{stats.totalModules}</p>
+                  <p className="text-gray-500">Total</p>
+                </div>
               </div>
-              <div>
-                <p className="text-3xl font-bold">{stats.totalModules - stats.completedModules}</p>
-                <p className="text-gray-500">Remaining</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold">{stats.totalModules}</p>
-                <p className="text-gray-500">Total</p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-gray-500">No module completion data available.</p>
+            )}
           </div>
 
           <div className="bg-gray-200 rounded-xl p-6 shadow-lg">
@@ -369,72 +433,90 @@ const LearnerDashboard = () => {
           {/* Course Progress Chart */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Course Progress</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={prepareProgressChartData()}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {prepareProgressChartData().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {hasProgress ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={prepareProgressChartData()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {prepareProgressChartData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">No course progress data available.</p>
+              </div>
+            )}
           </div>
 
           {/* Module Completion Chart */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Module Completion</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={prepareModuleChartData()}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {prepareModuleChartData().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {hasProgress ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={prepareModuleChartData()}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {prepareModuleChartData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">No module completion data available.</p>
+              </div>
+            )}
           </div>
 
           {/* Course Progress Bar Chart */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Top Courses Progress</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={prepareCourseProgressData()}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip formatter={(value) => [`${value}%`, "Progress"]} />
-                  <Bar dataKey="progress" fill="#00C49F" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {hasProgress && courses.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={prepareCourseProgressData()}
+                    layout="vertical"
+                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <XAxis type="number" domain={[0, 100]} />
+                    <YAxis dataKey="name" type="category" width={100} />
+                    <Tooltip formatter={(value) => [`${value}%`, "Progress"]} />
+                    <Bar dataKey="progress" fill="#00C49F" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">No course progress data available.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -446,7 +528,7 @@ const LearnerDashboard = () => {
               <FaClock className="text-blue-500 text-xl mr-3" />
               <h2 className="text-xl font-semibold">Recent Activity</h2>
             </div>
-            {recentActivities.length > 0 ? (
+            {hasHistory ? (
               <ul className="space-y-4">
                 {recentActivities.map((activity) => (
                   <li key={activity.id} className="border-l-2 border-blue-500 pl-4 py-1">
@@ -475,7 +557,9 @@ const LearnerDashboard = () => {
                     <li key={course.id} className="border-b border-gray-200 pb-3 last:border-0">
                       <div className="flex justify-between items-center mb-1">
                         <p className="font-medium">{course.title}</p>
-                        <span className="text-sm bg-blue-900 px-2 py-1 rounded">{progressPercent}% Complete</span>
+                        <span className="text-sm bg-blue-900 px-2 py-1 rounded text-white">
+                          {progressPercent}% Complete
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${progressPercent}%` }}></div>
@@ -525,7 +609,7 @@ const LearnerDashboard = () => {
                   </p>
                   <button
                     onClick={() => (window.location.href = `/certificates/${certificate.id}`)}
-                    className="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded transition-colors"
+                    className="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded transition-colors text-white"
                   >
                     View Certificate
                   </button>

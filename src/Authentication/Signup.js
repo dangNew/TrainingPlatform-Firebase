@@ -119,9 +119,9 @@ function SignUp() {
                 },
                 {
                   role: "learner",
-                  title: "Learner",
+                  title: "Applicant",
                   description:
-                    "Join as a learner to access educational content",
+                    "Join as a applicant to access educational content",
                 },
                 {
                   role: "intern",

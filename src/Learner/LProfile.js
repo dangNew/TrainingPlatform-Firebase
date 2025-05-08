@@ -1,23 +1,31 @@
 "use client"
 
 import { collection, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
 import styled from "styled-components"
-import Sidebar from "../components/LSidebar"
 import { auth, db } from "../firebase.config"
 import uploadToCloudinary from "../uploadToCloudinary"
 import ProfileHistory from "./profile-history"
 import ProfileProgress from "./profile-progress"
+import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+import Sidebar from "../components/LSidebar"
+
 
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
-  background-color: #fff;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  margin-left: 10px;
+  transition: margin-left 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
+
+const SidebarWrapper = styled.div`
+  height: 100%;
+  z-index: 5;
 `
 
 function Profile() {
@@ -34,6 +42,7 @@ function Profile() {
   const [newProfileImage, setNewProfileImage] = useState(null)
   const [activeTab, setActiveTab] = useState("Personal Info")
   const [loading, setLoading] = useState(false)
+    const { expanded } = useContext(SidebarToggleContext);
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
   const [comments, setComments] = useState([])
 
@@ -122,8 +131,10 @@ function Profile() {
 
   return (
     <div className="flex h-screen">
-      <Sidebar />
-      <MainContent>
+      <SidebarWrapper>
+                              <Sidebar />
+                            </SidebarWrapper>
+      <MainContent expanded={expanded}>
         <div className="absolute -left-16 -top-16 h-32 w-32 rounded-full from-indigo-500/20 to-purple-500/0 blur-2xl" />
         <div className="absolute -right-16 -bottom-16 h-32 w-32 rounded-full from-purple-500/20 to-indigo-500/0 blur-2xl" />
 

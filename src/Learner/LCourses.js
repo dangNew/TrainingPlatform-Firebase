@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useContext } from "react"
 import { db } from "../firebase.config"
 import { collection, getDocs } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../components/LSidebar"
 import styled from "styled-components"
+import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+
 
 // Styled Components
 const PageContainer = styled.div`
@@ -30,23 +32,16 @@ const SidebarWrapper = styled.div`
   z-index: 5;
 `
 
-const MainContent = styled.div.attrs(({ isSidebarOpen }) => ({
-  style: {
-    marginLeft: isSidebarOpen ? "10px" : "240px",
-    width: `calc(100% - ${isSidebarOpen ? "60px" : "240px"})`,
-  },
-}))`
-  padding: 2rem;
-  background-color: #f9f9f9;
-  transition: margin-left 0.3s ease, width 0.3s ease;
+const MainContent = styled.div`
   flex: 1;
-  overflow-y: auto;
-  height: 100%;
+  padding: 2rem;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  background-color: #fff;
-  margin-left: 10px;
-`
+  overflow-y: auto;
+  transition: margin-left 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
 
 const CourseTitle = styled.h1`
   font-size: 24px;
@@ -167,6 +162,7 @@ const FilterOptions = styled.div`
 
 const CourseCards = () => {
   const [courseData, setCourseData] = useState([])
+  const { expanded } = useContext(SidebarToggleContext);
   const [expandedCourse, setExpandedCourse] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -238,7 +234,7 @@ const CourseCards = () => {
         <SidebarWrapper>
           <Sidebar />
         </SidebarWrapper>
-        <MainContent isSidebarOpen={true}>
+        <MainContent expanded={expanded}>
           <CourseTitle>Courses</CourseTitle>
           <div className="flex justify-between mb-4">
             {/* Dropdown for Course Categories */}

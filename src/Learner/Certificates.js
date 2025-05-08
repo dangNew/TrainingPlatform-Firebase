@@ -3,12 +3,14 @@
 import { collection, deleteDoc, doc, getDocs, query, where } from "firebase/firestore"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useContext } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { FaCertificate, FaDownload, FaEye, FaTrash } from "react-icons/fa"
 import styled from "styled-components"
 import Sidebar from "../components/LSidebar"
 import { auth, db } from "../firebase.config"
+import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+
 
 const PageContainer = styled.div`
   display: flex;
@@ -18,17 +20,19 @@ const PageContainer = styled.div`
 
 const SidebarWrapper = styled.div`
   height: 100%;
+  z-index: 5;
 `
 
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
-  background-color: #fff;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  margin-left: 10px;
-`
+  transition: margin-left 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
 
 const Title = styled.h1`
   font-size: 24px;
@@ -115,6 +119,7 @@ const EmptyState = styled.div`
 
 const CertificatePage = () => {
   const [user] = useAuthState(auth)
+  const { expanded } = useContext(SidebarToggleContext);
   const [certificates, setCertificates] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCertificate, setSelectedCertificate] = useState(null)
@@ -322,7 +327,7 @@ const CertificatePage = () => {
         <SidebarWrapper>
           <Sidebar />
         </SidebarWrapper>
-        <MainContent>
+        <MainContent expanded={expanded}>
           <Title>Certificates</Title>
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -337,7 +342,7 @@ const CertificatePage = () => {
       <SidebarWrapper>
         <Sidebar />
       </SidebarWrapper>
-      <MainContent>
+      <MainContent expanded={expanded}>
         <Title>Certificates</Title>
 
         {/* Refresh button */}

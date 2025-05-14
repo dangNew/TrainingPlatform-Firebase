@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useContext } from "react"
 import { db } from "../firebase.config"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, doc, getDoc } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../components/LSidebar"
 import styled from "styled-components"
-import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
-
+import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
+import { auth } from "../firebase.config" // Make sure auth is exported from your firebase.config
 
 // Styled Components
 const PageContainer = styled.div`
@@ -41,7 +41,7 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`;
+`
 
 const CourseTitle = styled.h1`
   font-size: 24px;
@@ -162,26 +162,97 @@ const FilterOptions = styled.div`
 
 const CourseCards = () => {
   const [courseData, setCourseData] = useState([])
-  const { expanded } = useContext(SidebarToggleContext);
+  const { expanded } = useContext(SidebarToggleContext)
   const [expandedCourse, setExpandedCourse] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [categories, setCategories] = useState([])
   const navigate = useNavigate()
+  const [userType, setUserType] = useState(null)
+  const [loading, setLoading] = useState(true) // Add loading state
+
+  // Add the animation styles
+  const styles = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-pulse {
+    animation: pulse 1.5s infinite;
+  }
+  `
 
   useEffect(() => {
-    const fetchData = async () => {
-      const querySnapshot = await getDocs(collection(db, "courses"))
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      setCourseData(data)
+    const checkUserTypeAndFetchCourses = async () => {
+      try {
+        setLoading(true) // Set loading to true when starting to fetch data
 
-      // Extract unique categories
-      const uniqueCategories = [...new Set(data.map((course) => course.category))]
-      setCategories(uniqueCategories)
+        // Get current user
+        const user = auth.currentUser
+        if (!user) {
+          console.error("No user is logged in")
+          setLoading(false) // Set loading to false if no user
+          return
+        }
+
+        // Check if user exists in learner collection
+        const learnerDocRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerDocRef)
+
+        // Check if user exists in intern collection
+        const internDocRef = doc(db, "intern", user.uid)
+        const internDoc = await getDoc(internDocRef)
+
+        let collectionName = "courses" // Default collection
+
+        if (learnerDoc.exists()) {
+          setUserType("learner")
+          collectionName = "courses"
+        } else if (internDoc.exists()) {
+          setUserType("intern")
+          collectionName = "Intern_Course"
+        } else {
+          console.warn("User not found in either learner or intern collection")
+        }
+
+        // Fetch courses from the appropriate collection
+        const querySnapshot = await getDocs(collection(db, collectionName))
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setCourseData(data)
+
+        // Extract unique categories
+        const uniqueCategories = [...new Set(data.map((course) => course.category).filter(Boolean))]
+        setCategories(uniqueCategories)
+
+        setLoading(false) // Set loading to false after data is fetched
+      } catch (error) {
+        console.error("Error checking user type or fetching courses:", error)
+        setLoading(false) // Set loading to false in case of error
+      }
     }
 
-    fetchData()
+    checkUserTypeAndFetchCourses()
   }, [])
 
   // Helper function to get the image URL from the course data
@@ -198,10 +269,6 @@ const CourseCards = () => {
 
     // Fallback to a placeholder image
     return "/placeholder.svg?height=150&width=300"
-  }
-
-  if (!courseData.length) {
-    return <div>Loading...</div>
   }
 
   const hasCourseStarted = (courseId) => {
@@ -227,15 +294,57 @@ const CourseCards = () => {
       (selectedCategory === "all" || course.category === selectedCategory),
   )
 
+  // Show loading spinner while data is being fetched
+  if (loading) {
+    return (
+      <PageContainer>
+        <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
+        <ContentContainer>
+          <SidebarWrapper>
+            <Sidebar />
+          </SidebarWrapper>
+          <MainContent expanded={expanded}>
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          </MainContent>
+        </ContentContainer>
+      </PageContainer>
+    )
+  }
+
+  // Show message if no courses are found
+  if (!courseData.length) {
+    return (
+      <PageContainer>
+        <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
+        <ContentContainer>
+          <SidebarWrapper>
+            <Sidebar />
+          </SidebarWrapper>
+          <MainContent expanded={expanded}>
+            <div className="text-center p-8">
+              <h2 className="text-xl font-semibold">No courses found</h2>
+              <p className="mt-2 text-gray-600">Try changing your search criteria or check back later.</p>
+            </div>
+          </MainContent>
+        </ContentContainer>
+      </PageContainer>
+    )
+  }
+
   return (
     <PageContainer>
+      {/* Add the styles */}
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
+
       <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper>
           <Sidebar />
         </SidebarWrapper>
         <MainContent expanded={expanded}>
-          <CourseTitle>Courses</CourseTitle>
+          <CourseTitle>Courses {userType && `(${userType === "intern" ? "Intern" : "Learner"})`}</CourseTitle>
           <div className="flex justify-between mb-4">
             {/* Dropdown for Course Categories */}
             <div className="relative w-48 bg-gray-100 rounded-2xl shadow-md p-1 transition-all duration-150 ease-in-out hover:scale-105 hover:shadow-lg">
@@ -308,42 +417,41 @@ const CourseCards = () => {
               </button>
             </div>
           </div>
-          <CourseGrid>
-            {filteredCourses.map((course) => (
-              <CourseCard key={course.id} onClick={() => handleButtonClick(course.id)}>
-                <CourseImage
-                  src={getCourseImageUrl(course)}
-                  alt={course.title}
-                  onError={(e) => {
-                    e.target.onerror = null
-                    e.target.src = "/placeholder.svg?height=150&width=300"
-                  }}
-                />
-                <CourseDetails>
-                  <CourseTitleCard>{course.title}</CourseTitleCard>
-                  <CourseCategory>{course.category}</CourseCategory>
-                  <CourseDescription>
-                    {expandedCourse === course.id ? (
-                      <>
-                        {course.description}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleDescription(course.id)
-                          }}
-                          className="text-blue-500 mt-2 ml-2"
-                        >
-                          Show Less
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {course.description
-                          ? course.description.length > 100
-                            ? `${course.description.slice(0, 100)}...`
-                            : course.description
-                          : "No description available"}
-                        {course.description && course.description.length > 100 && (
+
+          {/* Show message if no filtered courses */}
+          {filteredCourses.length === 0 ? (
+            <div className="text-center p-8 bg-white rounded-lg shadow-md animate-fadeIn">
+              <h3 className="text-lg font-semibold text-gray-700">No courses match your search</h3>
+              <p className="mt-2 text-gray-600">Try adjusting your search or filter criteria</p>
+              <button
+                onClick={() => {
+                  setSearchTerm("")
+                  setSelectedCategory("all")
+                }}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <CourseGrid>
+              {filteredCourses.map((course) => (
+                <CourseCard key={course.id} onClick={() => handleButtonClick(course.id)} className="animate-fadeIn">
+                  <CourseImage
+                    src={getCourseImageUrl(course)}
+                    alt={course.title}
+                    onError={(e) => {
+                      e.target.onerror = null
+                      e.target.src = "/placeholder.svg?height=150&width=300"
+                    }}
+                  />
+                  <CourseDetails>
+                    <CourseTitleCard>{course.title}</CourseTitleCard>
+                    <CourseCategory>{course.category}</CourseCategory>
+                    <CourseDescription>
+                      {expandedCourse === course.id ? (
+                        <>
+                          {course.description}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -351,27 +459,46 @@ const CourseCards = () => {
                             }}
                             className="text-blue-500 mt-2 ml-2"
                           >
-                            Show More
+                            Show Less
                           </button>
-                        )}
-                      </>
-                    )}
-                  </CourseDescription>
-                  <ActionButtons>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleButtonClick(course.id)
-                      }}
-                      className="select-none rounded-lg bg-blue-500 py-3 px-6 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md transition-all hover:shadow-lg focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    >
-                      {hasCourseStarted(course.id) ? "Continue" : "Start"}
-                    </button>
-                  </ActionButtons>
-                </CourseDetails>
-              </CourseCard>
-            ))}
-          </CourseGrid>
+                        </>
+                      ) : (
+                        <>
+                          {course.description
+                            ? course.description.length > 100
+                              ? `${course.description.slice(0, 100)}...`
+                              : course.description
+                            : "No description available"}
+                          {course.description && course.description.length > 100 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleDescription(course.id)
+                              }}
+                              className="text-blue-500 mt-2 ml-2"
+                            >
+                              Show More
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </CourseDescription>
+                    <ActionButtons>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleButtonClick(course.id)
+                        }}
+                        className="select-none rounded-lg bg-blue-500 py-3 px-6 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md transition-all hover:shadow-lg focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                      >
+                        {hasCourseStarted(course.id) ? "Continue" : "Start"}
+                      </button>
+                    </ActionButtons>
+                  </CourseDetails>
+                </CourseCard>
+              ))}
+            </CourseGrid>
+          )}
         </MainContent>
       </ContentContainer>
     </PageContainer>

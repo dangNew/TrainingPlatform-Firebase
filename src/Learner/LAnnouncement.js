@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useContext } from "react"
 import { db } from "../firebase.config"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, doc, getDoc } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../components/LSidebar"
 import styled from "styled-components"
-import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
-
+import { SidebarToggleContext } from "../components/LgNavbar"
+import { CalendarIcon, BellIcon } from "lucide-react"
 
 // Styled Components
 const PageContainer = styled.div`
@@ -16,7 +16,6 @@ const PageContainer = styled.div`
   height: 100vh;
   background-color: #f4f6f9;
 `
-
 
 const HeaderWrapper = styled.div`
   width: 100%;
@@ -51,75 +50,227 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`;
+`
 
-
-
-const CourseGrid = styled.div`
+const AnnouncementGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;
 `
 
-const CourseCard = styled.div`
-  background: linear-gradient(145deg, #ffffff, #e6e6e6);
+const AnnouncementCard = styled.div`
+  background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-
+  display: flex;
+  flex-direction: column;
+  
   &:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
   }
 `
 
-const CourseTitleCard = styled.h3`
+const AnnouncementHeader = styled.div`
+  background: linear-gradient(145deg, #3498db, #2980b9);
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`
+
+const AnnouncementTitle = styled.h3`
   font-size: 18px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 10px;
+  margin: 0;
+`
+
+const AnnouncementBadge = styled.span`
+  background-color: ${({ type }) => (type === "All" ? "#27ae60" : type === "learner" ? "#f39c12" : "#e74c3c")};
+  color: white;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+`
+
+const AnnouncementContent = styled.div`
   padding: 15px;
+  flex-grow: 1;
+`
+
+const AnnouncementText = styled.div`
+  margin-bottom: 15px;
+  color: #555;
+  
+  p {
+    margin: 0;
+  }
+`
+
+const AnnouncementFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #eee;
+  font-size: 13px;
+  color: #666;
+`
+
+const DateDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+`
+
+const NoAnnouncements = styled.div`
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 18px;
 `
 
 const AnnouncementPage = () => {
-  const [courseData, setCourseData] = useState([])
-  const { expanded } = useContext(SidebarToggleContext);
+  const [allAnnouncements, setAllAnnouncements] = useState([])
+  const [filteredAnnouncements, setFilteredAnnouncements] = useState([])
+  const [userRole, setUserRole] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const { expanded } = useContext(SidebarToggleContext)
   const navigate = useNavigate()
 
+  // First useEffect: Fetch user role and all announcements
   useEffect(() => {
-    const fetchData = async () => {
-      const querySnapshot = await getDocs(collection(db, "courses"))
-      const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      setCourseData(data)
+    const fetchUserAndAnnouncements = async () => {
+      try {
+        setLoading(true)
+
+        // Get current user ID (assuming you have it stored somewhere)
+        // This is a placeholder - replace with your actual auth logic
+        const currentUserId = localStorage.getItem("userId") || "defaultUserId"
+
+        // Check if user exists in learner collection
+        const learnerDoc = await getDoc(doc(db, "learner", currentUserId))
+
+        // Check if user exists in intern collection
+        const internDoc = await getDoc(doc(db, "intern", currentUserId))
+
+        // Set user role based on which collection the user belongs to
+        let role = "unknown"
+        if (learnerDoc.exists()) {
+          role = "learner"
+        } else if (internDoc.exists()) {
+          role = "intern"
+        }
+
+        console.log("User role detected:", role)
+        setUserRole(role)
+
+        // Fetch all announcements
+        const announcementsSnapshot = await getDocs(collection(db, "announcements"))
+        const announcements = announcementsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+
+        console.log("All announcements fetched:", announcements.length)
+        setAllAnnouncements(announcements)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    fetchData()
-  }, [])
+    fetchUserAndAnnouncements()
+  }, []) // Empty dependency array means this runs once on mount
 
-  const handleCourseClick = (courseId) => {
-    navigate(`/quiz-taker/${courseId}`)
+  // Second useEffect: Filter announcements when userRole or allAnnouncements change
+useEffect(() => {
+  if (!userRole || allAnnouncements.length === 0) return;
+
+  const currentDate = new Date().toISOString().split("T")[0];
+  console.log("Current date for filtering:", currentDate);
+  console.log("Filtering announcements for role:", userRole);
+
+  const filtered = allAnnouncements.filter((announcement) => {
+    // Check if announcement is still valid (not expired)
+    const isValid = announcement.expiryDate >= currentDate;
+
+    // Ensure targetAudience is defined before calling toLowerCase
+    const targetAudience = announcement.targetAudience || "";
+    const isTargeted = targetAudience.toLowerCase() === "all" ||
+                       targetAudience.toLowerCase() === userRole.toLowerCase();
+
+    console.log(
+      `Announcement "${announcement.subject}" - Valid: ${isValid}, Targeted: ${isTargeted}, Target Audience: ${targetAudience}`,
+    );
+
+    return isValid && isTargeted;
+  });
+
+  console.log("Filtered announcements:", filtered.length);
+
+  // Sort announcements by date (newest first)
+  filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  setFilteredAnnouncements(filtered);
+}, [userRole, allAnnouncements]);
+
+
+  // Function to parse HTML content safely
+  const createMarkup = (htmlContent) => {
+    return { __html: htmlContent }
   }
-
-  const filteredCourses = courseData.filter((course) => course.quizzes && course.quizzes.length > 0)
 
   return (
     <PageContainer>
       <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper>
-                        <Sidebar />
-                      </SidebarWrapper>
+          <Sidebar />
+        </SidebarWrapper>
         <MainContent expanded={expanded}>
-          <Title>Announcement</Title>
-          <CourseGrid>
-            {filteredCourses.map((course) => (
-              <CourseCard key={course.id} onClick={() => handleCourseClick(course.id)}>
-                <CourseTitleCard>{course.title}</CourseTitleCard>
-              </CourseCard>
-            ))}
-          </CourseGrid>
+          <Title>Announcements</Title>
+
+          {loading ? (
+            <div>Loading announcements...</div>
+          ) : filteredAnnouncements.length > 0 ? (
+            <AnnouncementGrid>
+              {filteredAnnouncements.map((announcement) => (
+                <AnnouncementCard key={announcement.id}>
+                  <AnnouncementHeader>
+                    <AnnouncementTitle>{announcement.subject}</AnnouncementTitle>
+                    <AnnouncementBadge type={announcement.targetAudience}>
+                      {announcement.targetAudience}
+                    </AnnouncementBadge>
+                  </AnnouncementHeader>
+
+                  <AnnouncementContent>
+                    <AnnouncementText dangerouslySetInnerHTML={createMarkup(announcement.content)} />
+                  </AnnouncementContent>
+
+                  <AnnouncementFooter>
+                    <DateDisplay>
+                      <CalendarIcon size={14} />
+                      Posted: {announcement.date}
+                    </DateDisplay>
+                    <DateDisplay>
+                      <BellIcon size={14} />
+                      Expires: {announcement.expiryDate}
+                    </DateDisplay>
+                  </AnnouncementFooter>
+                </AnnouncementCard>
+              ))}
+            </AnnouncementGrid>
+          ) : (
+            <NoAnnouncements>
+              <BellIcon size={48} strokeWidth={1} className="mx-auto mb-4 text-gray-400" />
+              <p>No announcements available at this time.</p>
+            </NoAnnouncements>
+          )}
         </MainContent>
       </ContentContainer>
     </PageContainer>

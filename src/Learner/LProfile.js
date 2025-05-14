@@ -8,9 +8,8 @@ import { auth, db } from "../firebase.config"
 import uploadToCloudinary from "../uploadToCloudinary"
 import ProfileHistory from "./profile-history"
 import ProfileProgress from "./profile-progress"
-import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
 import Sidebar from "../components/LSidebar"
-
 
 const MainContent = styled.div`
   flex: 1;
@@ -21,7 +20,7 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`;
+`
 
 const SidebarWrapper = styled.div`
   height: 100%;
@@ -36,24 +35,36 @@ function Profile() {
     phoneNumber: "",
     address: "",
     username: "",
-    photoURL: "",
+    photoURL: {
+      publicId: "",
+      url: "",
+    },
   })
   const [editing, setEditing] = useState(false)
   const [newProfileImage, setNewProfileImage] = useState(null)
   const [activeTab, setActiveTab] = useState("Personal Info")
   const [loading, setLoading] = useState(false)
-    const { expanded } = useContext(SidebarToggleContext);
+  const { expanded } = useContext(SidebarToggleContext)
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
   const [comments, setComments] = useState([])
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (user) {
-        const userRef = doc(db, "learner", user.uid)
-        const userDoc = await getDoc(userRef)
+        // First try to get user from learner collection
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerRef)
 
-        if (userDoc.exists()) {
-          setUserData(userDoc.data())
+        if (learnerDoc.exists()) {
+          setUserData(learnerDoc.data())
+        } else {
+          // If not found in learner collection, try intern collection
+          const internRef = doc(db, "intern", user.uid)
+          const internDoc = await getDoc(internRef)
+
+          if (internDoc.exists()) {
+            setUserData(internDoc.data())
+          }
         }
       }
     }
@@ -97,7 +108,14 @@ function Profile() {
     setLoading(true)
     try {
       if (user) {
-        const userRef = doc(db, "learner", user.uid)
+        // First check if user exists in learner collection
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerRef)
+
+        // Determine which collection to update
+        const collectionName = learnerDoc.exists() ? "learner" : "intern"
+        const userRef = doc(db, collectionName, user.uid)
+
         await updateDoc(userRef, {
           fullName: userData.fullName,
           email: userData.email,
@@ -109,8 +127,21 @@ function Profile() {
         if (newProfileImage) {
           const photoURL = await uploadToCloudinary(newProfileImage)
           if (photoURL) {
-            await updateDoc(userRef, { photoURL })
-            setUserData((prevData) => ({ ...prevData, photoURL }))
+            // Assuming uploadToCloudinary returns the URL directly
+            // We need to update the structure to match the expected format
+            await updateDoc(userRef, {
+              photoURL: {
+                publicId: `modules/module_file_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+                url: photoURL,
+              },
+            })
+            setUserData((prevData) => ({
+              ...prevData,
+              photoURL: {
+                publicId: `modules/module_file_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+                url: photoURL,
+              },
+            }))
           }
         }
 
@@ -132,8 +163,8 @@ function Profile() {
   return (
     <div className="flex h-screen">
       <SidebarWrapper>
-                              <Sidebar />
-                            </SidebarWrapper>
+        <Sidebar />
+      </SidebarWrapper>
       <MainContent expanded={expanded}>
         <div className="absolute -left-16 -top-16 h-32 w-32 rounded-full from-indigo-500/20 to-purple-500/0 blur-2xl" />
         <div className="absolute -right-16 -bottom-16 h-32 w-32 rounded-full from-purple-500/20 to-indigo-500/0 blur-2xl" />
@@ -143,7 +174,7 @@ function Profile() {
             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 blur transition-all duration-300 group-hover/avatar:opacity-100" />
             <div className="relative h-32 w-32 rounded-full bg-blue-950 ring-2">
               <img
-                src={userData.photoURL || "default-profile-image.jpg"}
+                src={userData.photoURL?.url || "default-profile-image.jpg"}
                 alt="Profile"
                 className="h-32 w-32 rounded-full"
               />
@@ -398,4 +429,3 @@ function Profile() {
 }
 
 export default Profile
-

@@ -24,7 +24,6 @@ import {
   FaLockOpen,
   FaTrophy,
   FaClipboardList,
-  FaEdit,
   FaEye,
 } from "react-icons/fa"
 import { useNavigate, useParams } from "react-router-dom"
@@ -32,8 +31,7 @@ import styled from "styled-components"
 import Sidebar from "../components/LSidebar"
 import { auth, db } from "../firebase.config"
 import CertificateImage from "./certificate-image"
-import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
-
+import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
 
 const MainContent = styled.div`
   flex: 1;
@@ -44,12 +42,12 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`;
+`
 
 const ModuleDisplay = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
-    const { expanded } = useContext(SidebarToggleContext);
+  const { expanded } = useContext(SidebarToggleContext)
   const [user] = useAuthState(auth)
   const [modules, setModules] = useState([])
   const [courseData, setCourseData] = useState(null)
@@ -75,6 +73,9 @@ const ModuleDisplay = () => {
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
 
+  // Add a state variable for userType
+  const [userType, setUserType] = useState(null)
+
   // Helper function to get the image URL from the course data
   const getCourseImageUrl = (course) => {
     if (!course) return "/placeholder.svg?height=200&width=800"
@@ -94,140 +95,184 @@ const ModuleDisplay = () => {
   }
 
   useEffect(() => {
-    const fetchModules = async () => {
+    const checkUserTypeAndFetchData = async () => {
       try {
-        const modulesCollection = collection(db, "courses", courseId, "modules")
-        const querySnapshot = await getDocs(modulesCollection)
-        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        // Get current user
+        if (!user) return
 
-        // Sort modules by their order if available
-        const sortedData = data.sort((a, b) => (a.order || 0) - (b.order || 0))
-        setModules(sortedData)
-      } catch (error) {
-        console.error("Error fetching modules:", error)
-      }
-    }
+        // Check if user exists in learner collection
+        const learnerDocRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerDocRef)
 
-    const fetchCourseData = async () => {
-      try {
-        const courseDoc = doc(db, "courses", courseId)
-        const courseSnapshot = await getDoc(courseDoc)
-        if (courseSnapshot.exists()) {
-          setCourseData(courseSnapshot.data())
-        }
-      } catch (error) {
-        console.error("Error fetching course data:", error)
-      }
-    }
+        // Check if user exists in intern collection
+        const internDocRef = doc(db, "intern", user.uid)
+        const internDoc = await getDoc(internDocRef)
 
-    // Fetch quizzes for the course
-    const fetchQuizzes = async () => {
-      try {
-        const quizzesCollection = collection(db, "courses", courseId, "quizzes")
-        const querySnapshot = await getDocs(quizzesCollection)
-        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        setQuizzes(data)
-      } catch (error) {
-        console.error("Error fetching quizzes:", error)
-      }
-    }
+        let courseCollectionName = "courses" // Default collection
 
-    // Fetch quiz scores and attempts for the user
-    const fetchQuizScores = async () => {
-      if (!user) return
-
-      try {
-        // Get quiz scores
-        const scoresCollection = collection(db, "learner", user.uid, "quizScores")
-        const scoresQuery = query(scoresCollection, where("courseId", "==", courseId))
-        const querySnapshot = await getDocs(scoresQuery)
-
-        const scoresData = {}
-        querySnapshot.docs.forEach((doc) => {
-          const data = doc.data()
-          scoresData[data.quizId] = {
-            score: data.score,
-            totalPoints: data.totalPoints,
-            percentage: data.percentage,
-            completedAt: data.completedAt,
-            passed: data.passed,
-          }
-        })
-        setQuizScores(scoresData)
-
-        // Get quiz attempts
-        const attemptsCollection = collection(db, "learner", user.uid, "course score")
-        const attemptsQuery = query(attemptsCollection, where("courseId", "==", courseId))
-        const attemptsSnapshot = await getDocs(attemptsQuery)
-
-        const attemptsData = {}
-        attemptsSnapshot.docs.forEach((doc) => {
-          const data = doc.data()
-          if (!attemptsData[data.quizId]) {
-            attemptsData[data.quizId] = 0
-          }
-          attemptsData[data.quizId]++
-        })
-        setQuizAttempts(attemptsData)
-      } catch (error) {
-        console.error("Error fetching quiz scores and attempts:", error)
-      }
-    }
-
-    // Load progress from Firestore instead of localStorage
-    const loadProgress = async () => {
-      if (!user) return
-
-      try {
-        const userProgressRef = doc(db, "learner", user.uid, "progress", courseId)
-        const userProgressDoc = await getDoc(userProgressRef)
-
-        if (userProgressDoc.exists()) {
-          const userProgress = userProgressDoc.data()
-          setCompletedModules(userProgress.completedModules || [])
-          setCompletedChapters(userProgress.completedChapters || {})
+        if (learnerDoc.exists()) {
+          setUserType("learner")
+          courseCollectionName = "courses"
+        } else if (internDoc.exists()) {
+          setUserType("intern")
+          courseCollectionName = "Intern_Course"
         } else {
-          setCompletedModules([])
-          setCompletedChapters({})
+          console.warn("User not found in either learner or intern collection")
         }
+
+        // Fetch course data
+        const fetchCourseData = async () => {
+          try {
+            const courseDoc = doc(db, courseCollectionName, courseId)
+            const courseSnapshot = await getDoc(courseDoc)
+            if (courseSnapshot.exists()) {
+              setCourseData(courseSnapshot.data())
+            }
+          } catch (error) {
+            console.error("Error fetching course data:", error)
+          }
+        }
+
+        // Fetch modules
+        const fetchModules = async () => {
+          try {
+            const modulesCollection = collection(db, courseCollectionName, courseId, "modules")
+            const querySnapshot = await getDocs(modulesCollection)
+            const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+
+            // Sort modules by their order if available
+            const sortedData = data.sort((a, b) => (a.order || 0) - (b.order || 0))
+            setModules(sortedData)
+          } catch (error) {
+            console.error("Error fetching modules:", error)
+          }
+        }
+
+        // Fetch quizzes for the course
+        const fetchQuizzes = async () => {
+          try {
+            const quizzesCollection = collection(db, courseCollectionName, courseId, "quizzes")
+            const querySnapshot = await getDocs(quizzesCollection)
+            const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+            setQuizzes(data)
+          } catch (error) {
+            console.error("Error fetching quizzes:", error)
+          }
+        }
+
+        // Execute all fetch operations
+        await Promise.all([fetchCourseData(), fetchModules(), fetchQuizzes()])
       } catch (error) {
-        console.error("Error loading progress:", error)
-        // Reset progress if there's an error
+        console.error("Error checking user type or fetching data:", error)
+      }
+    }
+
+    checkUserTypeAndFetchData()
+  }, [courseId, user])
+
+  const loadProgress = async () => {
+    if (!user) return
+
+    try {
+      // Determine the collection based on user type
+      const userCollection = userType === "intern" ? "intern" : "learner"
+
+      const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId)
+      const userProgressDoc = await getDoc(userProgressRef)
+
+      if (userProgressDoc.exists()) {
+        const userProgress = userProgressDoc.data()
+        setCompletedModules(userProgress.completedModules || [])
+        setCompletedChapters(userProgress.completedChapters || {})
+      } else {
         setCompletedModules([])
         setCompletedChapters({})
       }
+    } catch (error) {
+      console.error("Error loading progress:", error)
+      // Reset progress if there's an error
+      setCompletedModules([])
+      setCompletedChapters({})
     }
+  }
 
-    // Add to the useEffect to check for existing certificates and user data
-    const loadCertificateData = async () => {
-      if (!user) return
+  const fetchQuizScores = async () => {
+    if (!user) return
 
-      try {
-        // Fetch user data for certificate
-        const userRef = doc(db, "learner", user.uid)
-        const userSnap = await getDoc(userRef)
-        if (userSnap.exists()) {
-          setUserData(userSnap.data())
+    try {
+      // Determine the collection based on user type
+      const userCollection = userType === "intern" ? "intern" : "learner"
+
+      // Get quiz scores
+      const scoresCollection = collection(db, userCollection, user.uid, "quizScores")
+      const scoresQuery = query(scoresCollection, where("courseId", "==", courseId))
+      const querySnapshot = await getDocs(scoresQuery)
+
+      const scoresData = {}
+      querySnapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        scoresData[data.quizId] = {
+          score: data.score,
+          totalPoints: data.totalPoints,
+          percentage: data.percentage,
+          completedAt: data.completedAt,
+          passed: data.passed,
         }
+      })
+      setQuizScores(scoresData)
 
-        // Check if certificate already exists
-        const certificatesCollection = collection(db, "certificates")
-        const certificateQuery = query(
-          certificatesCollection,
-          where("userId", "==", user.uid),
-          where("courseId", "==", courseId),
-          where("isCourseWide", "==", true),
-        )
-        const certificateSnapshot = await getDocs(certificateQuery)
+      // Get quiz attempts
+      const attemptsCollection = collection(db, userCollection, user.uid, "course score")
+      const attemptsQuery = query(attemptsCollection, where("courseId", "==", courseId))
+      const attemptsSnapshot = await getDocs(attemptsQuery)
 
-        if (!certificateSnapshot.empty) {
-          setExistingCertificate(certificateSnapshot.docs[0].data())
+      const attemptsData = {}
+      attemptsSnapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        if (!attemptsData[data.quizId]) {
+          attemptsData[data.quizId] = 0
         }
-      } catch (error) {
-        console.error("Error loading certificate data:", error)
+        attemptsData[data.quizId]++
+      })
+      setQuizAttempts(attemptsData)
+    } catch (error) {
+      console.error("Error fetching quiz scores and attempts:", error)
+    }
+  }
+
+  const loadCertificateData = async () => {
+    if (!user) return
+
+    try {
+      // Determine the collection based on user type
+      const userCollection = userType === "intern" ? "intern" : "learner"
+
+      // Fetch user data for certificate
+      const userRef = doc(db, userCollection, user.uid)
+      const userSnap = await getDoc(userRef)
+      if (userSnap.exists()) {
+        setUserData(userSnap.data())
       }
-    }
 
+      // Check if certificate already exists
+      const certificatesCollection = collection(db, "certificates")
+      const certificateQuery = query(
+        certificatesCollection,
+        where("userId", "==", user.uid),
+        where("courseId", "==", courseId),
+        where("isCourseWide", "==", true),
+      )
+      const certificateSnapshot = await getDocs(certificateQuery)
+
+      if (!certificateSnapshot.empty) {
+        setExistingCertificate(certificateSnapshot.docs[0].data())
+      }
+    } catch (error) {
+      console.error("Error loading certificate data:", error)
+    }
+  }
+
+  useEffect(() => {
     const fetchComments = async () => {
       if (!courseId) return
 
@@ -253,15 +298,7 @@ const ModuleDisplay = () => {
       }
     }
 
-    Promise.all([
-      fetchModules(),
-      fetchCourseData(),
-      loadProgress(),
-      loadCertificateData(),
-      fetchComments(),
-      fetchQuizzes(),
-      fetchQuizScores(),
-    ]).finally(() => {
+    Promise.all([loadProgress(), loadCertificateData(), fetchComments(), fetchQuizScores()]).finally(() => {
       setLoading(false)
 
       // Check if all modules are completed
@@ -269,7 +306,7 @@ const ModuleDisplay = () => {
         setAllModulesCompleted(true)
       }
     })
-  }, [courseId, user])
+  }, [courseId, user, userType])
 
   // Add a useEffect to check if all modules are completed when modules or completedModules change
   useEffect(() => {
@@ -321,7 +358,8 @@ const ModuleDisplay = () => {
       await addDoc(certificatesCollection, certificateData)
 
       // Update user's certificates count
-      const userRef = doc(db, "learner", user.uid)
+      const userCollection = userType === "intern" ? "intern" : "learner"
+      const userRef = doc(db, userCollection, user.uid)
       await updateDoc(userRef, {
         certificatesCount: (userData.certificatesCount || 0) + 1,
       })
@@ -339,15 +377,15 @@ const ModuleDisplay = () => {
   }
 
   const handleStartModule = (module) => {
-    // Open module viewer in a new tab
-    window.open(`/module-viewer?courseId=${courseId}&moduleId=${module.id}`, "_blank")
+    // Open module viewer in a new tab with collection type
+    window.open(`/module-viewer?courseId=${courseId}&moduleId=${module.id}&userType=${userType}`, "_blank")
   }
 
   const handleStartQuiz = (quiz) => {
     // Navigate to quiz-taker page with the necessary parameters
     const hasRetaken = quizAttempts[quiz.id] >= 1
     const mode = hasRetaken ? "review" : "take"
-    navigate(`/quiz-taker?courseId=${courseId}&quizId=${quiz.id}&mode=${mode}`)
+    navigate(`/quiz-taker?courseId=${courseId}&quizId=${quiz.id}&mode=${mode}&userType=${userType}`)
   }
 
   const isModuleUnlocked = (moduleId, index) => {
@@ -433,18 +471,27 @@ const ModuleDisplay = () => {
   // Calculate total points for a quiz
   const calculateTotalPoints = (quiz) => {
     let totalPoints = 0
-    quiz.sections.forEach((section) => {
-      section.questions.forEach((question) => {
-        totalPoints += question.points || 0
+
+    // Check if quiz and quiz.sections exist before trying to iterate
+    if (quiz && quiz.sections && Array.isArray(quiz.sections)) {
+      quiz.sections.forEach((section) => {
+        // Check if section.questions exists before trying to iterate
+        if (section && section.questions && Array.isArray(section.questions)) {
+          section.questions.forEach((question) => {
+            totalPoints += question.points || 0
+          })
+        }
       })
-    })
+    }
+
     return totalPoints
   }
 
   if (loading) {
     return (
       <div className="flex h-screen">
-        <MainContent>
+        <Sidebar />
+        <MainContent expanded={expanded}>
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
@@ -457,7 +504,7 @@ const ModuleDisplay = () => {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <MainContent >
+        <MainContent expanded={expanded}>
           <div className="text-center p-8">
             <h2 className="text-xl font-semibold">No modules found for this course</h2>
             <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">
@@ -505,8 +552,6 @@ const ModuleDisplay = () => {
       {/* Add the styles */}
       <style dangerouslySetInnerHTML={{ __html: styles }} />
 
-
-
       <div className="flex h-screen">
         <Sidebar />
         <MainContent expanded={expanded}>
@@ -526,6 +571,11 @@ const ModuleDisplay = () => {
             <div className="bg-black bg-opacity-50 h-full flex flex-col justify-center p-6">
               <h1 className="text-white text-4xl font-bold">{courseData.title}</h1>
               <p className="text-white text-sm mt-1">{courseData.description}</p>
+              {userType && (
+                <span className="mt-2 px-3 py-1 bg-white bg-opacity-20 text-white text-xs rounded-full self-start">
+                  {userType === "intern" ? "Intern Course" : "Learner Course"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -554,7 +604,7 @@ const ModuleDisplay = () => {
                         Module {moduleIndex + 1}
                       </h1>
                       <h4
-                        className="text-[12px] pt-[50px] text-[#cccccc] cursor-pointer flex items-center gap-1"
+                        className="text-[12px] pt-[50px] text-[#cccc] cursor-pointer flex items-center gap-1"
                         onClick={() => toggleChapters(module.id)}
                       >
                         {isExpanded ? "Hide" : "View"} all chapters
@@ -713,23 +763,15 @@ const ModuleDisplay = () => {
                           <button
                             onClick={() => handleStartQuiz(quiz)}
                             className={`px-4 py-2 rounded-lg flex items-center ${
-                              isCompleted
-                                ? hasRetaken
-                                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                  : "bg-blue-600 text-white hover:bg-blue-700"
+                              quizAttempts[quiz.id] > 0
+                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 : "bg-blue-600 text-white hover:bg-blue-700"
                             }`}
                           >
-                            {isCompleted ? (
-                              hasRetaken ? (
-                                <>
-                                  <FaEye className="mr-2" /> Review Quiz
-                                </>
-                              ) : (
-                                <>
-                                  <FaEdit className="mr-2" /> Retake Quiz
-                                </>
-                              )
+                            {quizAttempts[quiz.id] > 0 ? (
+                              <>
+                                <FaEye className="mr-2" /> Review Answer
+                              </>
                             ) : (
                               <>
                                 <FaClipboardList className="mr-2" /> Start Quiz

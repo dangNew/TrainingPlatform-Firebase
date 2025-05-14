@@ -18,7 +18,13 @@ const LNavbar = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [user] = useAuthState(auth)
-  const [userData, setUserData] = useState({ fullName: "", photoURL: "" })
+  const [userData, setUserData] = useState({
+    fullName: "",
+    photoURL: {
+      publicId: "",
+      url: "",
+    },
+  })
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
 
@@ -28,25 +34,30 @@ const LNavbar = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return
-  
+
       const learnerRef = doc(db, "learner", user.uid)
       const internRef = doc(db, "intern", user.uid)
-  
+
       const [learnerSnap, internSnap] = await Promise.all([getDoc(learnerRef), getDoc(internRef)])
-  
+
       if (learnerSnap.exists()) {
         setUserData(learnerSnap.data())
       } else if (internSnap.exists()) {
         setUserData(internSnap.data())
       } else {
         // If not found in either, fallback to displayName or default
-        setUserData({ fullName: user.displayName || "User", photoURL: user.photoURL || "" })
+        setUserData({
+          fullName: user.displayName || "User",
+          photoURL: {
+            publicId: "",
+            url: user.photoURL || "",
+          },
+        })
       }
     }
-  
+
     fetchUserData()
   }, [user])
-  
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -101,6 +112,16 @@ const LNavbar = () => {
     })
   }
 
+  // Get the profile image URL with fallback
+  const getProfileImageUrl = () => {
+    if (userData.photoURL?.url) {
+      return userData.photoURL.url
+    } else if (user?.photoURL) {
+      return user.photoURL
+    }
+    return "/placeholder.svg"
+  }
+
   return (
     <nav className="sticky top-0 z-50 py-6 bg-[#201E43] text-white">
       <div className="px-4 relative text-sm">
@@ -141,7 +162,7 @@ const LNavbar = () => {
               <div className="flex items-center gap-2 cursor-pointer" onClick={toggleDropdown}>
                 <div className="w-8 h-8 rounded-full overflow-hidden">
                   <img
-                    src={userData.photoURL || user?.photoURL || "/placeholder.svg"}
+                    src={getProfileImageUrl() || "/placeholder.svg"}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -162,7 +183,7 @@ const LNavbar = () => {
                   >
                     <div className="w-6 h-6 rounded-full overflow-hidden">
                       <img
-                        src={userData.photoURL || user?.photoURL || "/placeholder.svg"}
+                        src={getProfileImageUrl() || "/placeholder.svg"}
                         alt="Profile"
                         className="w-full h-full object-cover"
                       />
@@ -225,7 +246,7 @@ const LNavbar = () => {
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-full overflow-hidden">
                 <img
-                  src={userData.photoURL || user?.photoURL || "/placeholder.svg"}
+                  src={getProfileImageUrl() || "/placeholder.svg"}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
@@ -256,7 +277,7 @@ const LNavbar = () => {
               <div className="flex items-center gap-2 py-3 cursor-pointer" onClick={navigateToProfile}>
                 <div className="w-6 h-6 rounded-full overflow-hidden">
                   <img
-                    src={userData.photoURL || user?.photoURL || "/placeholder.svg"}
+                    src={getProfileImageUrl() || "/placeholder.svg"}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />

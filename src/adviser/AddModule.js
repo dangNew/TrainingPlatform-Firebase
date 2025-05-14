@@ -19,6 +19,41 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase.config";
 import uploadToCloudinary from "../uploadToCloudinary";
+import styled from 'styled-components';
+
+// Styled Components
+const PageContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f4f6f9;
+`;
+
+const HeaderWrapper = styled.div`
+  width: 100%;
+  z-index: 10;
+`;
+
+const ContentContainer = styled.div`
+  display: flex;
+  flex: 1;
+`;
+
+const SidebarWrapper = styled.div`
+  height: 100%;
+  z-index: 5;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
 
 const AddModule = () => {
   const [courses, setCourses] = useState([]);
@@ -40,12 +75,28 @@ const AddModule = () => {
     file: null,
   });
   const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [targetAudience, setTargetAudience] = useState("public");
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "courses"));
+        let collectionName;
+        switch (targetAudience) {
+          case "intern":
+            collectionName = "Intern_Course";
+            break;
+          case "learner":
+          case "applicant":
+            collectionName = "courses";
+            break;
+          default:
+            collectionName = "courses";
+        }
+
+        const querySnapshot = await getDocs(collection(db, collectionName));
         const coursesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           title: doc.data().title,
@@ -56,13 +107,26 @@ const AddModule = () => {
       }
     };
     fetchCourses();
-  }, []);
+  }, [targetAudience]);
 
   useEffect(() => {
     const fetchModules = async () => {
       if (selectedCourseId) {
         try {
-          const courseDocRef = doc(db, "courses", selectedCourseId);
+          let collectionName;
+          switch (targetAudience) {
+            case "intern":
+              collectionName = "Intern_Course";
+              break;
+            case "learner":
+            case "applicant":
+              collectionName = "courses";
+              break;
+            default:
+              collectionName = "courses";
+          }
+
+          const courseDocRef = doc(db, collectionName, selectedCourseId);
           const modulesCollectionRef = collection(courseDocRef, "modules");
           const querySnapshot = await getDocs(modulesCollectionRef);
           const modulesData = querySnapshot.docs.map((doc) => ({
@@ -76,7 +140,7 @@ const AddModule = () => {
       }
     };
     fetchModules();
-  }, [selectedCourseId]);
+  }, [selectedCourseId, targetAudience]);
 
   const handleFileChange = (index, e) => {
     const updatedChapters = [...chapters];
@@ -104,7 +168,22 @@ const AddModule = () => {
 
     try {
       setLoading(true);
-      const courseDocRef = doc(db, "courses", selectedCourseId);
+      let collectionName;
+      switch (targetAudience) {
+        case "intern":
+          collectionName = "Intern_Course";
+          break;
+        case "learner":
+          collectionName = "Learner_Course";
+          break;
+        case "applicant":
+          collectionName = "Applicant_Course";
+          break;
+        default:
+          collectionName = "courses";
+      }
+
+      const courseDocRef = doc(db, collectionName, selectedCourseId);
       const modulesCollectionRef = collection(courseDocRef, "modules");
 
       const querySnapshot = await getDocs(modulesCollectionRef);
@@ -136,7 +215,8 @@ const AddModule = () => {
         createdAt: serverTimestamp(),
       });
 
-      alert("Module added successfully!");
+      setSuccessMessage("Module added successfully!");
+      setIsSuccessModalOpen(true);
       setModuleDetails({ title: "", description: "" });
       setChapters([{ title: "", description: "", file: null }]);
       setLoading(false);
@@ -157,7 +237,22 @@ const AddModule = () => {
 
     try {
       setLoading(true);
-      const courseDocRef = doc(db, "courses", selectedCourseId);
+      let collectionName;
+      switch (targetAudience) {
+        case "intern":
+          collectionName = "Intern_Course";
+          break;
+        case "learner":
+          collectionName = "Learner_Course";
+          break;
+        case "applicant":
+          collectionName = "Applicant_Course";
+          break;
+        default:
+          collectionName = "courses";
+      }
+
+      const courseDocRef = doc(db, collectionName, selectedCourseId);
       const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId);
 
       const url = await uploadToCloudinary(newChapter.file);
@@ -178,7 +273,8 @@ const AddModule = () => {
         chapters: arrayUnion(newChapterData),
       });
 
-      alert("Chapter added successfully!");
+      setSuccessMessage("Chapter added successfully!");
+      setIsSuccessModalOpen(true);
       setNewChapter({ title: "", description: "", file: null });
       setIsModalOpen(false);
       setLoading(false);
@@ -190,17 +286,15 @@ const AddModule = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      <Header />
-      <div className="flex flex-1 overflow-hidden">
-        <div
-          className={`${
-            isSidebarOpen ? "w-64" : "w-20"
-          } transition-width duration-300`}
-        >
+    <PageContainer>
+      <HeaderWrapper>
+        <Header />
+      </HeaderWrapper>
+      <ContentContainer>
+        <SidebarWrapper>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-        </div>
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        </SidebarWrapper>
+        <MainContent expanded={isSidebarOpen}>
           <div className="p-8 bg-blue-100 rounded-lg shadow-lg mb-6">
             <div className="flex items-center mb-4">
               <FaBook className="text-blue-500 text-4xl mr-4" />
@@ -220,6 +314,20 @@ const AddModule = () => {
                 <h2 className="text-2xl font-semibold mb-4">
                   Step 1: Select Course
                 </h2>
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Target Audience *
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  required
+                >
+                  <option value="public">ALL</option>
+                  <option value="intern">INTERN</option>
+                  <option value="learner">LEARNERS</option>
+                  <option value="applicant">APPLICANT</option>
+                </select>
                 <label className="block text-gray-700 text-sm font-bold mb-2">
                   Select Course *
                 </label>
@@ -442,15 +550,35 @@ const AddModule = () => {
                 </div>
               </div>
             )}
+
+            {isSuccessModalOpen && (
+              <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                  <h2 className="text-xl font-semibold mb-4">Success</h2>
+                  <p className="mb-4">{successMessage}</p>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsSuccessModalOpen(false)}
+                      className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        </MainContent>
+      </ContentContainer>
       {loading && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <FaSpinner className="text-white text-4xl animate-spin" />
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

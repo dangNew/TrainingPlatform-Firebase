@@ -25,7 +25,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import IntSidebar from "./sidebar";
-import Header from "../Dashboard/Header";
+import LgNavbar from "../components/LgNavbar"; // Import the LgNavbar component
 import ModuleDisplay from "./ModuleDisplay";
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -33,8 +33,43 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import deleteFromCloudinary from "../deleteFromCloudinary";
+import styled from 'styled-components';
 
-const CourseDashboard = () => {
+// Styled Components
+const PageContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f4f6f9;
+`;
+
+const HeaderWrapper = styled.div`
+  width: 100%;
+  z-index: 10;
+`;
+
+const ContentContainer = styled.div`
+  display: flex;
+  flex: 1;
+`;
+
+const SidebarWrapper = styled.div`
+  height: 100%;
+  z-index: 5;
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
+
+const CourseDashboard = ({ expanded }) => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,15 +127,12 @@ const CourseDashboard = () => {
       const courseDoc = await getDoc(courseDocRef);
       const courseData = courseDoc.data();
 
-      // Assuming you store the public IDs in an array called `filePublicIds`
       const filePublicIds = courseData.filePublicIds || [];
 
-      // Delete files from Cloudinary
       for (const publicId of filePublicIds) {
         await deleteFromCloudinary(publicId);
       }
 
-      // Delete modules associated with the course
       const modulesCollectionRef = collection(courseDocRef, "modules");
       const modulesSnapshot = await getDocs(modulesCollectionRef);
       const deletePromises = modulesSnapshot.docs.map((moduleDoc) =>
@@ -108,7 +140,6 @@ const CourseDashboard = () => {
       );
       await Promise.all(deletePromises);
 
-      // Delete the course from Firestore
       await deleteDoc(courseDocRef);
       setCourses(courses.filter((course) => course.id !== courseId));
       setModal({ isOpen: true, type: 'success', content: 'Course deleted successfully!' });
@@ -128,7 +159,7 @@ const CourseDashboard = () => {
 
   const handleCategoryChange = (event) => {
     setCategoryFilter(event.target.value);
-    setCurrentPage(1); // Reset to the first page when filtering
+    setCurrentPage(1);
   };
 
   const handlePageChange = (newPage) => {
@@ -202,7 +233,7 @@ const CourseDashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col">
+    <MainContent expanded={expanded}>
       <div className="p-8 bg-blue-100 rounded-lg shadow-lg mb-6">
         <div className="flex items-center mb-4">
           <FaBook className="text-blue-500 text-4xl mr-4" />
@@ -407,32 +438,29 @@ const CourseDashboard = () => {
           </div>
         </div>
       )}
-    </div>
+    </MainContent>
   );
 };
 
 const ElearningDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <Header />
-      <div className="flex flex-1 overflow-hidden">
-        <div
-          className={`${
-            isSidebarOpen ? "w-64" : "w-20"
-          } transition-width duration-300`}
-        >
+    <PageContainer>
+      <HeaderWrapper>
+        <LgNavbar /> {/* Use the LgNavbar component */}
+      </HeaderWrapper>
+      <ContentContainer>
+        <SidebarWrapper>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-        </div>
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
-          <CourseDashboard />
-        </div>
-      </div>
-    </div>
+        </SidebarWrapper>
+        <CourseDashboard expanded={isSidebarOpen} />
+      </ContentContainer>
+    </PageContainer>
   );
 };
 

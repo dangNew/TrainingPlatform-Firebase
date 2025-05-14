@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   FaTachometerAlt,
   FaBook,
@@ -12,8 +12,6 @@ import {
   FaCog,
   FaUserShield,
   FaSignOutAlt,
-  FaArrowUp,
-  FaArrowDown,
   FaBars
 } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -25,10 +23,7 @@ const SidebarContext = createContext();
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const sidebarRef = useRef(null);
   const [expanded, setExpanded] = useState(true);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(true);
   const [userData, setUserData] = useState({ fullName: "", email: "" });
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem("activeItem") || "Dashboard";
@@ -78,52 +73,17 @@ const Sidebar = () => {
     });
   };
 
-  const scrollUp = () => {
-    if (sidebarRef.current) {
-      sidebarRef.current.scrollBy({ top: -100, behavior: "smooth" });
-    }
-  };
-
-  const scrollDown = () => {
-    if (sidebarRef.current) {
-      sidebarRef.current.scrollBy({ top: 100, behavior: "smooth" });
-    }
-  };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (sidebarRef.current) {
-        setCanScrollUp(sidebarRef.current.scrollTop > 0);
-        setCanScrollDown(
-          sidebarRef.current.scrollTop + sidebarRef.current.clientHeight <
-            sidebarRef.current.scrollHeight
-        );
-      }
-    };
-
-    if (sidebarRef.current) {
-      sidebarRef.current.addEventListener("scroll", handleScroll);
-      handleScroll();
-    }
-
-    return () => {
-      if (sidebarRef.current) {
-        sidebarRef.current.removeEventListener("scroll", handleScroll);
-      }
-    };
-  }, []);
-
   return (
     <SidebarContext.Provider value={{ expanded, activeItem, setActiveItem }}>
       <div className="flex">
         <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
-          <nav className="h-full flex flex-col bg-blue-950 border-r shadow-sm text-gray-200">
+          <nav className={`h-full flex flex-col bg-white border-r shadow-sm text-blue-950 overflow-y-auto`}>
             <div className="p-4 pb-2 flex justify-between items-center">
               <button
                 onClick={() => setExpanded((curr) => !curr)}
-                className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600"
+                className="p-1.5 rounded-lg bg-gray-200 hover:bg-gray-300"
               >
-                <FaBars className="text-gray-200" size={32} />
+                <FaBars className="text-blue-950" size={28} />
               </button>
             </div>
 
@@ -136,49 +96,38 @@ const Sidebar = () => {
                 />
               </div>
               <div className={`text-center ${expanded ? "block" : "hidden"}`}>
-                <h4 className="font-bold text-lg text-gray-200">{userData.fullName}</h4>
-                <span className="text-sm text-gray-400">{userData.email}</span>
+                <h4 className="font-bold text-lg text-gray-800">{userData.fullName}</h4>
+                <span className="text-sm text-gray-600">{userData.email}</span>
               </div>
             </Link>
 
-            <hr className="my-3 border-gray-700" />
+            <hr className="my-3 border-gray-300" />
 
-            {canScrollUp && (
-              <button className="w-full py-2 text-gray-200 hover:text-white hover:bg-gray-700" onClick={scrollUp}>
-                <FaArrowUp className="mx-auto" />
+            <ul className="flex-1 px-3">
+              <SidebarItem icon={<FaTachometerAlt size={28} />} text="Dashboard" route="/dashboard" />
+              <SidebarItem icon={<FaBook size={28} />} text="Courses" route="/courses" />
+              <SidebarItem icon={<FaBookOpen size={28} />} text="Add Course" route="/addcourse" />
+              <SidebarItem icon={<FaComments size={28} />} text="Chat" route="/Achat" />
+              <SidebarItem icon={<FaFolder size={28} />} text="File Library" route="/file-library" />
+              <SidebarItem icon={<FaPlusCircle size={28} />} text="Add Module" route="/addmodule" />
+              <SidebarItem icon={<FaPuzzlePiece size={28} />} text="Quizzes" route="/addquiz" />
+              <SidebarItem icon={<FaCalendarCheck size={28} />} text="Attendance" route="/attendance" />
+              <SidebarItem icon={<FaEnvelope size={28} />} text="Messages" route="/messages" />
+              <SidebarItem icon={<FaCog size={28} />} text="Settings" route="/settings" />
+              <SidebarItem icon={<FaUserShield size={28} />} text="Admin" route="/admin" />
+            </ul>
+
+            <div className="border-t border-gray-300 flex p-3">
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center w-full text-gray-800 hover:text-red-500"
+              >
+                <FaSignOutAlt size={28} className="mr-2" />
+                <span className={`overflow-hidden transition-all ${expanded ? "w-52 ml-3 text-lg" : "w-0"}`}>
+                  Logout
+                </span>
               </button>
-            )}
-
-            <div ref={sidebarRef} className="flex-grow overflow-y-auto p-4">
-              <ul className="space-y-2">
-                <SidebarItem icon={<FaTachometerAlt size={24} />} text="Dashboard" route="/dashboard" />
-                <SidebarItem icon={<FaBook size={24} />} text="Courses" route="/courses" />
-                <SidebarItem icon={<FaBookOpen size={24} />} text="Add Course" route="/addcourse" />
-                <SidebarItem icon={<FaComments size={24} />} text="Chat" route="/Achat" />
-                <SidebarItem icon={<FaFolder size={24} />} text="File Library" route="/file-library" />
-                <SidebarItem icon={<FaPlusCircle size={24} />} text="Add Module" route="/addmodule" />
-                <SidebarItem icon={<FaPuzzlePiece size={24} />} text="Quizzes" route="/addquiz" />
-                <SidebarItem icon={<FaCalendarCheck size={24} />} text="Attendance" route="/attendance" />
-                <SidebarItem icon={<FaEnvelope size={24} />} text="Messages" route="/messages" />
-                <SidebarItem icon={<FaCog size={24} />} text="Settings" route="/settings" />
-                <SidebarItem icon={<FaUserShield size={24} />} text="Admin" route="/admin" />
-
-                <li
-                  onClick={handleLogout}
-                  className="p-2 rounded-md bg-red-700 text-white hover:bg-red-600 cursor-pointer"
-                >
-                  <div className="flex items-center space-x-2">
-                    <FaSignOutAlt /> <span>Logout</span>
-                  </div>
-                </li>
-              </ul>
             </div>
-
-            {canScrollDown && (
-              <button className="w-full py-2 text-gray-200 hover:text-white hover:bg-gray-700" onClick={scrollDown}>
-                <FaArrowDown className="mx-auto" />
-              </button>
-            )}
           </nav>
         </aside>
         <main className={`transition-all ${expanded ? "ml-64" : "ml-16"}`}>{/* Main content goes here */}</main>
@@ -204,8 +153,8 @@ const SidebarItem = ({ icon, text, route }) => {
       onClick={handleClick}
       className={`relative flex items-center py-1 px-2 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
         activeItem === text
-          ? "bg-gradient-to-tr from-yellow-200 to-yellow-100 text-yellow-800"
-          : "hover:bg-yellow-50 text-gray-200"
+          ? "bg-yellow-300 text-yellow-900"
+          : "hover:bg-yellow-200 text-blue-950"
       }`}
     >
       {icon}

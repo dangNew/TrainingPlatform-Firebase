@@ -5,6 +5,41 @@ import { FaFolder, FaSortAlphaDown, FaSortAlphaUp, FaUpload } from "react-icons/
 import { BsThreeDotsVertical, BsSearch } from "react-icons/bs";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase.config";
+import styled from 'styled-components';
+
+// Styled Components
+const PageContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f4f6f9;
+`;
+
+const HeaderWrapper = styled.div`
+  width: 100%;
+  z-index: 10;
+`;
+
+const ContentContainer = styled.div`
+  display: flex;
+  flex: 1;
+`;
+
+const SidebarWrapper = styled.div`
+  height: 100%;
+  z-index: 5;
+`;
+
+const MainContent = styled.div`
+  flex: 1;n
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+`;
 
 const FileLibrary = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -76,20 +111,15 @@ const FileLibrary = () => {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 text-gray-900">
-      {/* Header */}
-      <div className="w-full z-10 shadow-md">
+    <PageContainer>
+      <HeaderWrapper>
         <Header />
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className={`${isSidebarOpen ? "w-64" : "w-20"} transition-width duration-300`}>
+      </HeaderWrapper>
+      <ContentContainer>
+        <SidebarWrapper>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-        </div>
-
-        {/* File Library Content */}
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+        </SidebarWrapper>
+        <MainContent expanded={isSidebarOpen}>
           <div className="p-6 bg-white rounded-lg shadow-md mb-6">
             <div className="flex items-center mb-4">
               <FaFolder className="text-blue-500 text-3xl mr-4" />
@@ -178,9 +208,9 @@ const FileLibrary = () => {
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </MainContent>
+      </ContentContainer>
+    </PageContainer>
   );
 };
 

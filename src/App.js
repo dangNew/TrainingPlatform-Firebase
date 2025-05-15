@@ -18,6 +18,8 @@ import FileLibrary from "./adviser/filelibrary";
 import Adviser from "./adviser/sidebar";
 import UploadContent from "./adviser/uploadcontent";
 import AdviserChatroom from "./adviser/AdChatroom";
+import Aprofile from "./adviser/Profile";
+
 
 import NavBar from "./components/Navbar";
 import LNavbar, { SidebarToggleContext } from "./components/LgNavbar";
@@ -124,6 +126,8 @@ function App() {
           <Route path="/course/:courseId/module/:moduleId" element={<ModuleDetails />} />
           <Route path="/addquiz" element={<AddQuiz />} />
           <Route path="/Achat" element={<AdviserChatroom />} />
+          <Route path="/profile" element={<Aprofile />} />
+
 
           <Route path="/user-dashboard" element={<UserDashboard />} />
           <Route path="/chatroom" element={<ChatRoom />} />

@@ -8,23 +8,393 @@ import { auth, db } from "../firebase.config"
 import uploadToCloudinary from "../uploadToCloudinary"
 import ProfileHistory from "./profile-history"
 import ProfileProgress from "./profile-progress"
-import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
+import { SidebarToggleContext } from "../components/LgNavbar"
 import Sidebar from "../components/LSidebar"
 
+// Styled components
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+  background-color: white;
 `
 
 const SidebarWrapper = styled.div`
   height: 100%;
   z-index: 5;
+`
+
+const ProfileHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+`
+
+const ProfileImageWrapper = styled.div`
+  position: relative;
+  margin-bottom: 1.5rem;
+  
+  @media (min-width: 768px) {
+    margin-right: 2rem;
+    margin-bottom: 0;
+  }
+  
+  &:before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: linear-gradient(to right, #9333ea, #ec4899);
+    opacity: 0.75;
+    filter: blur(8px);
+  }
+`
+
+const ProfileImage = styled.div`
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid white;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`
+
+const ProfileInfo = styled.div`
+  flex: 1;
+  text-align: center;
+  
+  @media (min-width: 768px) {
+    text-align: left;
+  }
+  
+  h2 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+  }
+  
+  p {
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  
+  .username {
+    font-size: 0.875rem;
+    color: #94a3b8;
+  }
+`
+
+const TabsContainer = styled.div`
+  margin-bottom: 1.5rem;
+`
+
+const TabsList = styled.div`
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`
+
+const TabButton = styled.button`
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  color: ${(props) => (props.active ? "#9333ea" : "#64748b")};
+  border-bottom: 2px solid ${(props) => (props.active ? "#9333ea" : "transparent")};
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  
+  &:hover {
+    color: ${(props) => (props.active ? "#9333ea" : "#334155")};
+  }
+`
+
+const Card = styled.div`
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+`
+
+const CardHeader = styled.div`
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  p {
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+`
+
+const CardContent = styled.div`
+  padding: 1.5rem;
+`
+
+const FormGrid = styled.div`
+  display: grid;
+  gap: 1.5rem;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`
+
+const FormGroup = styled.div`
+  margin-bottom: 1rem;
+  
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #334155;
+  }
+  
+  input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    color: #1e293b;
+    
+    &:focus {
+      outline: none;
+      border-color: #9333ea;
+      box-shadow: 0 0 0 1px #9333ea;
+    }
+  }
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+`
+
+const Button = styled.button`
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`
+
+const PrimaryButton = styled(Button)`
+  background-color: #9333ea;
+  color: white;
+  border: none;
+  
+  &:hover:not(:disabled) {
+    background-color: #7e22ce;
+  }
+`
+
+const SecondaryButton = styled(Button)`
+  background-color: white;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  
+  &:hover:not(:disabled) {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+  }
+`
+
+const EditButton = styled(Button)`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(to right, #9333ea, #ec4899);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+`
+
+const InfoGrid = styled.div`
+  display: grid;
+  gap: 1.5rem;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`
+
+const InfoItem = styled.div`
+  margin-bottom: 1rem;
+  
+  h4 {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+  
+  p {
+    color: #1e293b;
+  }
+`
+
+const CommentsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`
+
+const CommentCard = styled(Card)`
+  margin-bottom: 1rem;
+`
+
+const CommentHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+  
+  h4 {
+    font-weight: 500;
+    color: #1e293b;
+    
+    span {
+      color: #9333ea;
+    }
+  }
+`
+
+const Rating = styled.div`
+  display: flex;
+  align-items: center;
+`
+
+const Star = styled.svg`
+  width: 1rem;
+  height: 1rem;
+  color: ${(props) => (props.filled ? "#facc15" : "#cbd5e1")};
+  fill: ${(props) => (props.filled ? "#facc15" : "none")};
+`
+
+const CommentDate = styled.p`
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+`
+
+const CommentText = styled.p`
+  color: #334155;
+  font-size: 0.875rem;
+`
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 2rem 0;
+  
+  p {
+    color: #64748b;
+  }
+`
+
+const Alert = styled.div`
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 50;
+  max-width: 24rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid ${(props) => (props.type === "success" ? "#10b981" : "#ef4444")};
+  animation: slideIn 0.3s ease-out;
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`
+
+const AlertContent = styled.div`
+  display: flex;
+  align-items: flex-start;
+`
+
+const AlertIcon = styled.div`
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  color: ${(props) => (props.type === "success" ? "#10b981" : "#ef4444")};
+`
+
+const AlertBody = styled.div`
+  flex: 1;
+`
+
+const AlertTitle = styled.h4`
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+`
+
+const AlertMessage = styled.p`
+  color: #64748b;
+  font-size: 0.875rem;
+`
+
+const AlertCloseButton = styled.button`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  
+  &:hover {
+    color: #64748b;
+  }
 `
 
 function Profile() {
@@ -42,7 +412,7 @@ function Profile() {
   })
   const [editing, setEditing] = useState(false)
   const [newProfileImage, setNewProfileImage] = useState(null)
-  const [activeTab, setActiveTab] = useState("Personal Info")
+  const [activeTab, setActiveTab] = useState("personal")
   const [loading, setLoading] = useState(false)
   const { expanded } = useContext(SidebarToggleContext)
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
@@ -74,7 +444,7 @@ function Profile() {
 
   useEffect(() => {
     const fetchComments = async () => {
-      if (user && activeTab === "Comments") {
+      if (user && activeTab === "comments") {
         const commentsRef = collection(db, "courseComments")
         const q = query(commentsRef, where("userId", "==", user.uid))
         const querySnapshot = await getDocs(q)
@@ -160,268 +530,332 @@ function Profile() {
     setNewProfileImage(null)
   }
 
+  // Auto-hide alert after 5 seconds
+  useEffect(() => {
+    if (alert.show) {
+      const timer = setTimeout(() => {
+        setAlert({ show: false, message: "", type: "" })
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [alert.show])
+
   return (
     <div className="flex h-screen">
       <SidebarWrapper>
         <Sidebar />
       </SidebarWrapper>
       <MainContent expanded={expanded}>
-        <div className="absolute -left-16 -top-16 h-32 w-32 rounded-full from-indigo-500/20 to-purple-500/0 blur-2xl" />
-        <div className="absolute -right-16 -bottom-16 h-32 w-32 rounded-full from-purple-500/20 to-indigo-500/0 blur-2xl" />
+        {/* Background decorations */}
+        <div
+          style={{
+            position: "fixed",
+            left: "-4rem",
+            top: "-4rem",
+            height: "8rem",
+            width: "8rem",
+            borderRadius: "9999px",
+            background: "radial-gradient(circle, rgba(147, 51, 234, 0.2) 0%, rgba(236, 72, 153, 0) 70%)",
+            filter: "blur(40px)",
+          }}
+        />
+        <div
+          style={{
+            position: "fixed",
+            right: "-4rem",
+            bottom: "-4rem",
+            height: "8rem",
+            width: "8rem",
+            borderRadius: "9999px",
+            background: "radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(147, 51, 234, 0) 70%)",
+            filter: "blur(40px)",
+          }}
+        />
 
-        <div className="relative flex flex-col items-center md:flex-row md:items-start mb-6">
-          <div className="group/avatar relative mb-4 md:mb-0 md:mr-6">
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-75 blur transition-all duration-300 group-hover/avatar:opacity-100" />
-            <div className="relative h-32 w-32 rounded-full bg-blue-950 ring-2">
+        {/* Profile header */}
+        <ProfileHeader>
+          <ProfileImageWrapper>
+            <ProfileImage>
               <img
-                src={userData.photoURL?.url || "default-profile-image.jpg"}
-                alt="Profile"
-                className="h-32 w-32 rounded-full"
+                src={userData.photoURL?.url || "https://via.placeholder.com/128"}
+                alt={userData.fullName || "Profile"}
               />
-            </div>
-          </div>
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl font-semibold text-blue-950">{userData.fullName}</h2>
-            <p className="text-gray-800">{userData.email}</p>
-          </div>
-        </div>
+            </ProfileImage>
+          </ProfileImageWrapper>
+          <ProfileInfo>
+            <h2>{userData.fullName || "User Name"}</h2>
+            <p>{userData.email || "email@example.com"}</p>
+            <p className="username">@{userData.username || "username"}</p>
+          </ProfileInfo>
+        </ProfileHeader>
 
-        <div className="flex space-x-4 mb-4">
-          <button
-            onClick={() => setActiveTab("Personal Info")}
-            className={`text-blue-950 ${activeTab === "Personal Info" ? "underline" : ""}`}
-          >
-            Personal Info
-          </button>
-          <button
-            onClick={() => setActiveTab("Progress")}
-            className={`text-blue-950 ${activeTab === "Progress" ? "underline" : ""}`}
-          >
-            Progress
-          </button>
-          <button
-            onClick={() => setActiveTab("History")}
-            className={`text-blue-950 ${activeTab === "History" ? "underline" : ""}`}
-          >
-            Completed Courses
-          </button>
-          <button
-            onClick={() => setActiveTab("Comments")}
-            className={`text-blue-950 ${activeTab === "Comments" ? "underline" : ""}`}
-          >
-            Comments
-          </button>
-        </div>
+        {/* Tabs */}
+        <TabsContainer>
+          <TabsList>
+            <TabButton active={activeTab === "personal"} onClick={() => setActiveTab("personal")}>
+              Personal Info
+            </TabButton>
+            <TabButton active={activeTab === "progress"} onClick={() => setActiveTab("progress")}>
+              Progress
+            </TabButton>
+            <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
+              Completed Courses
+            </TabButton>
+            <TabButton active={activeTab === "comments"} onClick={() => setActiveTab("comments")}>
+              Comments
+            </TabButton>
+          </TabsList>
 
-        {activeTab === "Personal Info" && (
-          <div className="bg p-4 rounded-lg shadow-inner">
-            <h3 className="text-lg font-semibold mb-2 text-blue-950">Personal Info</h3>
-            {editing ? (
-              <div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Full Name</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={userData.fullName}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded-lg text-black"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={userData.email}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded-lg text-gray-800"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Phone Number</label>
-                  <input
-                    type="text"
-                    name="phoneNumber"
-                    value={userData.phoneNumber}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded-lg text-gray-800"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={userData.address}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded-lg text-gray-800"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    value={userData.username}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded-lg text-gray-800"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-gray-700">Profile Image</label>
-                  <input type="file" onChange={handleImageChange} className="w-full" />
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="flex-1 bg-blue-500 text-white p-2 rounded-lg"
-                  >
-                    {loading ? "Saving..." : "Save"}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={loading}
-                    className="flex-1 bg-red-500 text-white p-2 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-gray-500">
-                  <strong>Phone Number:</strong> <span className="text-blue-500 text-sm"> {userData.phoneNumber}</span>
-                </p>
-                <p className="text-gray-500">
-                  <strong>Address:</strong> <span className="text-blue-500 text-sm">{userData.address}</span>
-                </p>
-                <p className="text-gray-500">
-                  <strong>Username:</strong> <span className="text-blue-500 text-sm">{userData.username}</span>
-                </p>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="relative mt-4 overflow-hidden text-white bg-gradient-to-r from-purple-600 to-blue-500 rounded-lg group"
-                >
-                  <span className="flex items-center px-4 py-2 transition-transform duration-300 transform group-hover:translate-x-1">
-                    Edit Profile
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-5 h-5 ml-2"
-                    >
-                      <path d="M24 12l-5.657 5.657-1.414-1.414L21.172 12l-4.243-4.243 1.414-1.414L24 12zM2.828 12l4.243 4.243-1.414 1.414L0 12l5.657-5.657L7.07 7.757 2.828 12zm6.96 9H7.66l6.552-18h2.128L9.788 21z" />
-                    </svg>
-                  </span>
-                  <div className="absolute inset-0 bg-black opacity-0 transition-opacity duration-300 group-hover:opacity-20"></div>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "Progress" && (
-          <div className="bg p-4 rounded-lg shadow-inner">
-            <ProfileProgress />
-          </div>
-        )}
-
-        {activeTab === "History" && (
-          <div className="bg p-4 rounded-lg shadow-inner">
-            <ProfileHistory />
-          </div>
-        )}
-
-        {activeTab === "Comments" && (
-          <div className="bg p-4 rounded-lg shadow-inner">
-            <h3 className="text-lg font-semibold mb-2 text-blue-950">Comments</h3>
-            {comments.length > 0 ? (
-              <div className="space-y-4">
-                {comments.map((comment, index) => (
-                  <div key={index} className="p-4 border rounded-lg bg-gray-50">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-blue-950">
-                        Course: <span className="text-indigo-600">{comment.courseTitle || "Unknown Course"}</span>
-                      </h4>
-                      {comment.rating && (
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill={i < comment.rating ? "currentColor" : "none"}
-                              stroke="currentColor"
-                              className={`w-4 h-4 ${i < comment.rating ? "text-yellow-500" : "text-gray-300"}`}
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={1.5}
-                                d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
-                              />
-                            </svg>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-gray-700">{comment.comment}</p>
-                    <p className="text-gray-500 text-sm mt-2">
-                      {comment.createdAt?.toDate ? new Date(comment.createdAt?.toDate()).toLocaleString() : ""}
+          {/* Personal Info Tab */}
+          {activeTab === "personal" && (
+            <Card>
+              <CardHeader>
+                <h3>
+                  Personal Information
+                  {!editing && (
+                    <EditButton onClick={() => setEditing(true)}>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      Edit Profile
+                    </EditButton>
+                  )}
+                </h3>
+                <p>Manage your personal information and contact details</p>
+              </CardHeader>
+              <CardContent>
+                {editing ? (
+                  <div>
+                    <FormGrid>
+                      <FormGroup>
+                        <label htmlFor="fullName">Full Name</label>
+                        <input
+                          id="fullName"
+                          name="fullName"
+                          value={userData.fullName || ""}
+                          onChange={handleInputChange}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <label htmlFor="email">Email</label>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          value={userData.email || ""}
+                          onChange={handleInputChange}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <label htmlFor="phoneNumber">Phone Number</label>
+                        <input
+                          id="phoneNumber"
+                          name="phoneNumber"
+                          value={userData.phoneNumber || ""}
+                          onChange={handleInputChange}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <label htmlFor="address">Address</label>
+                        <input
+                          id="address"
+                          name="address"
+                          value={userData.address || ""}
+                          onChange={handleInputChange}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <label htmlFor="username">Username</label>
+                        <input
+                          id="username"
+                          name="username"
+                          value={userData.username || ""}
+                          onChange={handleInputChange}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <label htmlFor="profileImage">Profile Image</label>
+                        <input
+                          id="profileImage"
+                          type="file"
+                          onChange={handleImageChange}
+                          style={{ cursor: "pointer" }}
+                        />
+                      </FormGroup>
+                    </FormGrid>
+                    <ButtonGroup>
+                      <SecondaryButton onClick={handleCancel} disabled={loading}>
+                        Cancel
+                      </SecondaryButton>
+                      <PrimaryButton onClick={handleSave} disabled={loading}>
+                        {loading ? "Saving..." : "Save Changes"}
+                      </PrimaryButton>
+                    </ButtonGroup>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-gray-500 mb-4">
+                      Click the Edit Profile button to view and update your personal information.
                     </p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500">No comments available.</p>
-            )}
-          </div>
-        )}
+                )}
+              </CardContent>
+            </Card>
+          )}
 
+          {/* Progress Tab */}
+          {activeTab === "progress" && (
+            <Card>
+              <CardHeader>
+                <h3>Your Progress</h3>
+                <p>Track your learning journey and course progress</p>
+              </CardHeader>
+              <CardContent>
+                <ProfileProgress />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* History Tab */}
+          {activeTab === "history" && (
+            <Card>
+              <CardHeader>
+                <h3>Completed Courses</h3>
+                <p>View your learning achievements and completed courses</p>
+              </CardHeader>
+              <CardContent>
+                <ProfileHistory />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Comments Tab */}
+          {activeTab === "comments" && (
+            <Card>
+              <CardHeader>
+                <h3>Your Comments</h3>
+                <p>Review your course comments and feedback</p>
+              </CardHeader>
+              <CardContent>
+                {comments.length > 0 ? (
+                  <CommentsList>
+                    {comments.map((comment, index) => (
+                      <CommentCard key={index}>
+                        <CardContent>
+                          <CommentHeader>
+                            <h4>
+                              Course: <span>{comment.courseTitle || "Unknown Course"}</span>
+                            </h4>
+                            {comment.rating && (
+                              <Rating>
+                                {[...Array(5)].map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    filled={i < comment.rating}
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                                    />
+                                  </Star>
+                                ))}
+                              </Rating>
+                            )}
+                          </CommentHeader>
+                          <CommentDate>
+                            {comment.createdAt?.toDate ? new Date(comment.createdAt?.toDate()).toLocaleString() : ""}
+                          </CommentDate>
+                          <CommentText>{comment.comment}</CommentText>
+                        </CardContent>
+                      </CommentCard>
+                    ))}
+                  </CommentsList>
+                ) : (
+                  <EmptyState>
+                    <p>No comments available.</p>
+                  </EmptyState>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContainer>
+
+        {/* Alert notification */}
         {alert.show && (
-          <div
-            className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg bg-white border-l-4 ${alert.type === "success" ? "border-green-500" : "border-red-500"}`}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 512 512"
-                  strokeWidth={0}
-                  fill="currentColor"
-                  stroke="currentColor"
-                  className={`w-6 h-6 ${alert.type === "success" ? "text-green-500" : "text-red-500"}`}
-                >
-                  <path d="M256 48a208 208 0 1 1 0 416 208 208 0 1 1 0-416zm0 464A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-111 111-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L369 209z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-gray-700">{alert.message}</p>
-              </div>
-              <button
-                onClick={() => setAlert({ show: false, message: "", type: "" })}
-                className="ml-auto text-gray-500 hover:text-gray-700"
+          <Alert type={alert.type}>
+            <AlertContent>
+              <AlertIcon type={alert.type}>
+                {alert.type === "success" ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                )}
+              </AlertIcon>
+              <AlertBody>
+                <AlertTitle>{alert.type === "success" ? "Success" : "Error"}</AlertTitle>
+                <AlertMessage>{alert.message}</AlertMessage>
+              </AlertBody>
+            </AlertContent>
+            <AlertCloseButton onClick={() => setAlert({ show: false, message: "", type: "" })}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 15 15"
-                  strokeWidth={0}
-                  fill="none"
-                  stroke="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z"
-                    clipRule="evenodd"
-                    fillRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </AlertCloseButton>
+          </Alert>
         )}
       </MainContent>
     </div>

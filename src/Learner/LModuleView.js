@@ -17,177 +17,15 @@ import {
   FaLightbulb,
   FaTrophy,
   FaMedal,
+  FaSpinner,
+  FaArrowLeft,
+  FaArrowRight,
+  FaBook,
+  FaLayerGroup,
+  FaChalkboardTeacher,
 } from "react-icons/fa"
 import { auth, db } from "../firebase.config"
 import VideoPlayer from "./video-player"
-
-// Add this CSS for animations
-const styles = `
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slideIn {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-pulse {
-  animation: pulse 1.5s infinite;
-}
-
-/* Quiz styles */
-.quiz-container {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-  overflow: hidden;
-}
-
-.quiz-header {
-  background: linear-gradient(90deg, #2d3748, #4a5568);
-  padding: 1.5rem;
-  color: white;
-}
-
-.quiz-body {
-  padding: 1.5rem;
-}
-
-.quiz-question {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  border-left: 4px solid #4a5568;
-}
-
-.quiz-option {
-  padding: 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: black; /* Change the text color to black */
-}
-
-.quiz-option:hover {
-  border-color: #4a5568;
-  background-color: #f7fafc;
-}
-
-.quiz-option.selected {
-  border-color: #4a5568;
-  background-color: #edf2f7;
-}
-
-.quiz-option.correct {
-  border-color: #48bb78;
-  background-color: #f0fff4;
-}
-
-.quiz-option.incorrect {
-  border-color: #f56565;
-  background-color: #fff5f5;
-}
-
-.quiz-result {
-  background: linear-gradient(90deg, #3182ce, #5a67d8);
-  color: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.quiz-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
-
-.quiz-stat {
-  background: #f7fafc;
-  border-radius: 8px;
-  padding: 1rem;
-  text-align: center;
-}
-
-.module-completed {
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/placeholder.svg?height=800&width=1200');
-  background-size: cover;
-  background-position: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 2rem;
-}
-
-.module-completed h1 {
-  font-size: 3rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-.module-completed p {
-  font-size: 1.5rem;
-  margin-bottom: 3rem;
-}
-
-.module-completed-buttons {
-  display: flex;
-  gap: 1rem;
-}
-
-.module-completed-button {
-  padding: 0.75rem 2rem;
-  font-weight: bold;
-  border-radius: 0.25rem;
-  transition: all 0.2s;
-  cursor: pointer;
-}
-
-.module-completed-button.primary {
-  background-color: #e53e3e;
-  color: white;
-}
-
-.module-completed-button.primary:hover {
-  background-color: #c53030;
-}
-
-.module-completed-button.secondary {
-  background-color: #2d3748;
-  color: white;
-}
-
-.module-completed-button.secondary:hover {
-  background-color: #1a202c;
-}
-`
 
 const ModuleView = () => {
   const location = useLocation()
@@ -859,10 +697,11 @@ const ModuleView = () => {
   // Show loading state
   if (loading || contentLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading module content...</p>
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-center p-8 bg-white rounded-2xl shadow-md">
+          <FaSpinner className="animate-spin text-4xl text-indigo-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading module content...</h2>
+          <p className="text-gray-500">Please wait while we prepare your learning materials.</p>
         </div>
       </div>
     )
@@ -871,14 +710,16 @@ const ModuleView = () => {
   // Show login prompt if not authenticated
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
-          <FaSignInAlt className="text-5xl text-blue-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-4">Login Required</h2>
-          <p className="mb-6">You need to be logged in to view this module and track your progress.</p>
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-lg">
+          <div className="bg-indigo-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+            <FaSignInAlt className="text-indigo-600 text-3xl" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Login Required</h2>
+          <p className="text-gray-600 mb-6">You need to be logged in to view this module and track your progress.</p>
           <button
             onClick={handleLoginRedirect}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-medium transition-colors shadow-md"
           >
             Go to Login
           </button>
@@ -890,14 +731,16 @@ const ModuleView = () => {
   // Show error state
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
-          <div className="text-red-500 text-5xl mx-auto mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-white mb-4">Error</h2>
-          <p className="text-gray-300 mb-6">{error}</p>
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-lg">
+          <div className="bg-rose-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+            <FaTimes className="text-rose-600 text-3xl" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => navigate(-1)}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-medium transition-colors shadow-md"
           >
             Go Back
           </button>
@@ -909,14 +752,16 @@ const ModuleView = () => {
   // Show missing module data error
   if (!module || !module.chapters || module.chapters.length === 0) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center max-w-md p-8 bg-gray-800 rounded-xl shadow-2xl">
-          <div className="text-yellow-500 text-5xl mx-auto mb-4">📋</div>
-          <h2 className="text-xl font-bold text-white mb-4">Module Not Found</h2>
-          <p className="text-gray-300 mb-6">The module data is missing or has no chapters.</p>
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-lg">
+          <div className="bg-amber-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+            <FaBook className="text-amber-600 text-3xl" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Module Not Found</h2>
+          <p className="text-gray-600 mb-6">The module data is missing or has no chapters.</p>
           <button
             onClick={() => navigate(-1)}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-medium transition-colors shadow-md"
           >
             Go Back
           </button>
@@ -943,39 +788,45 @@ const ModuleView = () => {
   // Show module completed screen
   if (showModuleCompleted) {
     return (
-      <>
-        {/* Add the styles */}
-        <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-        <div className="module-completed">
-          <h1 className="text-white">MODULE COMPLETED</h1>
-          <p className="text-white">Congratulations! You have completed this module.</p>
-
-          <div className="module-completed-buttons">
-            {/* <button onClick={handleRestartModule} className="module-completed-button secondary">
-              RESTART MODULE
-            </button> */}
-            <button onClick={() => window.close()} className="module-completed-button primary">
-              FINISH
+      <div className="min-h-screen bg-gradient-to-r from-indigo-900 to-indigo-700 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-8 text-center">
+          <div className="bg-green-100 p-4 rounded-full inline-flex items-center justify-center mb-6">
+            <FaTrophy className="text-green-600 text-4xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">Module Completed!</h1>
+          <p className="text-gray-600 text-lg mb-8">Congratulations! You have successfully completed this module.</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <button
+              onClick={handleRestartModule}
+              className="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors font-medium"
+            >
+              Restart Module
+            </button>
+            <button
+              onClick={() => window.close()}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium"
+            >
+              Finish
             </button>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
   // If showing previous quiz results
   if (showQuiz && showQuizResults && quizResults) {
     return (
-      <>
-        {/* Add the styles */}
-        <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-        <div className="flex h-screen bg-gray-900 text-white">
-          {/* Sidebar Navigation */}
-          <div className="w-64 p-4 bg-gray-800 flex flex-col">
-            <h2 className="text-xl font-semibold mb-4">Chapters</h2>
-            <ul className="space-y-2">
+      <div className="flex h-screen bg-gray-100">
+        {/* Sidebar Navigation */}
+        <div className="w-64 bg-white shadow-md flex flex-col">
+          <div className="p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+              <FaLayerGroup className="mr-2 text-indigo-600" /> Chapters
+            </h2>
+          </div>
+          <div className="overflow-y-auto flex-1 p-2">
+            <ul className="space-y-1">
               {module.chapters.map((chapter, index) => {
                 const isUnlocked = isChapterUnlocked(index)
                 const isCompleted = moduleChapters.includes(index)
@@ -983,13 +834,13 @@ const ModuleView = () => {
                 return (
                   <li
                     key={index}
-                    className={`p-2 flex items-center gap-2 rounded transition-colors ${
+                    className={`rounded-xl transition-colors ${
                       index === selectedChapterIndex
-                        ? "bg-blue-900 text-blue-300"
+                        ? "bg-indigo-50 text-indigo-700"
                         : isUnlocked
-                          ? "hover:bg-gray-700 cursor-pointer"
-                          : "text-gray-500 cursor-not-allowed"
-                    } ${isCompleted ? "border-l-4 border-green-500" : ""}`}
+                          ? "hover:bg-gray-100 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed"
+                    }`}
                     onClick={() => {
                       if (isUnlocked) {
                         setShowQuizResults(false)
@@ -1006,181 +857,193 @@ const ModuleView = () => {
                       }
                     }}
                   >
-                    {!isUnlocked ? (
-                      <FaLock className="text-gray-500" />
-                    ) : isCompleted ? (
-                      <FaCheck className="text-green-500" />
-                    ) : (
-                      <FaLockOpen className="text-blue-400" />
-                    )}
-                    <span className={isCompleted ? "text-green-400" : ""}>{chapter.title}</span>
+                    <div className="flex items-center p-3">
+                      <div className={`p-2 rounded-lg mr-3 ${isCompleted ? "bg-green-100" : "bg-gray-100"}`}>
+                        {!isUnlocked ? (
+                          <FaLock className="text-gray-400" />
+                        ) : isCompleted ? (
+                          <FaCheck className="text-green-600" />
+                        ) : (
+                          <FaLockOpen className="text-indigo-600" />
+                        )}
+                      </div>
+                      <span className={`${isCompleted ? "font-medium" : ""} truncate`}>{chapter.title}</span>
+                    </div>
                   </li>
                 )
               })}
 
               {/* Add quiz to sidebar if available */}
               {quizzes.length > 0 && (
-                <li className={`p-2 flex items-center gap-2 rounded transition-colors bg-blue-900 text-blue-300`}>
-                  {hasPreviousAttempt ? (
-                    <FaCheck className="text-green-500" />
-                  ) : (
-                    <FaClipboardCheck className="text-blue-400" />
-                  )}
-                  <span>Module Quiz</span>
+                <li className="rounded-xl bg-indigo-50 text-indigo-700">
+                  <div className="flex items-center p-3">
+                    <div className={`p-2 rounded-lg mr-3 ${hasPreviousAttempt ? "bg-green-100" : "bg-indigo-100"}`}>
+                      {hasPreviousAttempt ? (
+                        <FaCheck className="text-green-600" />
+                      ) : (
+                        <FaClipboardCheck className="text-indigo-600" />
+                      )}
+                    </div>
+                    <span className="font-medium truncate">Module Quiz</span>
+                  </div>
                 </li>
               )}
 
               {/* Add Module Completed to sidebar if module is completed */}
               {moduleAlreadyCompleted && (
                 <li
-                  className="p-2 flex items-center gap-2 rounded transition-colors bg-green-800 text-white hover:bg-green-700 cursor-pointer"
+                  className="rounded-xl bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer"
                   onClick={() => setShowModuleCompleted(true)}
                 >
-                  <FaMedal className="text-yellow-400" />
-                  <span>Module Completed</span>
+                  <div className="flex items-center p-3">
+                    <div className="p-2 bg-green-100 rounded-lg mr-3">
+                      <FaMedal className="text-green-600" />
+                    </div>
+                    <span className="font-medium truncate">Module Completed</span>
+                  </div>
                 </li>
               )}
             </ul>
-
-            <div className="mt-auto p-2 bg-gray-700 rounded">
-              <div className="text-sm text-gray-300 mb-1">Progress</div>
-              <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-green-500 h-full"
-                  style={{
-                    width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="text-xs text-right mt-1 text-gray-300">
-                {moduleChapters.length}/{module.chapters.length} completed
-              </div>
-            </div>
           </div>
 
-          {/* Main Content - Quiz Results */}
-          <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
-            <div className="mb-6">
-              <button
-                onClick={() => {
-                  setShowQuizResults(false)
-                  setShowQuiz(false)
-                  setShowPreviousAttempt(false)
+          <div className="p-4 border-t">
+            <div className="text-sm text-gray-600 mb-1">Progress</div>
+            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-green-500 h-full"
+                style={{
+                  width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
                 }}
-                className="flex items-center text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                <FaChevronLeft className="mr-2" /> Back to Module
-              </button>
+              ></div>
+            </div>
+            <div className="text-xs text-right mt-1 text-gray-500">
+              {moduleChapters.length}/{module.chapters.length} completed
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Quiz Results */}
+        <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
+          <div className="mb-6">
+            <button
+              onClick={() => {
+                setShowQuizResults(false)
+                setShowQuiz(false)
+                setShowPreviousAttempt(false)
+              }}
+              className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              <FaChevronLeft className="mr-2" /> Back to Module
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 text-white">
+              <h2 className="text-2xl font-bold mb-2">
+                {showPreviousAttempt && previousQuizAttempt ? previousQuizAttempt.quizTitle : currentQuiz?.title}
+              </h2>
+              <p className="text-indigo-200">Quiz Results</p>
             </div>
 
-            <div className="quiz-container animate-fadeIn">
-              <div className="quiz-header">
-                <h2 className="text-2xl font-bold mb-2">
-                  {showPreviousAttempt && previousQuizAttempt ? previousQuizAttempt.quizTitle : currentQuiz?.title}
-                </h2>
-                <p className="text-blue-200">Quiz Results</p>
+            <div className="p-6">
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-xl p-6 text-white text-center mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div
+                    className={`h-20 w-20 rounded-full flex items-center justify-center ${
+                      quizResults.passed ? "bg-green-100 text-green-600" : "bg-rose-100 text-rose-600"
+                    }`}
+                  >
+                    {quizResults.passed ? <FaTrophy className="text-3xl" /> : <FaTimes className="text-3xl" />}
+                  </div>
+                </div>
+
+                <h3 className="text-2xl font-bold mb-2">
+                  {quizResults.passed ? "Congratulations!" : "Quiz Completed"}
+                </h3>
+
+                <p className="text-indigo-200">
+                  {quizResults.passed
+                    ? "You've successfully passed the quiz!"
+                    : "You didn't pass this time, but you can try again."}
+                </p>
               </div>
 
-              <div className="quiz-body">
-                <div className="quiz-result">
-                  <div className="flex items-center justify-center mb-4">
-                    <div
-                      className={`h-20 w-20 rounded-full flex items-center justify-center ${
-                        quizResults.passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                      }`}
-                    >
-                      {quizResults.passed ? <FaTrophy className="text-3xl" /> : <FaTimes className="text-3xl" />}
-                    </div>
+              <div className="text-center mb-6">
+                <div className="text-4xl font-bold text-indigo-600 mb-2">{quizResults.percentage}%</div>
+                <div className="text-gray-500">Your Score</div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">
+                    {quizResults.score}/{quizResults.totalPoints}
                   </div>
-
-                  <h3 className="text-2xl font-bold mb-2">
-                    {quizResults.passed ? "Congratulations!" : "Quiz Completed"}
-                  </h3>
-
-                  <p className="text-blue-200">
-                    {quizResults.passed
-                      ? "You've successfully passed the quiz!"
-                      : "You didn't pass this time, but you can try again."}
-                  </p>
+                  <div className="text-sm text-gray-500">Points</div>
                 </div>
 
-                <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">{quizResults.percentage}%</div>
-                  <div className="text-gray-500">Your Score</div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">
+                    {quizResults.correctAnswers}/{quizResults.totalQuestions}
+                  </div>
+                  <div className="text-sm text-gray-500">Correct</div>
                 </div>
 
-                <div className="quiz-stats">
-                  <div className="quiz-stat">
-                    <div className="text-2xl font-bold text-gray-800">
-                      {quizResults.score}/{quizResults.totalPoints}
-                    </div>
-                    <div className="text-sm text-gray-500">Points</div>
-                  </div>
-
-                  <div className="quiz-stat">
-                    <div className="text-2xl font-bold text-gray-800">
-                      {quizResults.correctAnswers}/{quizResults.totalQuestions}
-                    </div>
-                    <div className="text-sm text-gray-500">Correct</div>
-                  </div>
-
-                  <div className="quiz-stat">
-                    <div className="text-2xl font-bold text-gray-800">{quizResults.passed ? "Passed" : "Failed"}</div>
-                    <div className="text-sm text-gray-500">Result</div>
-                  </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{quizResults.passed ? "Passed" : "Failed"}</div>
+                  <div className="text-sm text-gray-500">Result</div>
                 </div>
+              </div>
 
-                <div className="flex justify-center gap-4 mt-8">
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <button
+                  onClick={() => {
+                    setShowQuizResults(false)
+                    setCurrentQuizSection(0)
+                    setCurrentQuizQuestion(0)
+                  }}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
+                >
+                  <FaLightbulb className="mr-2" /> Review Answers
+                </button>
+
+                {quizAttemptCount === 1 && (
                   <button
                     onClick={() => {
+                      // Reset quiz state for retake
+                      setQuizSubmitted(false)
                       setShowQuizResults(false)
+                      setShowPreviousAttempt(false)
+
+                      // Reset answers
+                      const initialAnswers = {}
+                      if (currentQuiz && currentQuiz.sections) {
+                        currentQuiz.sections.forEach((section, sectionIndex) => {
+                          if (section.questions && Array.isArray(section.questions)) {
+                            section.questions.forEach((question, questionIndex) => {
+                              initialAnswers[`${sectionIndex}-${questionIndex}`] = null
+                            })
+                          }
+                        })
+                      }
+                      setQuizAnswers(initialAnswers)
+
+                      // Reset to first question
                       setCurrentQuizSection(0)
                       setCurrentQuizQuestion(0)
                     }}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
+                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
                   >
-                    <FaLightbulb className="mr-2" /> Review Answers
+                    <FaClipboardCheck className="mr-2" /> Retake Quiz
+                    <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      1 attempt left
+                    </span>
                   </button>
-
-                  {quizAttemptCount === 1 && (
-                    <button
-                      onClick={() => {
-                        // Reset quiz state for retake
-                        setQuizSubmitted(false)
-                        setShowQuizResults(false)
-                        setShowPreviousAttempt(false)
-
-                        // Reset answers
-                        const initialAnswers = {}
-                        if (currentQuiz && currentQuiz.sections) {
-                          currentQuiz.sections.forEach((section, sectionIndex) => {
-                            if (section.questions && Array.isArray(section.questions)) {
-                              section.questions.forEach((question, questionIndex) => {
-                                initialAnswers[`${sectionIndex}-${questionIndex}`] = null
-                              })
-                            }
-                          })
-                        }
-                        setQuizAnswers(initialAnswers)
-
-                        // Reset to first question
-                        setCurrentQuizSection(0)
-                        setCurrentQuizQuestion(0)
-                      }}
-                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
-                    >
-                      <FaClipboardCheck className="mr-2" /> Retake Quiz
-                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                        1 attempt left
-                      </span>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
@@ -1198,15 +1061,16 @@ const ModuleView = () => {
     const isCorrect = isReview && selectedAnswer === currentQuestionData.correctOption
 
     return (
-      <>
-        {/* Add the styles */}
-        <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-        <div className="flex h-screen bg-gray-900 text-white">
-          {/* Sidebar Navigation */}
-          <div className="w-64 p-4 bg-gray-800 flex flex-col">
-            <h2 className="text-xl font-semibold mb-4">Chapters</h2>
-            <ul className="space-y-2">
+      <div className="flex h-screen bg-gray-100">
+        {/* Sidebar Navigation */}
+        <div className="w-64 bg-white shadow-md flex flex-col">
+          <div className="p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+              <FaLayerGroup className="mr-2 text-indigo-600" /> Chapters
+            </h2>
+          </div>
+          <div className="overflow-y-auto flex-1 p-2">
+            <ul className="space-y-1">
               {module.chapters.map((chapter, index) => {
                 const isUnlocked = isChapterUnlocked(index)
                 const isCompleted = moduleChapters.includes(index)
@@ -1214,13 +1078,13 @@ const ModuleView = () => {
                 return (
                   <li
                     key={index}
-                    className={`p-2 flex items-center gap-2 rounded transition-colors ${
+                    className={`rounded-xl transition-colors ${
                       index === selectedChapterIndex && !showQuiz
-                        ? "bg-blue-900 text-blue-300"
+                        ? "bg-indigo-50 text-indigo-700"
                         : isUnlocked
-                          ? "hover:bg-gray-700 cursor-pointer"
-                          : "text-gray-500 cursor-not-allowed"
-                    } ${isCompleted ? "border-l-4 border-green-500" : ""}`}
+                          ? "hover:bg-gray-100 cursor-pointer"
+                          : "text-gray-400 cursor-not-allowed"
+                    }`}
                     onClick={() => {
                       if (isUnlocked) {
                         setShowQuiz(false)
@@ -1236,289 +1100,301 @@ const ModuleView = () => {
                       }
                     }}
                   >
-                    {!isUnlocked ? (
-                      <FaLock className="text-gray-500" />
-                    ) : isCompleted ? (
-                      <FaCheck className="text-green-500" />
-                    ) : (
-                      <FaLockOpen className="text-blue-400" />
-                    )}
-                    <span className={isCompleted ? "text-green-400" : ""}>{chapter.title}</span>
+                    <div className="flex items-center p-3">
+                      <div className={`p-2 rounded-lg mr-3 ${isCompleted ? "bg-green-100" : "bg-gray-100"}`}>
+                        {!isUnlocked ? (
+                          <FaLock className="text-gray-400" />
+                        ) : isCompleted ? (
+                          <FaCheck className="text-green-600" />
+                        ) : (
+                          <FaLockOpen className="text-indigo-600" />
+                        )}
+                      </div>
+                      <span className={`${isCompleted ? "font-medium" : ""} truncate`}>{chapter.title}</span>
+                    </div>
                   </li>
                 )
               })}
 
               {/* Add quiz to sidebar if available */}
               {quizzes.length > 0 && (
-                <li className={`p-2 flex items-center gap-2 rounded transition-colors bg-blue-900 text-blue-300`}>
-                  {hasPreviousAttempt ? (
-                    <FaCheck className="text-green-500" />
-                  ) : (
-                    <FaClipboardCheck className="text-blue-400" />
-                  )}
-                  <span>Module Quiz</span>
+                <li className="rounded-xl bg-indigo-50 text-indigo-700">
+                  <div className="flex items-center p-3">
+                    <div className={`p-2 rounded-lg mr-3 ${hasPreviousAttempt ? "bg-green-100" : "bg-indigo-100"}`}>
+                      {hasPreviousAttempt ? (
+                        <FaCheck className="text-green-600" />
+                      ) : (
+                        <FaClipboardCheck className="text-indigo-600" />
+                      )}
+                    </div>
+                    <span className="font-medium truncate">Module Quiz</span>
+                  </div>
                 </li>
               )}
 
               {/* Add Module Completed to sidebar if module is completed */}
               {moduleAlreadyCompleted && (
-                <li className="p-2 flex items-center gap-2 rounded transition-colors bg-green-800 text-white">
-                  <FaMedal className="text-yellow-400" />
-                  <span>Module Completed</span>
+                <li className="rounded-xl bg-green-50 text-green-700">
+                  <div className="flex items-center p-3">
+                    <div className="p-2 bg-green-100 rounded-lg mr-3">
+                      <FaMedal className="text-green-600" />
+                    </div>
+                    <span className="font-medium truncate">Module Completed</span>
+                  </div>
                 </li>
               )}
             </ul>
+          </div>
 
-            <div className="mt-auto p-2 bg-gray-700 rounded">
-              <div className="text-sm text-gray-300 mb-1">Progress</div>
-              <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-green-500 h-full"
-                  style={{
-                    width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="text-xs text-right mt-1 text-gray-300">
-                {moduleChapters.length}/{module.chapters.length} completed
-              </div>
+          <div className="p-4 border-t">
+            <div className="text-sm text-gray-600 mb-1">Progress</div>
+            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-green-500 h-full"
+                style={{
+                  width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
+                }}
+              ></div>
+            </div>
+            <div className="text-xs text-right mt-1 text-gray-500">
+              {moduleChapters.length}/{module.chapters.length} completed
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content - Quiz */}
+        <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
+          <div className="mb-6 flex justify-between items-center">
+            <button
+              onClick={() => {
+                setShowQuiz(false)
+                setShowPreviousAttempt(false)
+              }}
+              className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              <FaChevronLeft className="mr-2" /> Back to Module
+            </button>
+
+            <div className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-medium flex items-center">
+              Question {getCurrentQuizQuestionNumber()} of {getTotalQuizQuestions()}
             </div>
           </div>
 
-          {/* Main Content - Quiz */}
-          <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
-            <div className="mb-6 flex justify-between items-center">
-              <button
-                onClick={() => {
-                  setShowQuiz(false)
-                  setShowPreviousAttempt(false)
-                }}
-                className="flex items-center text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                <FaChevronLeft className="mr-2" /> Back to Module
-              </button>
-
-              <div className="bg-blue-900 text-blue-200 px-4 py-2 rounded-full font-medium flex items-center">
-                Question {getCurrentQuizQuestionNumber()} of {getTotalQuizQuestions()}
-              </div>
+          <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 p-6 text-white">
+              <h2 className="text-2xl font-bold mb-2">
+                {showPreviousAttempt && previousQuizAttempt ? previousQuizAttempt.quizTitle : currentQuiz.title}
+              </h2>
+              <p className="text-indigo-200">
+                {showPreviousAttempt
+                  ? "Review Previous Attempt"
+                  : currentSectionData.title || `Section ${currentQuizSection + 1}`}
+              </p>
             </div>
 
-            <div className="quiz-container">
-              <div className="quiz-header">
-                <h2 className="text-2xl font-bold mb-2">
-                  {showPreviousAttempt && previousQuizAttempt ? previousQuizAttempt.quizTitle : currentQuiz.title}
-                </h2>
-                <p className="text-blue-200">
-                  {showPreviousAttempt
-                    ? "Review Previous Attempt"
-                    : currentSectionData.title || `Section ${currentQuizSection + 1}`}
-                </p>
+            <div className="p-6">
+              {/* Progress bar */}
+              <div className="mb-6">
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 transition-all duration-500 ease-out"
+                    style={{ width: `${(getAnsweredQuizQuestionsCount() / getTotalQuizQuestions()) * 100}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between mt-2 text-sm text-gray-600">
+                  <span>
+                    Progress: {getAnsweredQuizQuestionsCount()}/{getTotalQuizQuestions()} questions answered
+                  </span>
+                  {!isReview && (
+                    <span className="font-medium text-indigo-600">
+                      {Math.round((getAnsweredQuizQuestionsCount() / getTotalQuizQuestions()) * 100)}% complete
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="quiz-body">
-                {/* Progress bar */}
-                <div className="mb-6">
-                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 transition-all duration-500 ease-out"
-                      style={{ width: `${(getAnsweredQuizQuestionsCount() / getTotalQuizQuestions()) * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between mt-2 text-sm text-gray-600">
-                    <span>
-                      Progress: {getAnsweredQuizQuestionsCount()}/{getTotalQuizQuestions()} questions answered
-                    </span>
-                    {!isReview && (
-                      <span className="font-medium text-blue-600">
-                        {Math.round((getAnsweredQuizQuestionsCount() / getTotalQuizQuestions()) * 100)}% complete
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Question */}
-                <div className="quiz-question">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-medium text-gray-800">{currentQuestionData.question}</h3>
-                    {isReview && (
-                      <div
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          isCorrect
-                            ? "bg-green-100 text-green-800 border border-green-200"
-                            : "bg-red-100 text-red-800 border border-red-200"
-                        }`}
-                      >
-                        {isCorrect ? "Correct" : "Incorrect"}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Show correct answer banner if the user got it wrong */}
-                  {isReview && !isCorrect && selectedAnswer !== null && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center text-blue-800">
-                      <FaLightbulb className="mr-2 text-blue-500" />
-                      <span>
-                        Correct answer: {String.fromCharCode(65 + currentQuestionData.correctOption)} -{" "}
-                        {currentQuestionData.options[currentQuestionData.correctOption]}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Options */}
-                  <div className="mt-6 space-y-3">
-                    {currentQuestionData.options &&
-                      currentQuestionData.options.map((option, optionIndex) => (
-                        <div
-                          key={optionIndex}
-                          className={`quiz-option ${
-                            selectedAnswer === optionIndex
-                              ? isReview
-                                ? isCorrect
-                                  ? "correct"
-                                  : "incorrect"
-                                : "selected"
-                              : isReview && currentQuestionData.correctOption === optionIndex
-                                ? "correct"
-                                : ""
-                          }`}
-                          onClick={() => {
-                            if (!isReview) {
-                              handleQuizAnswerSelect(questionKey, optionIndex)
-                            }
-                          }}
-                        >
-                          <div className="flex items-center">
-                            <div
-                              className={`w-8 h-8 flex items-center justify-center rounded-full mr-3 ${
-                                selectedAnswer === optionIndex
-                                  ? isReview
-                                    ? isCorrect
-                                      ? "bg-green-500 text-white"
-                                      : "bg-red-500 text-white"
-                                    : "bg-blue-600 text-white"
-                                  : isReview && currentQuestionData.correctOption === optionIndex
-                                    ? "bg-green-500 text-white"
-                                    : "bg-gray-200 text-gray-700"
-                              }`}
-                            >
-                              {String.fromCharCode(65 + optionIndex)}
-                            </div>
-                            <span className="flex-1">{option}</span>
-                            {isReview && (
-                              <div className="ml-2">
-                                {optionIndex === currentQuestionData.correctOption && (
-                                  <FaCheck className="text-green-500 text-xl" />
-                                )}
-                                {selectedAnswer === optionIndex &&
-                                  optionIndex !== currentQuestionData.correctOption && (
-                                    <FaTimes className="text-red-500 text-xl" />
-                                  )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-
-                  {/* Explanation (in review mode) */}
+              {/* Question */}
+              <div className="bg-gray-50 rounded-xl p-6 mb-6 border border-gray-200">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-medium text-gray-800">{currentQuestionData.question}</h3>
                   {isReview && (
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="font-medium text-gray-800 mb-2 flex items-center">
-                        <FaLightbulb className="mr-2 text-blue-500" /> Answer Explanation
-                      </div>
-                      <div className="text-gray-700">
-                        {currentQuestionData.explanation ||
-                          `The correct answer is option ${String.fromCharCode(65 + currentQuestionData.correctOption)}:
-                          ${currentQuestionData.options[currentQuestionData.correctOption]}`}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Navigation buttons */}
-                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={goToPreviousQuizQuestion}
-                    disabled={currentQuizSection === 0 && currentQuizQuestion === 0}
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      currentQuizSection === 0 && currentQuizQuestion === 0
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-gray-700 text-white hover:bg-gray-600"
-                    }`}
-                  >
-                    <FaChevronLeft className="mr-2" /> Previous
-                  </button>
-
-                  {!isReview ? (
-                    <button
-                      onClick={submitQuiz}
-                      disabled={
-                        quizSubmitting ||
-                        Object.values(quizAnswers).some((a) => a === null) ||
-                        getTotalQuizQuestions() === 0
-                      }
-                      className={`px-6 py-2 rounded-lg flex items-center ${
-                        quizSubmitting ||
-                        Object.values(quizAnswers).some((a) => a === null) ||
-                        getTotalQuizQuestions() === 0
-                          ? "bg-gray-400 text-white cursor-not-allowed"
-                          : "bg-green-600 text-white hover:bg-green-700"
+                    <div
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        isCorrect
+                          ? "bg-green-100 text-green-800 border border-green-200"
+                          : "bg-rose-100 text-rose-800 border border-rose-200"
                       }`}
                     >
-                      {quizSubmitting ? (
-                        <>
-                          <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          Submitting...
-                        </>
-                      ) : (
-                        <>
-                          <FaClipboardCheck className="mr-2" /> Submit Quiz
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setShowQuizResults(true)}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-                    >
-                      View Results <FaChevronRight className="ml-2" />
-                    </button>
+                      {isCorrect ? "Correct" : "Incorrect"}
+                    </div>
                   )}
+                </div>
 
+                {/* Show correct answer banner if the user got it wrong */}
+                {isReview && !isCorrect && selectedAnswer !== null && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-4 flex items-center text-indigo-800">
+                    <FaLightbulb className="mr-2 text-indigo-500" />
+                    <span>
+                      Correct answer: {String.fromCharCode(65 + currentQuestionData.correctOption)} -{" "}
+                      {currentQuestionData.options[currentQuestionData.correctOption]}
+                    </span>
+                  </div>
+                )}
+
+                {/* Options */}
+                <div className="mt-6 space-y-3">
+                  {currentQuestionData.options &&
+                    currentQuestionData.options.map((option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          selectedAnswer === optionIndex
+                            ? isReview
+                              ? isCorrect
+                                ? "border-green-500 bg-green-50"
+                                : "border-rose-500 bg-rose-50"
+                              : "border-indigo-500 bg-indigo-50"
+                            : isReview && currentQuestionData.correctOption === optionIndex
+                              ? "border-green-500 bg-green-50"
+                              : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => {
+                          if (!isReview) {
+                            handleQuizAnswerSelect(questionKey, optionIndex)
+                          }
+                        }}
+                      >
+                        <div className="flex items-center">
+                          <div
+                            className={`w-8 h-8 flex items-center justify-center rounded-full mr-3 ${
+                              selectedAnswer === optionIndex
+                                ? isReview
+                                  ? isCorrect
+                                    ? "bg-green-500 text-white"
+                                    : "bg-rose-500 text-white"
+                                  : "bg-indigo-600 text-white"
+                                : isReview && currentQuestionData.correctOption === optionIndex
+                                  ? "bg-green-500 text-white"
+                                  : "bg-gray-200 text-gray-700"
+                            }`}
+                          >
+                            {String.fromCharCode(65 + optionIndex)}
+                          </div>
+                          <span className="flex-1 text-gray-800">{option}</span>
+                          {isReview && (
+                            <div className="ml-2">
+                              {optionIndex === currentQuestionData.correctOption && (
+                                <FaCheck className="text-green-500 text-xl" />
+                              )}
+                              {selectedAnswer === optionIndex && optionIndex !== currentQuestionData.correctOption && (
+                                <FaTimes className="text-rose-500 text-xl" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Explanation (in review mode) */}
+                {isReview && (
+                  <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <div className="font-medium text-gray-800 mb-2 flex items-center">
+                      <FaLightbulb className="mr-2 text-indigo-500" /> Answer Explanation
+                    </div>
+                    <div className="text-gray-700">
+                      {currentQuestionData.explanation ||
+                        `The correct answer is option ${String.fromCharCode(65 + currentQuestionData.correctOption)}:
+                        ${currentQuestionData.options[currentQuestionData.correctOption]}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={goToPreviousQuizQuestion}
+                  disabled={currentQuizSection === 0 && currentQuizQuestion === 0}
+                  className={`px-4 py-2 rounded-xl flex items-center ${
+                    currentQuizSection === 0 && currentQuizQuestion === 0
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  <FaChevronLeft className="mr-2" /> Previous
+                </button>
+
+                {!isReview ? (
                   <button
-                    onClick={goToNextQuizQuestion}
+                    onClick={submitQuiz}
                     disabled={
-                      currentQuizSection === currentQuiz.sections.length - 1 &&
-                      currentQuizQuestion === currentQuiz.sections[currentQuizSection].questions.length - 1
+                      quizSubmitting ||
+                      Object.values(quizAnswers).some((a) => a === null) ||
+                      getTotalQuizQuestions() === 0
                     }
-                    className={`px-4 py-2 rounded-lg flex items-center ${
-                      currentQuizSection === currentQuiz.sections.length - 1 &&
-                      currentQuizQuestion === currentQuiz.sections[currentQuizSection].questions.length - 1
+                    className={`px-6 py-2 rounded-xl flex items-center ${
+                      quizSubmitting ||
+                      Object.values(quizAnswers).some((a) => a === null) ||
+                      getTotalQuizQuestions() === 0
                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-gray-700 text-white hover:bg-gray-600"
+                        : "bg-green-600 text-white hover:bg-green-700"
                     }`}
                   >
-                    Next <FaChevronRight className="ml-2" />
+                    {quizSubmitting ? (
+                      <>
+                        <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <FaClipboardCheck className="mr-2" /> Submit Quiz
+                      </>
+                    )}
                   </button>
-                </div>
+                ) : (
+                  <button
+                    onClick={() => setShowQuizResults(true)}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center"
+                  >
+                    View Results <FaChevronRight className="ml-2" />
+                  </button>
+                )}
+
+                <button
+                  onClick={goToNextQuizQuestion}
+                  disabled={
+                    currentQuizSection === currentQuiz.sections.length - 1 &&
+                    currentQuizQuestion === currentQuiz.sections[currentQuizSection].questions.length - 1
+                  }
+                  className={`px-4 py-2 rounded-xl flex items-center ${
+                    currentQuizSection === currentQuiz.sections.length - 1 &&
+                    currentQuizQuestion === currentQuiz.sections[currentQuizSection].questions.length - 1
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  Next <FaChevronRight className="ml-2" />
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </>
+      </div>
     )
   }
 
   return (
-    <>
-      {/* Add the styles */}
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-      <div className="flex h-screen bg-gray-900 text-white">
-        {/* Sidebar Navigation */}
-        <div className="w-64 p-4 bg-gray-800 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4">Chapters</h2>
-          <ul className="space-y-2">
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar Navigation */}
+      <div className="w-64 bg-white shadow-md flex flex-col">
+        <div className="p-4 border-b">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+            <FaLayerGroup className="mr-2 text-indigo-600" /> Chapters
+          </h2>
+        </div>
+        <div className="overflow-y-auto flex-1 p-2">
+          <ul className="space-y-1">
             {module.chapters.map((chapter, index) => {
               const isUnlocked = isChapterUnlocked(index)
               const isCompleted = moduleChapters.includes(index)
@@ -1526,13 +1402,13 @@ const ModuleView = () => {
               return (
                 <li
                   key={index}
-                  className={`p-2 flex items-center gap-2 rounded transition-colors ${
+                  className={`rounded-xl transition-colors ${
                     index === selectedChapterIndex
-                      ? "bg-blue-900 text-blue-300"
+                      ? "bg-indigo-50 text-indigo-700"
                       : isUnlocked
-                        ? "hover:bg-gray-700 cursor-pointer"
-                        : "text-gray-500 cursor-not-allowed"
-                  } ${isCompleted ? "border-l-4 border-green-500" : ""}`}
+                        ? "hover:bg-gray-100 cursor-pointer"
+                        : "text-gray-400 cursor-not-allowed"
+                  }`}
                   onClick={() => {
                     if (isUnlocked) {
                       setSelectedChapterIndex(index)
@@ -1546,14 +1422,18 @@ const ModuleView = () => {
                     }
                   }}
                 >
-                  {!isUnlocked ? (
-                    <FaLock className="text-gray-500" />
-                  ) : isCompleted ? (
-                    <FaCheck className="text-green-500" />
-                  ) : (
-                    <FaLockOpen className="text-blue-400" />
-                  )}
-                  <span className={isCompleted ? "text-green-400" : ""}>{chapter.title}</span>
+                  <div className="flex items-center p-3">
+                    <div className={`p-2 rounded-lg mr-3 ${isCompleted ? "bg-green-100" : "bg-gray-100"}`}>
+                      {!isUnlocked ? (
+                        <FaLock className="text-gray-400" />
+                      ) : isCompleted ? (
+                        <FaCheck className="text-green-600" />
+                      ) : (
+                        <FaLockOpen className="text-indigo-600" />
+                      )}
+                    </div>
+                    <span className={`${isCompleted ? "font-medium" : ""} truncate`}>{chapter.title}</span>
+                  </div>
                 </li>
               )
             })}
@@ -1561,7 +1441,7 @@ const ModuleView = () => {
             {/* Add quiz to sidebar if available */}
             {quizzes.length > 0 && (
               <li
-                className={`p-2 flex items-center gap-2 rounded transition-colors hover:bg-gray-700 cursor-pointer`}
+                className="rounded-xl hover:bg-gray-100 cursor-pointer"
                 onClick={() => {
                   // If there's a previous attempt, automatically show the results
                   if (hasPreviousAttempt) {
@@ -1571,71 +1451,103 @@ const ModuleView = () => {
                   }
                 }}
               >
-                {hasPreviousAttempt ? (
-                  <FaCheck className="text-green-500" />
-                ) : (
-                  <FaClipboardCheck className="text-blue-400" />
-                )}
-                <span>Module Quiz</span>
+                <div className="flex items-center p-3">
+                  <div className={`p-2 rounded-lg mr-3 ${hasPreviousAttempt ? "bg-green-100" : "bg-indigo-100"}`}>
+                    {hasPreviousAttempt ? (
+                      <FaCheck className="text-green-600" />
+                    ) : (
+                      <FaClipboardCheck className="text-indigo-600" />
+                    )}
+                  </div>
+                  <span className="truncate">Module Quiz</span>
+                </div>
               </li>
             )}
 
             {/* Add Module Completed to sidebar if module is completed */}
             {moduleAlreadyCompleted && (
-              <li className="p-2 flex items-center gap-2 rounded transition-colors bg-green-800 text-white">
-                <FaMedal className="text-yellow-400" />
-                <span>Module Completed</span>
+              <li
+                className="rounded-xl bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer"
+                onClick={() => setShowModuleCompleted(true)}
+              >
+                <div className="flex items-center p-3">
+                  <div className="p-2 bg-green-100 rounded-lg mr-3">
+                    <FaMedal className="text-green-600" />
+                  </div>
+                  <span className="font-medium truncate">Module Completed</span>
+                </div>
               </li>
             )}
           </ul>
+        </div>
 
-          <div className="mt-auto p-2 bg-gray-700 rounded">
-            <div className="text-sm text-gray-300 mb-1">Progress</div>
-            <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-green-500 h-full"
-                style={{
-                  width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
-                }}
-              ></div>
+        <div className="p-4 border-t">
+          <div className="text-sm text-gray-600 mb-1">Progress</div>
+          <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-green-500 h-full"
+              style={{
+                width: `${(moduleChapters.length / module.chapters.length) * 100}%`,
+              }}
+            ></div>
+          </div>
+          <div className="text-xs text-right mt-1 text-gray-500">
+            {moduleChapters.length}/{module.chapters.length} completed
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
+        {/* Chapter Header */}
+        <div className="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl shadow-lg mb-8 overflow-hidden">
+          <div className="p-8">
+            <div className="flex items-center mb-2">
+              <div className="bg-white p-2 rounded-full shadow-md mr-3">
+                <FaChalkboardTeacher className="text-indigo-600 text-xl" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{selectedChapter.title}</h1>
             </div>
-            <div className="text-xs text-right mt-1 text-gray-300">
-              {moduleChapters.length}/{module.chapters.length} completed
-            </div>
+            <p className="text-indigo-100 ml-12">{selectedChapter.description || "No description available"}</p>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div ref={contentRef} className="flex-1 p-6 overflow-y-auto">
-          <h1 className="text-3xl font-bold text-blue-300 mb-4">{selectedChapter.title}</h1>
-          <p className="text-gray-400 mb-6">{selectedChapter.description}</p>
-
-          {/* Previous quiz attempt notification */}
-          {hasPreviousAttempt && previousQuizAttempt && (
-            <div className="bg-blue-800 text-white p-4 rounded-lg mb-6 animate-fadeIn">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-xl font-semibold mb-1">Previous Quiz Attempt Found</h3>
-                  <p>
-                    You've already taken the quiz for this module. Your score was {previousQuizAttempt.percentage}%.
-                  </p>
-                  <p className="text-sm text-blue-200 mt-1">
-                    Completed on: {previousQuizAttempt.completedAt?.toDate?.().toLocaleDateString() || "Unknown date"}
-                  </p>
-                </div>
-                <button
-                  onClick={viewPreviousQuizAttempt}
-                  className="px-4 py-2 bg-white text-blue-800 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                >
-                  View Results
-                </button>
+        {/* Previous quiz attempt notification */}
+        {hasPreviousAttempt && previousQuizAttempt && (
+          <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-1">Previous Quiz Attempt Found</h3>
+                <p>You've already taken the quiz for this module. Your score was {previousQuizAttempt.percentage}%.</p>
+                <p className="text-sm text-indigo-600 mt-1">
+                  Completed on: {previousQuizAttempt.completedAt?.toDate?.().toLocaleDateString() || "Unknown date"}
+                </p>
               </div>
+              <button
+                onClick={viewPreviousQuizAttempt}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium"
+              >
+                View Results
+              </button>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Module Overview Section */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+          <div className="flex items-center mb-4">
+            <div className="bg-indigo-100 p-2 rounded-full mr-3">
+              <FaCheck className="text-indigo-600 text-xl" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800">Chapter Content</h2>
+          </div>
+          <p className="text-gray-600 ml-12 mb-4">
+            This chapter covers important concepts and materials to help you understand the topic better.
+          </p>
 
           {/* Content Display - Video or iframe based on content type */}
           {isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl) ? (
-            <div className="bg-gray-800 rounded-lg p-4 mb-6">
+            <div className="mt-6 bg-gray-800 rounded-xl overflow-hidden">
               <VideoPlayer
                 src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
                 onComplete={handleVideoComplete}
@@ -1643,53 +1555,80 @@ const ModuleView = () => {
                 className="max-h-[600px]"
               />
               {videoCompleted && !isCurrentChapterCompleted && (
-                <div className="mt-3 bg-green-800 text-white p-3 rounded animate-pulse">
-                  <p className="text-sm">Video completed!</p>
+                <div className="mt-3 bg-green-100 text-green-800 p-3 rounded-xl">
+                  <p className="text-sm font-medium">Video completed!</p>
                 </div>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg p-4 mb-6">
+            <div className="mt-6">
               <iframe
                 src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
                 width="100%"
                 height="600px"
-                className="border rounded"
+                className="border rounded-xl"
                 title="Chapter Content"
               />
             </div>
           )}
+        </div>
 
-          {isCurrentChapterCompleted && !isLastChapter && (
-            <div className="bg-green-800 text-white p-4 rounded-lg mb-6">
+        {isCurrentChapterCompleted && !isLastChapter && (
+          <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6">
+            <div className="flex items-center">
+              <FaCheck className="text-green-600 mr-2" />
               <p className="font-medium">You've completed this chapter!</p>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Module Quiz Button (if available) */}
-          {quizzes.length > 0 && isLastChapter && canFinish && !hasPreviousAttempt && (
-            <div className="bg-blue-800 text-white p-4 rounded-lg mb-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-xl font-semibold mb-1">Module Quiz Available</h3>
-                  <p>Test your knowledge with a quiz on this module's content.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuiz(true)
-                  }}
-                  className="px-4 py-2 bg-white text-blue-800 rounded-lg hover:bg-blue-100 transition-colors font-medium"
-                >
-                  Take Quiz
-                </button>
+        {/* Module Quiz Button (if available) */}
+        {quizzes.length > 0 && isLastChapter && canFinish && !hasPreviousAttempt && (
+          <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-1">Module Quiz Available</h3>
+                <p>Test your knowledge with a quiz on this module's content.</p>
               </div>
+              <button
+                onClick={() => {
+                  setShowQuiz(true)
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium"
+              >
+                Take Quiz
+              </button>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8 mb-8">
+          <button
+            onClick={() => {
+              if (selectedChapterIndex > 0) {
+                setSelectedChapterIndex(selectedChapterIndex - 1)
+                if (contentRef.current) {
+                  contentRef.current.scrollTop = 0
+                }
+              }
+            }}
+            disabled={selectedChapterIndex === 0}
+            className={`flex items-center px-6 py-3 rounded-xl font-medium transition-colors ${
+              selectedChapterIndex === 0
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <FaArrowLeft className="mr-2" /> Previous Chapter
+          </button>
 
           <button
-            className={`px-4 py-2 ${
-              canFinish ? "bg-blue-600 hover:bg-blue-500" : "bg-blue-600 hover:bg-blue-500"
-            } rounded disabled:opacity-50 transition-colors`}
+            className={`flex items-center px-6 py-3 rounded-xl font-medium transition-colors ${
+              canFinish
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
             disabled={
               (isLastChapter && !canFinish) ||
               (!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1)) ||
@@ -1715,11 +1654,11 @@ const ModuleView = () => {
               }
             }}
           >
-            {isLastChapter && canFinish ? "Next" : "Next"}
+            {isLastChapter && canFinish ? "Next" : "Next Chapter"} <FaArrowRight className="ml-2" />
           </button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

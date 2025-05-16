@@ -5,160 +5,9 @@ import { db } from "../firebase.config"
 import { collection, getDocs, doc, getDoc } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../components/LSidebar"
-import styled from "styled-components"
-import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
-import { auth } from "../firebase.config" // Make sure auth is exported from your firebase.config
-
-// Styled Components
-const PageContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #f4f6f9;
-`
-
-const HeaderWrapper = styled.div`
-  width: 100%;
-  z-index: 10;
-`
-
-const ContentContainer = styled.div`
-  display: flex;
-  flex: 1;
-`
-
-const SidebarWrapper = styled.div`
-  height: 100%;
-  z-index: 5;
-`
-
-const MainContent = styled.div`
-  flex: 1;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
-  transition: margin-left 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
-  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
-
-const CourseTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-  border-bottom: 3px solid #3498db;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
-  letter-spacing: 0.5px;
-`
-
-const CourseGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-`
-
-const CourseCard = styled.div`
-  background: linear-gradient(145deg, #ffffff, #e6e6e6);
-  border-radius: 8px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-  &:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  }
-`
-
-const CourseImage = styled.img`
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-  border-bottom: 2px solid #ddd;
-`
-
-const CourseDetails = styled.div`
-  padding: 15px;
-`
-
-const CourseCategory = styled.p`
-  font-size: 12px;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 5px;
-`
-
-const CourseTitleCard = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 10px;
-`
-
-const CourseDescription = styled.p`
-  font-size: 14px;
-  color: #555;
-  margin-top: 5px;
-`
-
-const ActionButtons = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-`
-
-const SearchInput = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-
-  input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    margin-right: 10px;
-  }
-
-  button {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.3s ease;
-
-    &:hover {
-      background-color: #2980b9;
-    }
-  }
-`
-
-const FilterOptions = styled.div`
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-
-  select, button {
-    margin-right: 10px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-
-    &:hover {
-      background-color: #f0f0f0;
-    }
-  }
-`
+import { SidebarToggleContext } from "../components/LgNavbar"
+import { auth } from "../firebase.config"
+import { FaSearch, FaChevronDown, FaChevronUp, FaSpinner, FaGraduationCap, FaFilter, FaBook } from "react-icons/fa"
 
 const CourseCards = () => {
   const [courseData, setCourseData] = useState([])
@@ -170,49 +19,18 @@ const CourseCards = () => {
   const [categories, setCategories] = useState([])
   const navigate = useNavigate()
   const [userType, setUserType] = useState(null)
-  const [loading, setLoading] = useState(true) // Add loading state
-
-  // Add the animation styles
-  const styles = `
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes slideIn {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .animate-slideIn {
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .animate-pulse {
-    animation: pulse 1.5s infinite;
-  }
-  `
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkUserTypeAndFetchCourses = async () => {
       try {
-        setLoading(true) // Set loading to true when starting to fetch data
+        setLoading(true)
 
         // Get current user
         const user = auth.currentUser
         if (!user) {
           console.error("No user is logged in")
-          setLoading(false) // Set loading to false if no user
+          setLoading(false)
           return
         }
 
@@ -245,10 +63,10 @@ const CourseCards = () => {
         const uniqueCategories = [...new Set(data.map((course) => course.category).filter(Boolean))]
         setCategories(uniqueCategories)
 
-        setLoading(false) // Set loading to false after data is fetched
+        setLoading(false)
       } catch (error) {
         console.error("Error checking user type or fetching courses:", error)
-        setLoading(false) // Set loading to false in case of error
+        setLoading(false)
       }
     }
 
@@ -297,158 +115,199 @@ const CourseCards = () => {
   // Show loading spinner while data is being fetched
   if (loading) {
     return (
-      <PageContainer>
-        <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
-        <ContentContainer>
-          <SidebarWrapper>
+      <div className="flex flex-col h-screen bg-gray-100">
+        <div className="w-full z-10"></div>
+        <div className="flex flex-1">
+          <div className="h-full z-5">
             <Sidebar />
-          </SidebarWrapper>
-          <MainContent expanded={expanded}>
+          </div>
+          <div
+            className="flex-1 p-8 rounded-lg shadow-md overflow-y-auto transition-all duration-300 ease-in-out"
+            style={{
+              marginLeft: expanded ? "16rem" : "4rem",
+              width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
+            }}
+          >
             <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="text-center">
+                <FaSpinner className="animate-spin text-4xl text-indigo-600 mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-800">Loading courses...</h2>
+                <p className="text-gray-500 mt-2">Please wait while we fetch your courses</p>
+              </div>
             </div>
-          </MainContent>
-        </ContentContainer>
-      </PageContainer>
+          </div>
+        </div>
+      </div>
     )
   }
 
   // Show message if no courses are found
   if (!courseData.length) {
     return (
-      <PageContainer>
-        <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
-        <ContentContainer>
-          <SidebarWrapper>
+      <div className="flex flex-col h-screen bg-gray-100">
+        <div className="w-full z-10"></div>
+        <div className="flex flex-1">
+          <div className="h-full z-5">
             <Sidebar />
-          </SidebarWrapper>
-          <MainContent expanded={expanded}>
+          </div>
+          <div
+            className="flex-1 p-8 bg-white rounded-lg shadow-md overflow-y-auto transition-all duration-300 ease-in-out"
+            style={{
+              marginLeft: expanded ? "16rem" : "4rem",
+              width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
+            }}
+          >
             <div className="text-center p-8">
-              <h2 className="text-xl font-semibold">No courses found</h2>
-              <p className="mt-2 text-gray-600">Try changing your search criteria or check back later.</p>
+              <div className="bg-indigo-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+                <FaBook className="text-indigo-600 text-3xl" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">No courses found</h2>
+              <p className="text-gray-600">Try changing your search criteria or check back later.</p>
             </div>
-          </MainContent>
-        </ContentContainer>
-      </PageContainer>
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <PageContainer>
-      {/* Add the styles */}
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
-
-      <HeaderWrapper>{/* Header component can be placed here */}</HeaderWrapper>
-      <ContentContainer>
-        <SidebarWrapper>
+    <div className="flex flex-col h-screen bg-gray-100">
+      <div className="w-full z-10"></div>
+      <div className="flex flex-1">
+        <div className="h-full z-5">
           <Sidebar />
-        </SidebarWrapper>
-        <MainContent expanded={expanded}>
-          <CourseTitle>Courses {userType && `(${userType === "intern" ? "Intern" : "Learner"})`}</CourseTitle>
-          <div className="flex justify-between mb-4">
-            {/* Dropdown for Course Categories */}
-            <div className="relative w-48 bg-gray-100 rounded-2xl shadow-md p-1 transition-all duration-150 ease-in-out hover:scale-105 hover:shadow-lg">
-              <div
-                className="cursor-pointer flex items-center justify-between p-2 rounded-lg bg-gray-100"
-                onClick={toggleDropdown}
-              >
-                <span className="text-gray-700">
-                  {selectedCategory === "all" ? "All Categories" : selectedCategory}
-                </span>
-                <svg
-                  className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? "rotate-0" : "-rotate-90"}`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 512 512"
-                >
-                  <path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z" />
-                </svg>
+        </div>
+        <div
+          className="flex-1 p-8 overflow-y-auto transition-all duration-300 ease-in-out"
+          style={{
+            marginLeft: expanded ? "16rem" : "4rem",
+            width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
+          }}
+        >
+          {/* Page Header */}
+          <div className="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl shadow-lg mb-8 overflow-hidden">
+            <div className="p-8">
+              <div className="flex items-center mb-2">
+                <div className="bg-white p-2 rounded-full shadow-md mr-3">
+                  <FaGraduationCap className="text-indigo-600 text-xl" />
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white">
+                  Courses {userType && `(${userType === "intern" ? "Intern" : "Learner"})`}
+                </h1>
               </div>
-              {isDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-full bg-gray-100 rounded-lg shadow-lg z-10">
-                  <div
-                    className="p-2 cursor-pointer hover:bg-gray-200"
-                    onClick={() => {
-                      setSelectedCategory("all")
-                      setIsDropdownOpen(false)
-                    }}
-                  >
-                    All Categories
-                  </div>
-                  {categories.map((category, index) => (
+              <p className="text-indigo-100 ml-12">Browse and enroll in our available courses</p>
+            </div>
+          </div>
+
+          {/* Search and Filter Section */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              {/* Dropdown for Course Categories */}
+              <div className="relative w-full md:w-48">
+                <div className="text-sm text-gray-600 mb-1 font-medium">Category</div>
+                <div
+                  className="cursor-pointer flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors"
+                  onClick={toggleDropdown}
+                >
+                  <span className="text-gray-700">
+                    {selectedCategory === "all" ? "All Categories" : selectedCategory}
+                  </span>
+                  {isDropdownOpen ? (
+                    <FaChevronUp className="text-gray-400" />
+                  ) : (
+                    <FaChevronDown className="text-gray-400" />
+                  )}
+                </div>
+                {isDropdownOpen && (
+                  <div className="absolute left-0 mt-1 w-full bg-white rounded-lg shadow-lg z-10 border border-gray-200">
                     <div
-                      key={index}
-                      className="p-2 cursor-pointer hover:bg-gray-200"
+                      className="p-3 cursor-pointer hover:bg-gray-50"
                       onClick={() => {
-                        setSelectedCategory(category)
+                        setSelectedCategory("all")
                         setIsDropdownOpen(false)
                       }}
                     >
-                      {category}
+                      All Categories
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {/* Search Bar */}
-            <div className="relative w-full max-w-lg bg-gray-100 rounded-2xl shadow-md p-1 transition-all duration-150 ease-in-out hover:scale-105 hover:shadow-lg">
-              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                <svg
-                  className="h-4 w-4 text-gray-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
+                    {categories.map((category, index) => (
+                      <div
+                        key={index}
+                        className="p-3 cursor-pointer hover:bg-gray-50"
+                        onClick={() => {
+                          setSelectedCategory(category)
+                          setIsDropdownOpen(false)
+                        }}
+                      >
+                        {category}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <input
-                type="text"
-                className="w-full pl-7 pr-16 py-2 text-sm text-gray-700 bg-transparent rounded-lg focus:outline-none"
-                placeholder="Search for courses..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <button className="absolute right-1 top-1 bottom-1 px-4 bg-[#5044e4] text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5044e4]">
-                Search
-              </button>
+
+              {/* Search Bar */}
+              <div className="relative w-full md:flex-1">
+                <div className="text-sm text-gray-600 mb-1 font-medium">Search</div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaSearch className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    className="w-full pl-10 pr-4 py-3 text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Search for courses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Show message if no filtered courses */}
           {filteredCourses.length === 0 ? (
-            <div className="text-center p-8 bg-white rounded-lg shadow-md animate-fadeIn">
-              <h3 className="text-lg font-semibold text-gray-700">No courses match your search</h3>
-              <p className="mt-2 text-gray-600">Try adjusting your search or filter criteria</p>
+            <div className="text-center p-8 bg-white rounded-xl shadow-md">
+              <div className="bg-amber-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+                <FaFilter className="text-amber-600 text-3xl" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">No courses match your search</h3>
+              <p className="text-gray-600 mb-6">Try adjusting your search or filter criteria</p>
               <button
                 onClick={() => {
                   setSearchTerm("")
                   setSelectedCategory("all")
                 }}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md"
               >
                 Clear Filters
               </button>
             </div>
           ) : (
-            <CourseGrid>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCourses.map((course) => (
-                <CourseCard key={course.id} onClick={() => handleButtonClick(course.id)} className="animate-fadeIn">
-                  <CourseImage
-                    src={getCourseImageUrl(course)}
-                    alt={course.title}
-                    onError={(e) => {
-                      e.target.onerror = null
-                      e.target.src = "/placeholder.svg?height=150&width=300"
-                    }}
-                  />
-                  <CourseDetails>
-                    <CourseTitleCard>{course.title}</CourseTitleCard>
-                    <CourseCategory>{course.category}</CourseCategory>
-                    <CourseDescription>
+                <div
+                  key={course.id}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={getCourseImageUrl(course) || "/placeholder.svg"}
+                      alt={course.title}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.src = "/placeholder.svg?height=150&width=300"
+                      }}
+                    />
+                    {course.category && (
+                      <div className="absolute top-3 right-3 bg-indigo-600 text-white text-xs font-medium px-2 py-1 rounded-full">
+                        {course.category}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">{course.title}</h3>
+                    <div className="text-gray-600 mb-4 min-h-[4rem]">
                       {expandedCourse === course.id ? (
                         <>
                           {course.description}
@@ -457,9 +316,9 @@ const CourseCards = () => {
                               e.stopPropagation()
                               toggleDescription(course.id)
                             }}
-                            className="text-blue-500 mt-2 ml-2"
+                            className="text-indigo-600 hover:text-indigo-800 font-medium mt-2 inline-flex items-center"
                           >
-                            Show Less
+                            Show Less <FaChevronUp className="ml-1" />
                           </button>
                         </>
                       ) : (
@@ -475,33 +334,30 @@ const CourseCards = () => {
                                 e.stopPropagation()
                                 toggleDescription(course.id)
                               }}
-                              className="text-blue-500 mt-2 ml-2"
+                              className="text-indigo-600 hover:text-indigo-800 font-medium mt-2 inline-flex items-center"
                             >
-                              Show More
+                              Show More <FaChevronDown className="ml-1" />
                             </button>
                           )}
                         </>
                       )}
-                    </CourseDescription>
-                    <ActionButtons>
+                    </div>
+                    <div className="flex justify-end">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleButtonClick(course.id)
-                        }}
-                        className="select-none rounded-lg bg-blue-500 py-3 px-6 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md transition-all hover:shadow-lg focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                        onClick={() => handleButtonClick(course.id)}
+                        className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md font-medium"
                       >
-                        {hasCourseStarted(course.id) ? "Continue" : "Start"}
+                        {hasCourseStarted(course.id) ? "Continue" : "Start Course"}
                       </button>
-                    </ActionButtons>
-                  </CourseDetails>
-                </CourseCard>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </CourseGrid>
+            </div>
           )}
-        </MainContent>
-      </ContentContainer>
-    </PageContainer>
+        </div>
+      </div>
+    </div>
   )
 }
 

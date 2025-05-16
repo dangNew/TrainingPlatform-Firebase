@@ -68,6 +68,9 @@
     ]
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.9"
+    "@craco/craco": "^7.1.0",
+    "@tailwindcss/postcss": "^4.0.9",
+    "webpack": "^5.99.8",
+    "webpack-cli": "^6.0.1"
   }
 }

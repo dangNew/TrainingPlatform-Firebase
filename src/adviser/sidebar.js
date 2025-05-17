@@ -54,9 +54,7 @@ const Sidebar = () => {
       "/file-library": "File Library",
       "/addmodule": "Add Module",
       "/addquiz": "Quizzes",
-      "/attendance": "Attendance",
-      "/messages": "Messages",
-      "/settings": "Settings",
+      
       "/admin": "Admin",
     };
 
@@ -87,19 +85,7 @@ const Sidebar = () => {
               </button>
             </div>
 
-            <Link to="/profile" className="flex flex-col items-center p-3">
-              <div className={`rounded-full overflow-hidden ${expanded ? "w-24 h-24" : "w-12 h-12"}`}>
-                <img
-                  src={userData.photoURL || "/placeholder.svg"}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className={`text-center ${expanded ? "block" : "hidden"}`}>
-                <h4 className="font-bold text-lg text-gray-800">{userData.fullName}</h4>
-                <span className="text-sm text-gray-600">{userData.email}</span>
-              </div>
-            </Link>
+            
 
             <hr className="my-3 border-gray-300" />
 
@@ -111,9 +97,6 @@ const Sidebar = () => {
               <SidebarItem icon={<FaFolder size={28} />} text="File Library" route="/file-library" />
               <SidebarItem icon={<FaPlusCircle size={28} />} text="Add Module" route="/addmodule" />
               <SidebarItem icon={<FaPuzzlePiece size={28} />} text="Quizzes" route="/addquiz" />
-              <SidebarItem icon={<FaCalendarCheck size={28} />} text="Attendance" route="/attendance" />
-              <SidebarItem icon={<FaEnvelope size={28} />} text="Messages" route="/messages" />
-              <SidebarItem icon={<FaCog size={28} />} text="Settings" route="/settings" />
               <SidebarItem icon={<FaUserShield size={28} />} text="Admin" route="/admin" />
             </ul>
 

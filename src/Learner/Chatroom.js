@@ -84,9 +84,12 @@ function ChatRoom() {
   const [chatEmoji, setChatEmoji] = useState({})
   const [showEmojiSelector, setShowEmojiSelector] = useState(false)
   const [selectedEmoji, setSelectedEmoji] = useState("❤️")
+  const [pinnedMessages, setPinnedMessages] = useState({})
+  const [unreadMessages, setUnreadMessages] = useState({})
   const fileInputRef = useRef(null)
   const messagesEndRef = useRef(null)
   const [isMessagesLoading, setIsMessagesLoading] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Reaction emoji mapping
   const reactionEmojis = {
@@ -430,6 +433,17 @@ function ChatRoom() {
         ...doc.data(),
       }))
 
+      // Update pinned and unread states
+      const newPinned = {}
+      const newUnread = {}
+      messageList.forEach(msg => {
+        if (msg.isPinned) newPinned[msg.id] = true
+        if (msg.isUnread) newUnread[msg.id] = true
+      })
+
+      setPinnedMessages(newPinned)
+      setUnreadMessages(newUnread)
+
       // Set messages all at once
       setMessages(messageList)
       setIsMessagesLoading(false)
@@ -719,6 +733,8 @@ function ChatRoom() {
         senderPhoto: currentUser.photoURL?.url || currentUser.photoURL || null,
         senderRole: currentUser.role || currentUser.collection,
         reactions: {},
+        isPinned: false,
+        isUnread: false,
       })
 
       // Update last message in chat document
@@ -771,6 +787,8 @@ function ChatRoom() {
     if (!activeChat) return
 
     try {
+      setIsDeleting(true) // Set loading state to true
+
       // Get the message before deleting it
       const messageRef = doc(db, "chats", activeChat.id, "messages", messageId)
       const messageSnap = await getDoc(messageRef)
@@ -827,6 +845,8 @@ function ChatRoom() {
       setShowMessageOptions(null)
     } catch (error) {
       console.error("Error deleting message:", error)
+    } finally {
+      setIsDeleting(false) // Set loading state to false
     }
   }
 
@@ -898,6 +918,44 @@ function ChatRoom() {
       setShowReactionMenu(null)
     } catch (error) {
       console.error("Error adding reaction:", error)
+    }
+  }
+
+  const togglePinMessage = async (messageId) => {
+    if (!activeChat) return
+
+    try {
+      // Update local state
+      setPinnedMessages(prev => ({
+        ...prev,
+        [messageId]: !prev[messageId]
+      }))
+
+      // Update in Firestore
+      await updateDoc(doc(db, "chats", activeChat.id, "messages", messageId), {
+        isPinned: !pinnedMessages[messageId]
+      })
+    } catch (error) {
+      console.error("Error toggling pin status:", error)
+    }
+  }
+
+  const toggleMarkAsUnread = async (messageId) => {
+    if (!activeChat) return
+
+    try {
+      // Update local state
+      setUnreadMessages(prev => ({
+        ...prev,
+        [messageId]: !prev[messageId]
+      }))
+
+      // Update in Firestore
+      await updateDoc(doc(db, "chats", activeChat.id, "messages", messageId), {
+        isUnread: !unreadMessages[messageId]
+      })
+    } catch (error) {
+      console.error("Error toggling unread status:", error)
     }
   }
 
@@ -1100,6 +1158,26 @@ function ChatRoom() {
       console.error("Error leaving group chat:", error)
     }
   }
+
+  const deleteChat = async (chatId) => {
+    if (!chatId) return;
+
+    try {
+      // Delete the chat document from Firestore
+      await deleteDoc(doc(db, "chats", chatId));
+
+      // Remove the chat from the local state
+      setChats((prevChats) => prevChats.filter((chat) => chat.id !== chatId));
+
+      // If the active chat is the one being deleted, clear the active chat
+      if (activeChat?.id === chatId) {
+        setActiveChat(null);
+      }
+
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+    }
+  };
 
   const handleSelectUser = (user) => {
     if (!selectedUsers.some((selected) => selected.id === user.id)) {
@@ -1352,12 +1430,12 @@ function ChatRoom() {
 
   // Only showing the return part with the fixed layout
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-gray-100">
       <div className="h-full">
         <Sidebar />
       </div>
       <div
-        className="flex-1 flex overflow-hidden"
+        className="flex-1 flex"
         style={{
           marginLeft: expanded ? "16rem" : "4rem",
           width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
@@ -1520,7 +1598,7 @@ function ChatRoom() {
         </div>
 
         {/* Main Content Area */}
-        <div className="hidden md:flex md:flex-col md:w-2/3 lg:w-3/4 overflow-hidden">
+        <div className="hidden md:flex md:flex-col md:w-2/3 lg:w-3/4 overflow-y-auto">
           {/* Rest of the content remains the same... */}
           {/* The content here is kept the same, just ensuring the container has proper overflow handling */}
           {/* User Search Panel */}
@@ -2026,6 +2104,34 @@ function ChatRoom() {
                   </div>
                 ) : (
                   <AnimatePresence initial={false}>
+                    {/* Pinned Messages Section */}
+                    {pinnedMessages && Object.keys(pinnedMessages).length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex items-center mb-2">
+                          <X size={16} className="mr-2 text-yellow-500" />
+                          <span className="font-medium text-gray-700">Pinned Messages</span>
+                        </div>
+                        {messages
+                          .filter(msg => pinnedMessages[msg.id])
+                          .map(pinnedMsg => (
+                            <div key={pinnedMsg.id} className="mb-2 p-3 bg-yellow-50 rounded-lg">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <div className="font-medium">{pinnedMsg.senderName}</div>
+                                  <div>{pinnedMsg.text}</div>
+                                </div>
+                                <button
+                                  onClick={() => togglePinMessage(pinnedMsg.id)}
+                                  className="text-gray-500 hover:text-gray-700"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
                     {messages.map((msg, index) => {
                       const isCurrentUser = msg.senderId === currentUser?.id
                       const isSystemMessage = msg.senderId === "system" || msg.isSystemMessage
@@ -2140,26 +2246,70 @@ function ChatRoom() {
                                       )}
 
                                       {/* Message options menu */}
-                                      {showMessageOptions === msg.id && (
-                                        <div className="absolute top-0 right-8 bg-white shadow-md rounded-xl py-1 z-10 message-options">
-                                          <button
-                                            onClick={() => {
-                                              setEditingMessage(msg.id)
-                                              setEditMessageText(msg.text)
-                                              setShowMessageOptions(null)
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
-                                          >
-                                            <Edit2 size={14} className="mr-2" /> Edit
-                                          </button>
-                                          <button
-                                            onClick={() => deleteMessage(msg.id)}
-                                            className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-gray-100 flex items-center transition-colors"
-                                          >
-                                            <Trash2 size={14} className="mr-2" /> Delete
-                                          </button>
-                                        </div>
-                                      )}
+                                     {showMessageOptions === msg.id && (
+  <div className="absolute top-0 right-8 bg-white shadow-md rounded-xl py-1 z-10 message-options">
+    <button
+      onClick={() => {
+        setEditingMessage(msg.id);
+        setEditMessageText(msg.text);
+        setShowMessageOptions(null);
+      }}
+      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+    >
+      <Edit2 size={14} className="mr-2" /> Edit
+    </button>
+    <button
+      onClick={() => deleteMessage(msg.id)}
+      disabled={isDeleting}
+      className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-gray-100 flex items-center transition-colors"
+    >
+      {isDeleting ? (
+        <>
+          <div className="w-4 h-4 border-2 border-gray-300 border-t-rose-600 rounded-full animate-spin mr-2"></div>
+          Deleting...
+        </>
+      ) : (
+        <>
+          <Trash2 size={14} className="mr-2" /> Delete
+        </>
+      )}
+    </button>
+    <button
+      onClick={() => {
+        toggleMarkAsUnread(msg.id);
+        setShowMessageOptions(null);
+      }}
+      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+    >
+      {unreadMessages[msg.id] ? (
+        <>
+          <MessageCircle size={14} className="mr-2" /> Mark as Read
+        </>
+      ) : (
+        <>
+          <MessageCircle size={14} className="mr-2" /> Mark as Unread
+        </>
+      )}
+    </button>
+    <button
+      onClick={() => {
+        togglePinMessage(msg.id);
+        setShowMessageOptions(null);
+      }}
+      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+    >
+      {pinnedMessages[msg.id] ? (
+        <>
+          <X size={14} className="mr-2" /> Unpin
+        </>
+      ) : (
+        <>
+          <X size={14} className="mr-2" /> Pin
+        </>
+      )}
+    </button>
+  </div>
+)}
 
                                       {/* Reaction button */}
                                       <button
@@ -2363,6 +2513,8 @@ function ChatRoom() {
                     setShowChatInfo(false)
                     if (activeChat.type === "group") {
                       leaveGroupChat()
+                    } else {
+                      deleteChat(activeChat.id)
                     }
                   }}
                 >

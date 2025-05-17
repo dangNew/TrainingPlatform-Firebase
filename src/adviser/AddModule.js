@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef } from "react";
 import {
   FaCloudUploadAlt,
   FaBook,
@@ -11,13 +9,13 @@ import {
   FaTimes,
   FaLayerGroup,
   FaChalkboardTeacher,
-} from "react-icons/fa"
-import IntSidebar from "./sidebar"
-import Header from "../Dashboard/Header"
-import { collection, doc, getDocs, setDoc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore"
-import { db } from "../firebase.config"
-import uploadToCloudinary from "../uploadToCloudinary"
-import styled from "styled-components"
+} from "react-icons/fa";
+import IntSidebar from "./sidebar";
+import Header from "../Dashboard/Header";
+import { collection, doc, getDocs, setDoc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase.config";
+import uploadToCloudinary from "../uploadToCloudinary";
+import styled from "styled-components";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -25,22 +23,27 @@ const PageContainer = styled.div`
   flex-direction: column;
   height: 100vh;
   background-color: #f4f6f9;
-`
+`;
 
 const HeaderWrapper = styled.div`
   width: 100%;
+  position: fixed;
+  top: 0;
   z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-`
+  margin-top: 100px; // Adjust this value based on your header's height
+`;
 
 const SidebarWrapper = styled.div`
+  position: fixed;
   height: 100%;
   z-index: 5;
-`
+  width: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -48,174 +51,174 @@ const MainContent = styled.div`
   border-radius: 8px;
   overflow-y: auto;
   transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const AddModule = () => {
-  const [courses, setCourses] = useState([])
-  const [selectedCourseId, setSelectedCourseId] = useState("")
-  const [modules, setModules] = useState([])
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [modules, setModules] = useState([]);
   const [moduleDetails, setModuleDetails] = useState({
     title: "",
     description: "",
-  })
-  const [chapters, setChapters] = useState([{ title: "", description: "", file: null, fileName: "" }])
-  const [loading, setLoading] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  });
+  const [chapters, setChapters] = useState([{ title: "", description: "", file: null, fileName: "" }]);
+  const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [newChapter, setNewChapter] = useState({
     title: "",
     description: "",
     file: null,
     fileName: "",
-  })
-  const [selectedModuleId, setSelectedModuleId] = useState("")
-  const [targetAudience, setTargetAudience] = useState("public")
-  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" })
-  const fileInputRefs = useRef([])
+  });
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [targetAudience, setTargetAudience] = useState("public");
+  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" });
+  const fileInputRefs = useRef([]);
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev)
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        let collectionName
+        let collectionName;
         switch (targetAudience) {
           case "intern":
-            collectionName = "Intern_Course"
-            break
+            collectionName = "Intern_Course";
+            break;
           case "learner":
           case "applicant":
-            collectionName = "courses"
-            break
+            collectionName = "courses";
+            break;
           default:
-            collectionName = "courses"
+            collectionName = "courses";
         }
 
-        const querySnapshot = await getDocs(collection(db, collectionName))
+        const querySnapshot = await getDocs(collection(db, collectionName));
         const coursesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           title: doc.data().title,
-        }))
-        setCourses(coursesData)
+        }));
+        setCourses(coursesData);
       } catch (error) {
-        console.error("Error fetching courses:", error)
+        console.error("Error fetching courses:", error);
       }
-    }
-    fetchCourses()
-  }, [targetAudience])
+    };
+    fetchCourses();
+  }, [targetAudience]);
 
   useEffect(() => {
     const fetchModules = async () => {
       if (selectedCourseId) {
         try {
-          let collectionName
+          let collectionName;
           switch (targetAudience) {
             case "intern":
-              collectionName = "Intern_Course"
-              break
+              collectionName = "Intern_Course";
+              break;
             case "learner":
             case "applicant":
-              collectionName = "courses"
-              break
+              collectionName = "courses";
+              break;
             default:
-              collectionName = "courses"
+              collectionName = "courses";
           }
 
-          const courseDocRef = doc(db, collectionName, selectedCourseId)
-          const modulesCollectionRef = collection(courseDocRef, "modules")
-          const querySnapshot = await getDocs(modulesCollectionRef)
+          const courseDocRef = doc(db, collectionName, selectedCourseId);
+          const modulesCollectionRef = collection(courseDocRef, "modules");
+          const querySnapshot = await getDocs(modulesCollectionRef);
           const modulesData = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             title: doc.data().title,
-          }))
-          setModules(modulesData)
+          }));
+          setModules(modulesData);
         } catch (error) {
-          console.error("Error fetching modules:", error)
+          console.error("Error fetching modules:", error);
         }
       }
-    }
-    fetchModules()
-  }, [selectedCourseId, targetAudience])
+    };
+    fetchModules();
+  }, [selectedCourseId, targetAudience]);
 
   const handleFileChange = (index, e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
-      const updatedChapters = [...chapters]
-      updatedChapters[index].file = file
-      updatedChapters[index].fileName = file.name
-      setChapters(updatedChapters)
+      const updatedChapters = [...chapters];
+      updatedChapters[index].file = file;
+      updatedChapters[index].fileName = file.name;
+      setChapters(updatedChapters);
     }
-  }
+  };
 
   const handleModalFileChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
       setNewChapter({
         ...newChapter,
         file: file,
         fileName: file.name,
-      })
+      });
     }
-  }
+  };
 
   const triggerFileInput = (index) => {
     if (fileInputRefs.current[index]) {
-      fileInputRefs.current[index].click()
+      fileInputRefs.current[index].click();
     }
-  }
+  };
 
   const addChapter = () => {
-    setChapters([...chapters, { title: "", description: "", file: null, fileName: "" }])
+    setChapters([...chapters, { title: "", description: "", file: null, fileName: "" }]);
     // Ensure fileInputRefs has enough elements
-    fileInputRefs.current = fileInputRefs.current.slice(0, chapters.length + 1)
-  }
+    fileInputRefs.current = fileInputRefs.current.slice(0, chapters.length + 1);
+  };
 
   const handleSubmit = async (event) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!selectedCourseId || !moduleDetails.title || chapters.some((chapter) => !chapter.title || !chapter.file)) {
       setModal({
         isOpen: true,
         type: "error",
         content: "Please fill all required fields and upload files for each chapter.",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setLoading(true)
-      let collectionName
+      setLoading(true);
+      let collectionName;
       switch (targetAudience) {
         case "intern":
-          collectionName = "Intern_Course"
-          break
+          collectionName = "Intern_Course";
+          break;
         case "learner":
-          collectionName = "Learner_Course"
-          break
+          collectionName = "Learner_Course";
+          break;
         case "applicant":
-          collectionName = "Applicant_Course"
-          break
+          collectionName = "Applicant_Course";
+          break;
         default:
-          collectionName = "courses"
+          collectionName = "courses";
       }
 
-      const courseDocRef = doc(db, collectionName, selectedCourseId)
-      const modulesCollectionRef = collection(courseDocRef, "modules")
+      const courseDocRef = doc(db, collectionName, selectedCourseId);
+      const modulesCollectionRef = collection(courseDocRef, "modules");
 
-      const querySnapshot = await getDocs(modulesCollectionRef)
-      const newModuleId = (querySnapshot.size + 1).toString()
+      const querySnapshot = await getDocs(modulesCollectionRef);
+      const newModuleId = (querySnapshot.size + 1).toString();
 
       const uploadedUrls = await Promise.all(
         chapters.map(async (chapter) => {
-          const url = await uploadToCloudinary(chapter.file)
+          const url = await uploadToCloudinary(chapter.file);
           if (!url) {
-            throw new Error("Failed to upload file to Cloudinary.")
+            throw new Error("Failed to upload file to Cloudinary.");
           }
-          return url
+          return url;
         }),
-      )
+      );
 
       const chaptersData = chapters.map((chapter, index) => ({
         title: chapter.title,
@@ -224,33 +227,33 @@ const AddModule = () => {
           url: uploadedUrls[index].url,
           publicId: uploadedUrls[index].publicId,
         },
-      }))
+      }));
 
       await setDoc(doc(modulesCollectionRef, newModuleId), {
         id: newModuleId,
         ...moduleDetails,
         chapters: chaptersData,
         createdAt: serverTimestamp(),
-      })
+      });
 
       setModal({
         isOpen: true,
         type: "success",
         content: "Module added successfully!",
-      })
-      setModuleDetails({ title: "", description: "" })
-      setChapters([{ title: "", description: "", file: null, fileName: "" }])
-      setLoading(false)
+      });
+      setModuleDetails({ title: "", description: "" });
+      setChapters([{ title: "", description: "", file: null, fileName: "" }]);
+      setLoading(false);
     } catch (error) {
-      console.error("Error adding module:", error)
+      console.error("Error adding module:", error);
       setModal({
         isOpen: true,
         type: "error",
         content: "An error occurred while adding the module.",
-      })
-      setLoading(false)
+      });
+      setLoading(false);
     }
-  }
+  };
 
   const handleAddChapterModal = async () => {
     if (!newChapter.title || !newChapter.file || !selectedModuleId) {
@@ -258,33 +261,33 @@ const AddModule = () => {
         isOpen: true,
         type: "error",
         content: "Please fill all required fields, select a module, and upload a file for the new chapter.",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setLoading(true)
-      let collectionName
+      setLoading(true);
+      let collectionName;
       switch (targetAudience) {
         case "intern":
-          collectionName = "Intern_Course"
-          break
+          collectionName = "Intern_Course";
+          break;
         case "learner":
-          collectionName = "Learner_Course"
-          break
+          collectionName = "Learner_Course";
+          break;
         case "applicant":
-          collectionName = "Applicant_Course"
-          break
+          collectionName = "Applicant_Course";
+          break;
         default:
-          collectionName = "courses"
+          collectionName = "courses";
       }
 
-      const courseDocRef = doc(db, collectionName, selectedCourseId)
-      const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId)
+      const courseDocRef = doc(db, collectionName, selectedCourseId);
+      const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId);
 
-      const url = await uploadToCloudinary(newChapter.file)
+      const url = await uploadToCloudinary(newChapter.file);
       if (!url) {
-        throw new Error("Failed to upload file to Cloudinary.")
+        throw new Error("Failed to upload file to Cloudinary.");
       }
 
       const newChapterData = {
@@ -294,34 +297,34 @@ const AddModule = () => {
           url: url.url,
           publicId: url.publicId,
         },
-      }
+      };
 
       await updateDoc(moduleDocRef, {
         chapters: arrayUnion(newChapterData),
-      })
+      });
 
       setModal({
         isOpen: true,
         type: "success",
         content: "Chapter added successfully!",
-      })
-      setNewChapter({ title: "", description: "", file: null, fileName: "" })
-      setIsModalOpen(false)
-      setLoading(false)
+      });
+      setNewChapter({ title: "", description: "", file: null, fileName: "" });
+      setIsModalOpen(false);
+      setLoading(false);
     } catch (error) {
-      console.error("Error adding chapter:", error)
+      console.error("Error adding chapter:", error);
       setModal({
         isOpen: true,
         type: "error",
         content: "An error occurred while adding the chapter.",
-      })
-      setLoading(false)
+      });
+      setLoading(false);
     }
-  }
+  };
 
   const closeModal = () => {
-    setModal({ ...modal, isOpen: false })
-  }
+    setModal({ ...modal, isOpen: false });
+  };
 
   return (
     <PageContainer>
@@ -329,7 +332,7 @@ const AddModule = () => {
         <Header />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper>
+        <SidebarWrapper expanded={isSidebarOpen}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <MainContent expanded={isSidebarOpen}>
@@ -467,9 +470,9 @@ const AddModule = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            const updatedChapters = [...chapters]
-                            updatedChapters.splice(index, 1)
-                            setChapters(updatedChapters)
+                            const updatedChapters = [...chapters];
+                            updatedChapters.splice(index, 1);
+                            setChapters(updatedChapters);
                           }}
                           className="p-2 text-rose-500 hover:text-rose-700 rounded-full hover:bg-rose-50"
                         >
@@ -489,9 +492,9 @@ const AddModule = () => {
                           placeholder="Enter chapter title"
                           value={chapter.title}
                           onChange={(e) => {
-                            const updatedChapters = [...chapters]
-                            updatedChapters[index].title = e.target.value
-                            setChapters(updatedChapters)
+                            const updatedChapters = [...chapters];
+                            updatedChapters[index].title = e.target.value;
+                            setChapters(updatedChapters);
                           }}
                           required
                         />
@@ -505,9 +508,9 @@ const AddModule = () => {
                           rows="4"
                           value={chapter.description}
                           onChange={(e) => {
-                            const updatedChapters = [...chapters]
-                            updatedChapters[index].description = e.target.value
-                            setChapters(updatedChapters)
+                            const updatedChapters = [...chapters];
+                            updatedChapters[index].description = e.target.value;
+                            setChapters(updatedChapters);
                           }}
                         ></textarea>
                       </div>
@@ -781,23 +784,23 @@ const AddModule = () => {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Global Loading Overlay */}
-          {loading && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-              <div className="bg-white p-6 rounded-2xl shadow-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
-                  <p className="text-gray-700 font-medium">Processing your request...</p>
+            {/* Global Loading Overlay */}
+            {loading && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                <div className="bg-white p-6 rounded-2xl shadow-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
+                    <p className="text-gray-700 font-medium">Processing your request...</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </MainContent>
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default AddModule
+export default AddModule;

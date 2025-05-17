@@ -1,7 +1,5 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   collection,
   getDocs,
@@ -13,8 +11,8 @@ import {
   limit,
   where,
   getDoc,
-} from "firebase/firestore"
-import { db } from "../firebase.config"
+} from "firebase/firestore";
+import { db } from "../firebase.config";
 import {
   FaTrash,
   FaEdit,
@@ -28,15 +26,15 @@ import {
   FaPlus,
   FaFilter,
   FaEye,
-} from "react-icons/fa"
-import IntSidebar from "./sidebar"
-import LgNavbar from "../components/LgNavbar"
-import { Viewer, Worker } from "@react-pdf-viewer/core"
-import "@react-pdf-viewer/core/lib/styles/index.css"
-import "slick-carousel/slick/slick.css"
-import "slick-carousel/slick/slick-theme.css"
-import deleteFromCloudinary from "../deleteFromCloudinary"
-import styled from "styled-components"
+} from "react-icons/fa";
+import IntSidebar from "./sidebar";
+import LgNavbar from "../components/LgNavbar";
+import { Viewer, Worker } from "@react-pdf-viewer/core";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import deleteFromCloudinary from "../deleteFromCloudinary";
+import styled from "styled-components";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -44,22 +42,27 @@ const PageContainer = styled.div`
   flex-direction: column;
   height: 100vh;
   background-color: #f4f6f9;
-`
+`;
 
 const HeaderWrapper = styled.div`
   width: 100%;
+  position: fixed;
+  top: 0;
   z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-`
+  margin-top: 100px; // Adjust this value based on your header's height
+`;
 
 const SidebarWrapper = styled.div`
+  position: fixed;
   height: 100%;
   z-index: 5;
-`
+  width: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -67,128 +70,132 @@ const MainContent = styled.div`
   border-radius: 8px;
   overflow-y: auto;
   transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const CourseDashboard = ({ expanded }) => {
-  const navigate = useNavigate()
-  const [courses, setCourses] = useState([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortOrder, setSortOrder] = useState("asc")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [modal, setModal] = useState({ isOpen: false, type: "", content: null })
-  const [editingCourse, setEditingCourse] = useState(null)
-  const [pdfFile, setPdfFile] = useState(null)
-  const [numPages, setNumPages] = useState(null)
-  const coursesPerPage = 6
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [modal, setModal] = useState({ isOpen: false, type: "", content: null });
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const coursesPerPage = 6;
 
   useEffect(() => {
     const fetchCourses = async () => {
+      setIsLoading(true);
       try {
-        const queryConstraints = []
+        const queryConstraints = [];
         if (categoryFilter !== "all") {
-          queryConstraints.push(where("category", "==", categoryFilter))
+          queryConstraints.push(where("category", "==", categoryFilter));
         }
-        queryConstraints.push(orderBy("title", sortOrder))
-        queryConstraints.push(limit(coursesPerPage))
+        queryConstraints.push(orderBy("title", sortOrder));
+        queryConstraints.push(limit(coursesPerPage));
 
-        const q = query(collection(db, "courses"), ...queryConstraints)
-        const querySnapshot = await getDocs(q)
+        const q = query(collection(db, "courses"), ...queryConstraints);
+        const querySnapshot = await getDocs(q);
         const coursesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        }));
 
         // Fetch from Intern_Course collection
-        const internQuery = query(collection(db, "Intern_Course"), ...queryConstraints)
-        const internQuerySnapshot = await getDocs(internQuery)
+        const internQuery = query(collection(db, "Intern_Course"), ...queryConstraints);
+        const internQuerySnapshot = await getDocs(internQuery);
         const internCoursesData = internQuerySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        }));
 
         // Combine the results
-        const combinedCourses = [...coursesData, ...internCoursesData]
+        const combinedCourses = [...coursesData, ...internCoursesData];
 
         // Fetch comments for each course
         for (const course of combinedCourses) {
-          const commentsQuery = query(collection(db, "courses", course.id, "comments"))
-          const commentsSnapshot = await getDocs(commentsQuery)
-          course.comments = commentsSnapshot.docs.map((doc) => doc.data())
+          const commentsQuery = query(collection(db, "courses", course.id, "comments"));
+          const commentsSnapshot = await getDocs(commentsQuery);
+          course.comments = commentsSnapshot.docs.map((doc) => doc.data());
         }
 
-        setCourses(combinedCourses)
+        setCourses(combinedCourses);
       } catch (error) {
-        console.error("Error fetching courses:", error)
-        setModal({ isOpen: true, type: "error", content: "Error fetching courses." })
+        console.error("Error fetching courses:", error);
+        setModal({ isOpen: true, type: "error", content: "Error fetching courses." });
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchCourses()
-  }, [sortOrder, categoryFilter, currentPage])
+    fetchCourses();
+  }, [sortOrder, categoryFilter, currentPage]);
 
   const handleAddCourse = () => {
-    navigate("/addcourse")
-  }
+    navigate("/addcourse");
+  };
 
   const handleEditCourse = (course) => {
-    setEditingCourse(course)
-    setModal({ isOpen: true, type: "edit", content: course })
-  }
+    setEditingCourse(course);
+    setModal({ isOpen: true, type: "edit", content: course });
+  };
 
   const handleDeleteCourse = (courseId) => {
-    setModal({ isOpen: true, type: "delete", content: courseId })
-  }
+    setModal({ isOpen: true, type: "delete", content: courseId });
+  };
 
   const confirmDeleteCourse = async (courseId) => {
     try {
-      const courseDocRef = doc(db, "courses", courseId)
-      const courseDoc = await getDoc(courseDocRef)
-      const courseData = courseDoc.data()
+      const courseDocRef = doc(db, "courses", courseId);
+      const courseDoc = await getDoc(courseDocRef);
+      const courseData = courseDoc.data();
 
-      const filePublicIds = courseData.filePublicIds || []
+      const filePublicIds = courseData.filePublicIds || [];
 
       for (const publicId of filePublicIds) {
-        await deleteFromCloudinary(publicId)
+        await deleteFromCloudinary(publicId);
       }
 
-      const modulesCollectionRef = collection(courseDocRef, "modules")
-      const modulesSnapshot = await getDocs(modulesCollectionRef)
-      const deletePromises = modulesSnapshot.docs.map((moduleDoc) => deleteDoc(doc(modulesCollectionRef, moduleDoc.id)))
-      await Promise.all(deletePromises)
+      const modulesCollectionRef = collection(courseDocRef, "modules");
+      const modulesSnapshot = await getDocs(modulesCollectionRef);
+      const deletePromises = modulesSnapshot.docs.map((moduleDoc) => deleteDoc(doc(modulesCollectionRef, moduleDoc.id)));
+      await Promise.all(deletePromises);
 
-      await deleteDoc(courseDocRef)
-      setCourses(courses.filter((course) => course.id !== courseId))
-      setModal({ isOpen: true, type: "success", content: "Course deleted successfully!" })
+      await deleteDoc(courseDocRef);
+      setCourses(courses.filter((course) => course.id !== courseId));
+      setModal({ isOpen: true, type: "success", content: "Course deleted successfully!" });
     } catch (error) {
-      console.error("Error deleting course:", error)
-      setModal({ isOpen: true, type: "error", content: "An error occurred while deleting the course." })
+      console.error("Error deleting course:", error);
+      setModal({ isOpen: true, type: "error", content: "An error occurred while deleting the course." });
     }
-  }
+  };
 
   const handleSearch = (event) => {
-    setSearchTerm(event.target.value)
-  }
+    setSearchTerm(event.target.value);
+  };
 
   const handleSort = () => {
-    setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-  }
+    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+  };
 
   const handleCategoryChange = (event) => {
-    setCategoryFilter(event.target.value)
-    setCurrentPage(1)
-  }
+    setCategoryFilter(event.target.value);
+    setCurrentPage(1);
+  };
 
   const handlePageChange = (newPage) => {
-    setCurrentPage(newPage)
-  }
+    setCurrentPage(newPage);
+  };
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target
-    setEditingCourse({ ...editingCourse, [name]: value })
-  }
+    const { name, value } = event.target;
+    setEditingCourse({ ...editingCourse, [name]: value });
+  };
 
   const handleSubmitEdit = async () => {
     try {
@@ -196,37 +203,37 @@ const CourseDashboard = ({ expanded }) => {
         title: editingCourse.title,
         description: editingCourse.description,
         category: editingCourse.category,
-      })
-      setCourses(courses.map((course) => (course.id === editingCourse.id ? editingCourse : course)))
-      setModal({ isOpen: true, type: "success", content: "Course updated successfully!" })
+      });
+      setCourses(courses.map((course) => (course.id === editingCourse.id ? editingCourse : course)));
+      setModal({ isOpen: true, type: "success", content: "Course updated successfully!" });
     } catch (error) {
-      console.error("Error updating course:", error)
-      setModal({ isOpen: true, type: "error", content: "An error occurred while updating the course." })
+      console.error("Error updating course:", error);
+      setModal({ isOpen: true, type: "error", content: "An error occurred while updating the course." });
     }
-  }
+  };
 
   const closeModal = () => {
-    setModal({ isOpen: false, type: "", content: null })
-    setEditingCourse(null)
-    setPdfFile(null)
-  }
+    setModal({ isOpen: false, type: "", content: null });
+    setEditingCourse(null);
+    setPdfFile(null);
+  };
 
   const handleCourseClick = (courseId) => {
-    navigate(`/modules/${courseId}`)
-  }
+    navigate(`/modules/${courseId}`);
+  };
 
   const handleViewFile = (fileUrl) => {
     if (fileUrl.endsWith(".pdf")) {
-      setPdfFile(fileUrl)
-      setModal({ isOpen: true, type: "viewPdf", content: fileUrl })
+      setPdfFile(fileUrl);
+      setModal({ isOpen: true, type: "viewPdf", content: fileUrl });
     } else {
-      window.open(fileUrl, "_blank")
+      window.open(fileUrl, "_blank");
     }
-  }
+  };
 
   const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages)
-  }
+    setNumPages(numPages);
+  };
 
   const settings = {
     dots: true,
@@ -234,15 +241,15 @@ const CourseDashboard = ({ expanded }) => {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-  }
+  };
 
   const filteredCourses = courses.filter(
     (course) =>
       course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  );
 
-  const paginatedCourses = filteredCourses.slice((currentPage - 1) * coursesPerPage, currentPage * coursesPerPage)
+  const paginatedCourses = filteredCourses.slice((currentPage - 1) * coursesPerPage, currentPage * coursesPerPage);
 
   const getCategoryColor = (category) => {
     const colors = {
@@ -251,9 +258,9 @@ const CourseDashboard = ({ expanded }) => {
       business: "bg-amber-100 text-amber-800",
       marketing: "bg-rose-100 text-rose-800",
       other: "bg-slate-100 text-slate-800",
-    }
-    return colors[category] || "bg-gray-100 text-gray-800"
-  }
+    };
+    return colors[category] || "bg-gray-100 text-gray-800";
+  };
 
   return (
     <MainContent expanded={expanded}>
@@ -330,7 +337,13 @@ const CourseDashboard = ({ expanded }) => {
 
       {/* Courses Grid */}
       <div className="mb-8">
-        {filteredCourses.length === 0 ? (
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
+            <div className="w-16 h-16 border-4 border-gray-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+            <h3 className="text-xl font-medium text-gray-700 mb-2">Loading courses...</h3>
+            <p className="text-gray-500">Please wait while we fetch your courses</p>
+          </div>
+        ) : filteredCourses.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-8 text-center">
             <FaBook className="text-gray-300 text-5xl mx-auto mb-4" />
             <h3 className="text-xl font-medium text-gray-700 mb-2">No courses found</h3>
@@ -347,7 +360,8 @@ const CourseDashboard = ({ expanded }) => {
                   <img
                     src={
                       course.fileUrl?.url ||
-                      "https://res.cloudinary.com/trainingplat-a/image/upload/v1743084091/modules/module_file_1743084087558_download%20(1).jpg"
+                      "https://res.cloudinary.com/trainingplat-a/image/upload/v1743084091/modules/module_file_1743084087558_download%20(1).jpg" ||
+                      "/placeholder.svg"
                     }
                     alt={course.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -357,8 +371,8 @@ const CourseDashboard = ({ expanded }) => {
                       <div className="flex justify-end space-x-2">
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            handleViewFile(course.fileUrl?.url)
+                            e.stopPropagation();
+                            handleViewFile(course.fileUrl?.url);
                           }}
                           className="bg-white/90 p-2 rounded-full text-indigo-600 hover:bg-white transition-colors"
                           title="View Content"
@@ -367,8 +381,8 @@ const CourseDashboard = ({ expanded }) => {
                         </button>
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            handleEditCourse(course)
+                            e.stopPropagation();
+                            handleEditCourse(course);
                           }}
                           className="bg-white/90 p-2 rounded-full text-amber-600 hover:bg-white transition-colors"
                           title="Edit Course"
@@ -377,8 +391,8 @@ const CourseDashboard = ({ expanded }) => {
                         </button>
                         <button
                           onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteCourse(course.id)
+                            e.stopPropagation();
+                            handleDeleteCourse(course.id);
                           }}
                           className="bg-white/90 p-2 rounded-full text-rose-600 hover:bg-white transition-colors"
                           title="Delete Course"
@@ -596,15 +610,15 @@ const CourseDashboard = ({ expanded }) => {
         </div>
       )}
     </MainContent>
-  )
-}
+  );
+};
 
 const ElearningDashboard = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   return (
     <PageContainer>
@@ -612,13 +626,13 @@ const ElearningDashboard = () => {
         <LgNavbar />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper>
+        <SidebarWrapper expanded={isSidebarOpen}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <CourseDashboard expanded={isSidebarOpen} />
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default ElearningDashboard
+export default ElearningDashboard;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { collection, getDocs, query, orderBy, where } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, where, doc, getDoc } from "firebase/firestore"
 import { auth, db } from "../firebase.config"
 import { FaHistory, FaBook, FaCheckCircle, FaChevronDown, FaChevronRight } from "react-icons/fa"
 
@@ -11,6 +11,7 @@ const ProfileHistory = () => {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedCourses, setExpandedCourses] = useState({})
+  const [userType, setUserType] = useState(null)
 
   // Reset history when user changes
   useEffect(() => {
@@ -31,10 +32,21 @@ const ProfileHistory = () => {
         setLoading(true)
         console.log("Fetching history for user:", user.uid)
 
-        // Get user's learning history from Firestore with explicit user check
-        // Only fetch history entries that were created by clicking the Finish button
-        // These entries will have a completedAt field
-        const historyCollection = collection(db, "learner", user.uid, "history")
+        // First, determine if user is a learner or intern
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerRef)
+
+        let userCollection = "learner"
+
+        if (learnerDoc.exists()) {
+          setUserType("learner")
+        } else {
+          setUserType("intern")
+          userCollection = "intern"
+        }
+
+        // Get user's learning history from the appropriate collection
+        const historyCollection = collection(db, userCollection, user.uid, "history")
         const historyQuery = query(
           historyCollection,
           where("completedAt", "!=", null), // Only get entries with completedAt field
@@ -48,7 +60,9 @@ const ProfileHistory = () => {
           completedAt: doc.data().completedAt?.toDate() || new Date(),
         }))
 
-        console.log(`Found ${historyData.length} completed history items for user ${user.uid}`)
+        console.log(
+          `Found ${historyData.length} completed history items for user ${user.uid} in ${userCollection} collection`,
+        )
         setHistory(historyData)
       } catch (error) {
         console.error("Error fetching history:", error)
@@ -124,7 +138,9 @@ const ProfileHistory = () => {
 
   return (
     <div className="space-y-8">
-      <h3 className="text-lg font-semibold mb-4 text-blue-950">Your Learning History</h3>
+      <h3 className="text-lg font-semibold mb-4 text-blue-950">
+        Your Learning History ({userType === "learner" ? "Learner" : "Intern"} Courses)
+      </h3>
 
       <div className="space-y-4">
         {Object.values(courseGroups).map((course) => (
@@ -186,4 +202,3 @@ const ProfileHistory = () => {
 }
 
 export default ProfileHistory
-

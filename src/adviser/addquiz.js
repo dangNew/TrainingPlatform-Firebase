@@ -1,8 +1,6 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { collection, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore"
-import { db } from "../firebase.config"
+import { useState, useEffect } from "react";
+import { collection, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase.config";
 import {
   FaTrash,
   FaTimes,
@@ -15,14 +13,14 @@ import {
   FaClipboard,
   FaLayerGroup,
   FaImage,
-} from "react-icons/fa"
-import { BsImage } from "react-icons/bs"
-import IntSidebar from "./sidebar"
-import Header from "../Dashboard/Header"
-import "@react-pdf-viewer/core/lib/styles/index.css"
-import "slick-carousel/slick/slick.css"
-import "slick-carousel/slick/slick-theme.css"
-import styled from "styled-components"
+} from "react-icons/fa";
+import { BsImage } from "react-icons/bs";
+import IntSidebar from "./sidebar";
+import Header from "../Dashboard/Header";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import styled from "styled-components";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -30,23 +28,27 @@ const PageContainer = styled.div`
   flex-direction: column;
   height: 100vh;
   background-color: #f4f6f9;
-`
+`;
 
 const HeaderWrapper = styled.div`
   width: 100%;
+  position: fixed;
+  top: 0;
   z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-  overflow: hidden;
-`
+  margin-top: 100px; // Adjust this value based on your header's height
+`;
 
 const SidebarWrapper = styled.div`
+  position: fixed;
   height: 100%;
   z-index: 5;
-`
+  width: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -54,9 +56,9 @@ const MainContent = styled.div`
   border-radius: 8px;
   overflow-y: auto;
   transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const BulkOptionsTextarea = styled.textarea`
   width: 100%;
@@ -72,16 +74,16 @@ const BulkOptionsTextarea = styled.textarea`
     border-color: #6366f1;
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
   }
-`
+`;
 
 const AddQuiz = () => {
-  const [courses, setCourses] = useState([])
-  const [selectedCourseId, setSelectedCourseId] = useState("")
-  const [selectedModuleId, setSelectedModuleId] = useState("")
-  const [modules, setModules] = useState([])
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [image, setImage] = useState(null)
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [modules, setModules] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
   const [sections, setSections] = useState([
     {
       title: "",
@@ -98,67 +100,67 @@ const AddQuiz = () => {
         },
       ],
     },
-  ])
-  const [loading, setLoading] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [showBulkOptions, setShowBulkOptions] = useState(false)
-  const [bulkOptionsText, setBulkOptionsText] = useState("")
-  const [currentEditingQuestion, setCurrentEditingQuestion] = useState({ sectionIndex: 0, questionIndex: 0 })
-  const [userType, setUserType] = useState("Adviser")
-  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" })
+  ]);
+  const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showBulkOptions, setShowBulkOptions] = useState(false);
+  const [bulkOptionsText, setBulkOptionsText] = useState("");
+  const [currentEditingQuestion, setCurrentEditingQuestion] = useState({ sectionIndex: 0, questionIndex: 0 });
+  const [userType, setUserType] = useState("Adviser");
+  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" });
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev)
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        let collectionName = "courses"
+        let collectionName = "courses";
         if (userType === "Intern") {
-          collectionName = "Intern_Course"
+          collectionName = "Intern_Course";
         }
 
-        const querySnapshot = await getDocs(collection(db, collectionName))
+        const querySnapshot = await getDocs(collection(db, collectionName));
         const coursesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           title: doc.data().title,
-        }))
-        setCourses(coursesData)
+        }));
+        setCourses(coursesData);
       } catch (error) {
-        console.error("Error fetching courses:", error)
+        console.error("Error fetching courses:", error);
       }
-    }
+    };
 
-    fetchCourses()
-  }, [userType])
+    fetchCourses();
+  }, [userType]);
 
   useEffect(() => {
     const fetchModules = async () => {
       if (selectedCourseId) {
         try {
-          let collectionName = "courses"
+          let collectionName = "courses";
           if (userType === "Intern") {
-            collectionName = "Intern_Course"
+            collectionName = "Intern_Course";
           }
 
-          const courseDocRef = doc(db, collectionName, selectedCourseId)
-          const modulesCollectionRef = collection(courseDocRef, "modules")
-          const querySnapshot = await getDocs(modulesCollectionRef)
+          const courseDocRef = doc(db, collectionName, selectedCourseId);
+          const modulesCollectionRef = collection(courseDocRef, "modules");
+          const querySnapshot = await getDocs(modulesCollectionRef);
           const modulesData = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             title: doc.data().title,
-          }))
-          setModules(modulesData)
+          }));
+          setModules(modulesData);
         } catch (error) {
-          console.error("Error fetching modules:", error)
+          console.error("Error fetching modules:", error);
         }
       }
-    }
+    };
 
-    fetchModules()
-  }, [selectedCourseId, userType])
+    fetchModules();
+  }, [selectedCourseId, userType]);
 
   const addQuestion = (sectionIndex) => {
-    const updatedSections = [...sections]
+    const updatedSections = [...sections];
     updatedSections[sectionIndex].questions.push({
       question: "",
       options: ["Option 1"],
@@ -167,22 +169,22 @@ const AddQuiz = () => {
       required: true,
       questionType: "Multiple choice",
       questionImage: null,
-    })
-    setSections(updatedSections)
-  }
+    });
+    setSections(updatedSections);
+  };
 
   const removeQuestion = (sectionIndex, questionIndex) => {
-    const updatedSections = [...sections]
-    updatedSections[sectionIndex].questions.splice(questionIndex, 1)
-    setSections(updatedSections)
-  }
+    const updatedSections = [...sections];
+    updatedSections[sectionIndex].questions.splice(questionIndex, 1);
+    setSections(updatedSections);
+  };
 
   const duplicateQuestion = (sectionIndex, questionIndex) => {
-    const updatedSections = [...sections]
-    const questionToDuplicate = { ...updatedSections[sectionIndex].questions[questionIndex] }
-    updatedSections[sectionIndex].questions.splice(questionIndex + 1, 0, questionToDuplicate)
-    setSections(updatedSections)
-  }
+    const updatedSections = [...sections];
+    const questionToDuplicate = { ...updatedSections[sectionIndex].questions[questionIndex] };
+    updatedSections[sectionIndex].questions.splice(questionIndex + 1, 0, questionToDuplicate);
+    setSections(updatedSections);
+  };
 
   const addSection = () => {
     setSections([
@@ -202,106 +204,106 @@ const AddQuiz = () => {
           },
         ],
       },
-    ])
-  }
+    ]);
+  };
 
   const removeSection = (sectionIndex) => {
-    const updatedSections = [...sections]
-    updatedSections.splice(sectionIndex, 1)
-    setSections(updatedSections)
-  }
+    const updatedSections = [...sections];
+    updatedSections.splice(sectionIndex, 1);
+    setSections(updatedSections);
+  };
 
   const addOption = (sectionIndex, questionIndex) => {
-    const updatedSections = [...sections]
-    const optionCount = updatedSections[sectionIndex].questions[questionIndex].options.length
-    updatedSections[sectionIndex].questions[questionIndex].options.push(`Option ${optionCount + 1}`)
-    setSections(updatedSections)
-  }
+    const updatedSections = [...sections];
+    const optionCount = updatedSections[sectionIndex].questions[questionIndex].options.length;
+    updatedSections[sectionIndex].questions[questionIndex].options.push(`Option ${optionCount + 1}`);
+    setSections(updatedSections);
+  };
 
   const addOtherOption = (sectionIndex, questionIndex) => {
-    const updatedSections = [...sections]
-    updatedSections[sectionIndex].questions[questionIndex].options.push("Other")
-    setSections(updatedSections)
-  }
+    const updatedSections = [...sections];
+    updatedSections[sectionIndex].questions[questionIndex].options.push("Other");
+    setSections(updatedSections);
+  };
 
   const handleOptionKeyPress = (e, sectionIndex, questionIndex) => {
     if (e.key === "Enter") {
-      e.preventDefault()
-      addOption(sectionIndex, questionIndex)
+      e.preventDefault();
+      addOption(sectionIndex, questionIndex);
     }
-  }
+  };
 
   const parseOptions = (text) => {
-    const lines = text.split("\n").filter((line) => line.trim() !== "")
-    const letterPattern = /^([A-Z]\.|$$[A-Z]$$)\s+(.+)$/
-    const numberedPattern = /^(\d+\.|$$\d+$$)\s+(.+)$/
+    const lines = text.split("\n").filter((line) => line.trim() !== "");
+    const letterPattern = /^([A-Z]\.|$$[A-Z]$$)\s+(.+)$/;
+    const numberedPattern = /^(\d+\.|$$\d+$$)\s+(.+)$/;
 
-    let parsedOptions = []
+    let parsedOptions = [];
 
     if (lines.every((line) => letterPattern.test(line.trim()))) {
       parsedOptions = lines.map((line) => {
-        const match = line.trim().match(letterPattern)
-        return match ? match[2] : line.trim()
-      })
+        const match = line.trim().match(letterPattern);
+        return match ? match[2] : line.trim();
+      });
     } else if (lines.every((line) => numberedPattern.test(line.trim()))) {
       parsedOptions = lines.map((line) => {
-        const match = line.trim().match(numberedPattern)
-        return match ? match[2] : line.trim()
-      })
+        const match = line.trim().match(numberedPattern);
+        return match ? match[2] : line.trim();
+      });
     } else {
-      parsedOptions = lines
+      parsedOptions = lines;
     }
 
-    return parsedOptions
-  }
+    return parsedOptions;
+  };
 
   const handleBulkOptionsSubmit = () => {
     if (!bulkOptionsText.trim()) {
-      setShowBulkOptions(false)
-      return
+      setShowBulkOptions(false);
+      return;
     }
 
-    const { sectionIndex, questionIndex } = currentEditingQuestion
-    const parsedOptions = parseOptions(bulkOptionsText)
+    const { sectionIndex, questionIndex } = currentEditingQuestion;
+    const parsedOptions = parseOptions(bulkOptionsText);
 
     if (parsedOptions.length > 0) {
-      const updatedSections = [...sections]
-      updatedSections[sectionIndex].questions[questionIndex].options = parsedOptions
-      setSections(updatedSections)
+      const updatedSections = [...sections];
+      updatedSections[sectionIndex].questions[questionIndex].options = parsedOptions;
+      setSections(updatedSections);
     }
 
-    setShowBulkOptions(false)
-    setBulkOptionsText("")
-  }
+    setShowBulkOptions(false);
+    setBulkOptionsText("");
+  };
 
   const handleOptionPaste = (e, sectionIndex, questionIndex, optionIndex) => {
-    const pastedText = e.clipboardData.getData("text")
+    const pastedText = e.clipboardData.getData("text");
     if (pastedText.includes("\n")) {
-      e.preventDefault()
+      e.preventDefault();
 
-      const currentOptions = sections[sectionIndex].questions[questionIndex].options
+      const currentOptions = sections[sectionIndex].questions[questionIndex].options;
       if (optionIndex === 0 && currentOptions.length === 1 && currentOptions[0] === "Option 1") {
-        const parsedOptions = parseOptions(pastedText)
+        const parsedOptions = parseOptions(pastedText);
 
         if (parsedOptions.length > 0) {
-          const updatedSections = [...sections]
-          updatedSections[sectionIndex].questions[questionIndex].options = parsedOptions
-          setSections(updatedSections)
+          const updatedSections = [...sections];
+          updatedSections[sectionIndex].questions[questionIndex].options = parsedOptions;
+          setSections(updatedSections);
         }
       } else {
-        setCurrentEditingQuestion({ sectionIndex, questionIndex })
-        setBulkOptionsText(pastedText)
-        setShowBulkOptions(true)
+        setCurrentEditingQuestion({ sectionIndex, questionIndex });
+        setBulkOptionsText(pastedText);
+        setShowBulkOptions(true);
       }
     }
-  }
+  };
 
   const closeModal = () => {
-    setModal({ ...modal, isOpen: false })
-  }
+    setModal({ ...modal, isOpen: false });
+  };
 
   const handleSubmit = async (event) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (
       !selectedCourseId ||
@@ -315,23 +317,23 @@ const AddQuiz = () => {
         isOpen: true,
         type: "error",
         content: "Please fill all required fields and ensure each question has options.",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setLoading(true)
-      let collectionName = "courses"
+      setLoading(true);
+      let collectionName = "courses";
       if (userType === "Intern") {
-        collectionName = "Intern_Course"
+        collectionName = "Intern_Course";
       }
 
-      const courseDocRef = doc(db, collectionName, selectedCourseId)
-      const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId)
-      const quizzesCollectionRef = collection(moduleDocRef, "quizzes")
+      const courseDocRef = doc(db, collectionName, selectedCourseId);
+      const moduleDocRef = doc(courseDocRef, "modules", selectedModuleId);
+      const quizzesCollectionRef = collection(moduleDocRef, "quizzes");
 
-      const querySnapshot = await getDocs(quizzesCollectionRef)
-      const newQuizId = (querySnapshot.size + 1).toString()
+      const querySnapshot = await getDocs(quizzesCollectionRef);
+      const newQuizId = (querySnapshot.size + 1).toString();
 
       await setDoc(doc(quizzesCollectionRef, newQuizId), {
         id: newQuizId,
@@ -340,16 +342,16 @@ const AddQuiz = () => {
         image,
         sections,
         createdAt: serverTimestamp(),
-      })
+      });
 
       setModal({
         isOpen: true,
         type: "success",
         content: "Quiz added successfully!",
-      })
-      setTitle("")
-      setDescription("")
-      setImage(null)
+      });
+      setTitle("");
+      setDescription("");
+      setImage(null);
       setSections([
         {
           title: "",
@@ -366,18 +368,18 @@ const AddQuiz = () => {
             },
           ],
         },
-      ])
-      setLoading(false)
+      ]);
+      setLoading(false);
     } catch (error) {
-      console.error("Error adding quiz:", error)
+      console.error("Error adding quiz:", error);
       setModal({
         isOpen: true,
         type: "error",
         content: "An error occurred while adding the quiz.",
-      })
-      setLoading(false)
+      });
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <PageContainer>
@@ -385,7 +387,7 @@ const AddQuiz = () => {
         <Header />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper>
+        <SidebarWrapper expanded={isSidebarOpen}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <MainContent expanded={isSidebarOpen}>
@@ -405,7 +407,7 @@ const AddQuiz = () => {
           </div>
 
           {/* Main Form */}
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-10xl mx-auto">
             <form onSubmit={handleSubmit}>
               {/* Quiz Settings */}
               <div className="bg-white rounded-2xl shadow-md p-8 mb-6">
@@ -425,9 +427,9 @@ const AddQuiz = () => {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white"
                       value={userType}
                       onChange={(e) => {
-                        setUserType(e.target.value)
-                        setSelectedCourseId("")
-                        setSelectedModuleId("")
+                        setUserType(e.target.value);
+                        setSelectedCourseId("");
+                        setSelectedModuleId("");
                       }}
                       required
                     >
@@ -445,8 +447,8 @@ const AddQuiz = () => {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white"
                       value={selectedCourseId}
                       onChange={(e) => {
-                        setSelectedCourseId(e.target.value)
-                        setSelectedModuleId("")
+                        setSelectedCourseId(e.target.value);
+                        setSelectedModuleId("");
                       }}
                       required
                     >
@@ -578,9 +580,9 @@ const AddQuiz = () => {
                         placeholder="Enter section title"
                         value={section.title}
                         onChange={(e) => {
-                          const updatedSections = [...sections]
-                          updatedSections[sectionIndex].title = e.target.value
-                          setSections(updatedSections)
+                          const updatedSections = [...sections];
+                          updatedSections[sectionIndex].title = e.target.value;
+                          setSections(updatedSections);
                         }}
                         required
                       />
@@ -594,9 +596,9 @@ const AddQuiz = () => {
                         rows="3"
                         value={section.description}
                         onChange={(e) => {
-                          const updatedSections = [...sections]
-                          updatedSections[sectionIndex].description = e.target.value
-                          setSections(updatedSections)
+                          const updatedSections = [...sections];
+                          updatedSections[sectionIndex].description = e.target.value;
+                          setSections(updatedSections);
                         }}
                       />
                     </div>
@@ -647,9 +649,9 @@ const AddQuiz = () => {
                               placeholder="Enter your question"
                               value={question.question}
                               onChange={(e) => {
-                                const updatedSections = [...sections]
-                                updatedSections[sectionIndex].questions[questionIndex].question = e.target.value
-                                setSections(updatedSections)
+                                const updatedSections = [...sections];
+                                updatedSections[sectionIndex].questions[questionIndex].question = e.target.value;
+                                setSections(updatedSections);
                               }}
                               required
                             />
@@ -661,16 +663,16 @@ const AddQuiz = () => {
                                 type="button"
                                 className="flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700"
                                 onClick={() => {
-                                  const fileInput = document.createElement("input")
-                                  fileInput.type = "file"
-                                  fileInput.accept = "image/*"
+                                  const fileInput = document.createElement("input");
+                                  fileInput.type = "file";
+                                  fileInput.accept = "image/*";
                                   fileInput.onchange = (e) => {
-                                    const updatedSections = [...sections]
+                                    const updatedSections = [...sections];
                                     updatedSections[sectionIndex].questions[questionIndex].questionImage =
-                                      e.target.files[0]
-                                    setSections(updatedSections)
-                                  }
-                                  fileInput.click()
+                                      e.target.files[0];
+                                    setSections(updatedSections);
+                                  };
+                                  fileInput.click();
                                 }}
                               >
                                 <BsImage size={16} className="mr-1.5" />
@@ -681,9 +683,9 @@ const AddQuiz = () => {
                                 className="appearance-none bg-gray-100 hover:bg-gray-200 border-0 rounded-lg py-1.5 pl-3 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 value={question.questionType}
                                 onChange={(e) => {
-                                  const updatedSections = [...sections]
-                                  updatedSections[sectionIndex].questions[questionIndex].questionType = e.target.value
-                                  setSections(updatedSections)
+                                  const updatedSections = [...sections];
+                                  updatedSections[sectionIndex].questions[questionIndex].questionType = e.target.value;
+                                  setSections(updatedSections);
                                 }}
                               >
                                 <option>Multiple choice</option>
@@ -700,10 +702,10 @@ const AddQuiz = () => {
                                 className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-center"
                                 value={question.points}
                                 onChange={(e) => {
-                                  const updatedSections = [...sections]
+                                  const updatedSections = [...sections];
                                   updatedSections[sectionIndex].questions[questionIndex].points =
-                                    Number.parseInt(e.target.value) || 0
-                                  setSections(updatedSections)
+                                    Number.parseInt(e.target.value) || 0;
+                                  setSections(updatedSections);
                                 }}
                               />
                             </div>
@@ -723,9 +725,9 @@ const AddQuiz = () => {
                                 type="button"
                                 className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100"
                                 onClick={() => {
-                                  const updatedSections = [...sections]
-                                  updatedSections[sectionIndex].questions[questionIndex].questionImage = null
-                                  setSections(updatedSections)
+                                  const updatedSections = [...sections];
+                                  updatedSections[sectionIndex].questions[questionIndex].questionImage = null;
+                                  setSections(updatedSections);
                                 }}
                               >
                                 <FaTrash size={14} className="text-rose-500" />
@@ -745,9 +747,9 @@ const AddQuiz = () => {
                                 name={`question-${sectionIndex}-${questionIndex}`}
                                 checked={question.correctOption === optionIndex}
                                 onChange={() => {
-                                  const updatedSections = [...sections]
-                                  updatedSections[sectionIndex].questions[questionIndex].correctOption = optionIndex
-                                  setSections(updatedSections)
+                                  const updatedSections = [...sections];
+                                  updatedSections[sectionIndex].questions[questionIndex].correctOption = optionIndex;
+                                  setSections(updatedSections);
                                 }}
                                 className="mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500"
                               />
@@ -757,10 +759,10 @@ const AddQuiz = () => {
                                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                   value={option}
                                   onChange={(e) => {
-                                    const updatedSections = [...sections]
+                                    const updatedSections = [...sections];
                                     updatedSections[sectionIndex].questions[questionIndex].options[optionIndex] =
-                                      e.target.value
-                                    setSections(updatedSections)
+                                      e.target.value;
+                                    setSections(updatedSections);
                                   }}
                                   onKeyPress={(e) => handleOptionKeyPress(e, sectionIndex, questionIndex)}
                                   onPaste={(e) => handleOptionPaste(e, sectionIndex, questionIndex, optionIndex)}
@@ -771,15 +773,15 @@ const AddQuiz = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const updatedSections = [...sections]
+                                    const updatedSections = [...sections];
                                     updatedSections[sectionIndex].questions[questionIndex].options.splice(
                                       optionIndex,
                                       1,
-                                    )
+                                    );
                                     if (question.correctOption >= optionIndex && question.correctOption > 0) {
-                                      updatedSections[sectionIndex].questions[questionIndex].correctOption--
+                                      updatedSections[sectionIndex].questions[questionIndex].correctOption--;
                                     }
-                                    setSections(updatedSections)
+                                    setSections(updatedSections);
                                   }}
                                   className="ml-2 p-1.5 text-rose-500 hover:text-rose-700 rounded-full hover:bg-rose-50"
                                 >
@@ -808,8 +810,8 @@ const AddQuiz = () => {
                               type="button"
                               className="flex items-center px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-sm"
                               onClick={() => {
-                                setCurrentEditingQuestion({ sectionIndex, questionIndex })
-                                setShowBulkOptions(true)
+                                setCurrentEditingQuestion({ sectionIndex, questionIndex });
+                                setShowBulkOptions(true);
                               }}
                             >
                               <FaClipboard size={12} className="mr-1.5" /> Bulk Add Options
@@ -955,7 +957,7 @@ const AddQuiz = () => {
         </MainContent>
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default AddQuiz
+export default AddQuiz;

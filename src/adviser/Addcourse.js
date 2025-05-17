@@ -1,6 +1,4 @@
-"use client"
-
-import { useState, useRef } from "react"
+import { useState, useRef } from "react";
 import {
   FaCloudUploadAlt,
   FaTimes,
@@ -9,13 +7,13 @@ import {
   FaUpload,
   FaFileAlt,
   FaExclamationTriangle,
-} from "react-icons/fa"
-import IntSidebar from "./sidebar"
-import LgNavbar from "../components/LgNavbar"
-import uploadToCloudinary from "../uploadToCloudinary"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
-import { db } from "../firebase.config"
-import styled from "styled-components"
+} from "react-icons/fa";
+import IntSidebar from "./sidebar";
+import LgNavbar from "../components/LgNavbar";
+import uploadToCloudinary from "../uploadToCloudinary";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase.config";
+import styled from "styled-components";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -23,22 +21,27 @@ const PageContainer = styled.div`
   flex-direction: column;
   height: 100vh;
   background-color: #f4f6f9;
-`
+`;
 
 const HeaderWrapper = styled.div`
   width: 100%;
+  position: fixed;
+  top: 0;
   z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-`
+  margin-top: 100px; // Adjust this value based on your header's height
+`;
 
 const SidebarWrapper = styled.div`
+  position: fixed;
   height: 100%;
   z-index: 5;
-`
+  width: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -46,82 +49,82 @@ const MainContent = styled.div`
   border-radius: 8px;
   overflow-y: auto;
   transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const AddCourse = () => {
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [category, setCategory] = useState("")
-  const [file, setFile] = useState(null)
-  const [targetAudience, setTargetAudience] = useState("public")
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" })
-  const [loading, setLoading] = useState(false)
-  const [fileName, setFileName] = useState("")
-  const fileInputRef = useRef(null)
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [file, setFile] = useState(null);
+  const [targetAudience, setTargetAudience] = useState("public");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" });
+  const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const fileInputRef = useRef(null);
 
   // Toggle Sidebar function
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   // Handle File Selection
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0]
+    const selectedFile = event.target.files[0];
     if (selectedFile) {
-      setFile(selectedFile)
-      setFileName(selectedFile.name)
+      setFile(selectedFile);
+      setFileName(selectedFile.name);
     }
-  }
+  };
 
   // Trigger file input click
   const triggerFileInput = () => {
-    fileInputRef.current.click()
-  }
+    fileInputRef.current.click();
+  };
 
   // Handle Form Submission
   const handleSubmit = async (event) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!file || !title || !category) {
       setModal({
         isOpen: true,
         type: "error",
         content: "Please fill all required fields and upload a file.",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
 
       // Upload file to Cloudinary
-      const fileUrl = await uploadToCloudinary(file)
+      const fileUrl = await uploadToCloudinary(file);
       if (!fileUrl) {
         setModal({
           isOpen: true,
           type: "error",
           content: "File upload to Cloudinary failed.",
-        })
-        return
+        });
+        return;
       }
 
       // Determine the collection based on the target audience
-      let collectionName
+      let collectionName;
       switch (targetAudience) {
         case "intern":
-          collectionName = "Intern_Course"
-          break
+          collectionName = "Intern_Course";
+          break;
         case "learner":
-          collectionName = "Learner_Course"
-          break
+          collectionName = "Learner_Course";
+          break;
         case "applicant":
-          collectionName = "Applicant_Course"
-          break
+          collectionName = "Applicant_Course";
+          break;
         default:
-          collectionName = "courses" // Default collection
+          collectionName = "courses"; // Default collection
       }
 
       // Store course details in the determined Firestore collection
@@ -132,41 +135,41 @@ const AddCourse = () => {
         fileUrl, // Store Cloudinary file URL
         targetAudience, // Store target audience option
         createdAt: serverTimestamp(), // Timestamp for sorting
-      })
+      });
 
       // Open modal to confirm success
       setModal({
         isOpen: true,
         type: "success",
         content: "Your course has been uploaded successfully.",
-      })
+      });
 
       // Reset form fields
-      setTitle("")
-      setDescription("")
-      setCategory("")
-      setTargetAudience("public")
-      setFile(null)
-      setFileName("")
+      setTitle("");
+      setDescription("");
+      setCategory("");
+      setTargetAudience("public");
+      setFile(null);
+      setFileName("");
       if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+        fileInputRef.current.value = "";
       }
     } catch (error) {
-      console.error("Error uploading course:", error)
+      console.error("Error uploading course:", error);
       setModal({
         isOpen: true,
         type: "error",
         content: "An error occurred while uploading the course.",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Close Modal
   const closeModal = () => {
-    setModal({ ...modal, isOpen: false })
-  }
+    setModal({ ...modal, isOpen: false });
+  };
 
   return (
     <PageContainer>
@@ -174,7 +177,7 @@ const AddCourse = () => {
         <LgNavbar />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper>
+        <SidebarWrapper expanded={isSidebarOpen}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <MainContent expanded={isSidebarOpen}>
@@ -365,7 +368,7 @@ const AddCourse = () => {
         </MainContent>
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default AddCourse
+export default AddCourse;

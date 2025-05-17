@@ -23,6 +23,7 @@ import {
   FaBook,
   FaLayerGroup,
   FaChalkboardTeacher,
+  FaScroll,
 } from "react-icons/fa"
 import { auth, db } from "../firebase.config"
 import VideoPlayer from "./video-player"
@@ -49,8 +50,11 @@ const ModuleView = () => {
   const [moduleAlreadyCompleted, setModuleAlreadyCompleted] = useState(false)
   const [historyDocId, setHistoryDocId] = useState(null)
   const contentRef = useRef(null)
+  const iframeRef = useRef(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [videoCompleted, setVideoCompleted] = useState(false)
+  const [imageScrolled, setImageScrolled] = useState(false)
+  const [allChaptersCompleted, setAllChaptersCompleted] = useState(false)
 
   // Quiz state
   const [quizzes, setQuizzes] = useState([])
@@ -85,16 +89,61 @@ const ModuleView = () => {
     )
   }
 
+  // Function to check if the content is an image
+  const isImageContent = (fileUrl) => {
+    if (!fileUrl) return false
+    const url = typeof fileUrl === "object" ? fileUrl.url : fileUrl
+    return (
+      url.toLowerCase().endsWith(".jpg") ||
+      url.toLowerCase().endsWith(".jpeg") ||
+      url.toLowerCase().endsWith(".png") ||
+      url.toLowerCase().endsWith(".gif") ||
+      url.toLowerCase().endsWith(".webp") ||
+      url.toLowerCase().includes("/image/upload/")
+    )
+  }
+
+  // Function to check if the content is a PDF
+  const isPdfContent = (fileUrl) => {
+    if (!fileUrl) return false
+    const url = typeof fileUrl === "object" ? fileUrl.url : fileUrl
+    return url.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes("/pdf/upload/")
+  }
+
+  // Check if all chapters are completed
+  useEffect(() => {
+    if (module && module.chapters && unlockedChapters[moduleId]) {
+      const completedChaptersCount = unlockedChapters[moduleId].length
+      const totalChaptersCount = module.chapters.length
+
+      if (completedChaptersCount >= totalChaptersCount) {
+        setAllChaptersCompleted(true)
+      } else {
+        setAllChaptersCompleted(false)
+      }
+    } else {
+      setAllChaptersCompleted(false)
+    }
+  }, [module, unlockedChapters, moduleId])
+
   // Reset video completion status when changing chapters
   useEffect(() => {
     setVideoCompleted(false)
+    setImageScrolled(false)
+    setIsLastChapterScrolledToBottom(false)
 
     // Check if this chapter is already completed
     const moduleChapters = unlockedChapters[moduleId] || []
     if (moduleChapters.includes(selectedChapterIndex)) {
       setVideoCompleted(true)
+      setImageScrolled(true)
+
+      // If this is the last chapter, also set the last chapter scrolled state
+      if (selectedChapterIndex === module?.chapters?.length - 1) {
+        setIsLastChapterScrolledToBottom(true)
+      }
     }
-  }, [selectedChapterIndex, unlockedChapters, moduleId])
+  }, [selectedChapterIndex, unlockedChapters, moduleId, module])
 
   // Check authentication status
   useEffect(() => {
@@ -300,6 +349,11 @@ const ModuleView = () => {
             { merge: true },
           )
 
+          // Check if all chapters are now completed
+          if (updatedModuleChapters.length >= module.chapters.length) {
+            setAllChaptersCompleted(true)
+          }
+
           return updatedUnlockedChapters
         }
 
@@ -316,22 +370,34 @@ const ModuleView = () => {
       if (!contentRef.current || !module) return
 
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current
-      const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 50
+
+      // Consider content scrolled to bottom if within 20px of the bottom or if scrolled past 90% of content
+      const scrollThreshold = Math.min(20, scrollHeight * 0.1)
+      const scrolledToBottom =
+        scrollTop + clientHeight >= scrollHeight - scrollThreshold || scrollTop / (scrollHeight - clientHeight) > 0.9
 
       if (scrolledToBottom) {
-        // Only mark non-video content as completed via scrolling
+        // Mark current chapter as completed
         const selectedChapter = module.chapters[selectedChapterIndex]
-        const isVideo = isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl)
+        const fileUrl = selectedChapter.fileUrl.url || selectedChapter.fileUrl
+        const isVideo = isVideoContent(fileUrl)
 
         if (!isVideo) {
           // Mark current chapter as completed
           markChapterAsCompleted()
+
+          // If this is an image or PDF, mark it as scrolled
+          if (isImageContent(fileUrl) || isPdfContent(fileUrl)) {
+            setImageScrolled(true)
+          }
         }
 
         // If this is the last chapter, enable the Finish button
         if (selectedChapterIndex === module.chapters.length - 1) {
           setIsLastChapterScrolledToBottom(true)
         }
+
+        console.log("Content scrolled to bottom, marking as completed")
       }
     }
 
@@ -360,6 +426,7 @@ const ModuleView = () => {
       setSelectedChapterIndex(selectedChapterIndex + 1)
       // Reset the last chapter scrolled state when changing chapters
       setIsLastChapterScrolledToBottom(false)
+      setImageScrolled(false)
       // Scroll back to top when changing chapters
       if (contentRef.current) {
         contentRef.current.scrollTop = 0
@@ -610,7 +677,7 @@ const ModuleView = () => {
       score: previousQuizAttempt.score,
       totalPoints: previousQuizAttempt.totalPoints,
       percentage: previousQuizAttempt.percentage,
-      correctAnswers: previousQuizAttempt.correctAnswers,
+      correctAnswers: previousQuizAttempt.correctQuestions,
       totalQuestions: previousQuizAttempt.totalQuestions,
       passed: previousQuizAttempt.passed,
     })
@@ -694,6 +761,36 @@ const ModuleView = () => {
     }
   }
 
+  // Force check scroll position when content loads
+  useEffect(() => {
+    if (!contentRef.current || !module) return
+
+    // Check scroll position after content loads
+    const checkScrollPosition = () => {
+      const { scrollHeight, clientHeight } = contentRef.current
+
+      // If content is shorter than viewport, automatically mark as scrolled
+      if (scrollHeight <= clientHeight) {
+        if (!module.chapters || !module.chapters[selectedChapterIndex]) return
+
+        const selectedChapter = module.chapters[selectedChapterIndex]
+        const fileUrl = selectedChapter.fileUrl.url || selectedChapter.fileUrl
+
+        if (!isVideoContent(fileUrl)) {
+          setImageScrolled(true)
+          markChapterAsCompleted()
+          console.log("Content fits in viewport, automatically marking as completed")
+        }
+      }
+    }
+
+    // Check immediately and after a short delay to account for image loading
+    checkScrollPosition()
+    const timer = setTimeout(checkScrollPosition, 1000)
+
+    return () => clearTimeout(timer)
+  }, [selectedChapterIndex, module])
+
   // Show loading state
   if (loading || contentLoading) {
     return (
@@ -774,16 +871,25 @@ const ModuleView = () => {
   const moduleChapters = unlockedChapters[moduleId] || []
   const isCurrentChapterCompleted = moduleChapters.includes(selectedChapterIndex)
   const isLastChapter = selectedChapterIndex === module.chapters.length - 1
-  const isLastChapterVideo =
-    isLastChapter &&
-    module &&
-    module.chapters &&
-    isVideoContent(
-      module.chapters[selectedChapterIndex]?.fileUrl?.url || module.chapters[selectedChapterIndex]?.fileUrl,
-    )
-  const canFinish =
-    isLastChapter &&
-    (isCurrentChapterCompleted || (isLastChapterVideo ? videoCompleted : isLastChapterScrolledToBottom))
+
+  // Get the file URL properly
+  const fileUrl = selectedChapter.fileUrl.url || selectedChapter.fileUrl
+
+  // Determine content type
+  const isVideo = isVideoContent(fileUrl)
+  const isImage = isImageContent(fileUrl)
+  const isPdf = isPdfContent(fileUrl)
+
+  // Determine if the current chapter can be marked as completed
+  const canCompleteCurrentChapter = isVideo
+    ? videoCompleted || isCurrentChapterCompleted
+    : isImage || isPdf
+      ? imageScrolled || isCurrentChapterCompleted
+      : isCurrentChapterCompleted
+
+  // Determine if the user can proceed to the next chapter or finish the module
+  const canFinish = isLastChapter && allChaptersCompleted
+  const canProceedToNext = !isLastChapter && isCurrentChapterCompleted
 
   // Show module completed screen
   if (showModuleCompleted) {
@@ -1331,12 +1437,14 @@ const ModuleView = () => {
                     disabled={
                       quizSubmitting ||
                       Object.values(quizAnswers).some((a) => a === null) ||
-                      getTotalQuizQuestions() === 0
+                      getTotalQuizQuestions() === 0 ||
+                      !allChaptersCompleted
                     }
                     className={`px-6 py-2 rounded-xl flex items-center ${
                       quizSubmitting ||
                       Object.values(quizAnswers).some((a) => a === null) ||
-                      getTotalQuizQuestions() === 0
+                      getTotalQuizQuestions() === 0 ||
+                      !allChaptersCompleted
                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                         : "bg-green-600 text-white hover:bg-green-700"
                     }`}
@@ -1377,6 +1485,21 @@ const ModuleView = () => {
                   Next <FaChevronRight className="ml-2" />
                 </button>
               </div>
+
+              {/* Warning if not all chapters are completed */}
+              {!allChaptersCompleted && !isReview && (
+                <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+                  <div className="flex items-start">
+                    <FaLightbulb className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Complete all chapters first</p>
+                      <p className="text-sm mt-1">
+                        You need to complete all chapters in this module before you can submit the quiz.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1447,7 +1570,13 @@ const ModuleView = () => {
                   if (hasPreviousAttempt) {
                     viewPreviousQuizAttempt()
                   } else {
-                    setShowQuiz(true)
+                    // Only allow quiz if all chapters are completed
+                    if (allChaptersCompleted) {
+                      setShowQuiz(true)
+                    } else {
+                      // Show a notification that all chapters must be completed
+                      alert("You need to complete all chapters before taking the quiz")
+                    }
                   }
                 }}
               >
@@ -1545,11 +1674,11 @@ const ModuleView = () => {
             This chapter covers important concepts and materials to help you understand the topic better.
           </p>
 
-          {/* Content Display - Video or iframe based on content type */}
-          {isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl) ? (
+          {/* Content Display - Video, Image, or PDF based on content type */}
+          {isVideoContent(fileUrl) ? (
             <div className="mt-6 bg-gray-800 rounded-xl overflow-hidden">
               <VideoPlayer
-                src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
+                src={fileUrl}
                 onComplete={handleVideoComplete}
                 isCompleted={isCurrentChapterCompleted}
                 className="max-h-[600px]"
@@ -1560,15 +1689,67 @@ const ModuleView = () => {
                 </div>
               )}
             </div>
+          ) : isImageContent(fileUrl) ? (
+            <div className="mt-6 relative">
+              <img
+                src={fileUrl || "/placeholder.svg"}
+                alt={selectedChapter.title}
+                className="w-full rounded-xl border border-gray-200"
+              />
+              {isImageContent(fileUrl) && (
+                <div className="mt-3 flex justify-center">
+                  <button
+                    onClick={() => {
+                      setImageScrolled(true)
+                      markChapterAsCompleted()
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Mark as Completed
+                  </button>
+                </div>
+              )}
+              {imageScrolled && !isCurrentChapterCompleted && (
+                <div className="mt-3 bg-green-100 text-green-800 p-3 rounded-xl">
+                  <p className="text-sm font-medium">Image viewed!</p>
+                </div>
+              )}
+              {!imageScrolled && !isCurrentChapterCompleted && (
+                <div className="mt-3 bg-amber-50 text-amber-800 p-3 rounded-xl flex items-center">
+                  <FaScroll className="mr-2" />
+                  <p className="text-sm font-medium">Scroll to the bottom to mark as completed</p>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="mt-6">
               <iframe
-                src={selectedChapter.fileUrl.url || selectedChapter.fileUrl}
+                ref={iframeRef}
+                src={fileUrl}
                 width="100%"
                 height="600px"
                 className="border rounded-xl"
                 title="Chapter Content"
               />
+              {isPdfContent(fileUrl) && (
+                <div className="mt-3 flex justify-center">
+                  <button
+                    onClick={() => {
+                      setImageScrolled(true)
+                      markChapterAsCompleted()
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Mark as Completed
+                  </button>
+                </div>
+              )}
+              {isPdf(fileUrl) && !imageScrolled && !isCurrentChapterCompleted && (
+                <div className="mt-3 bg-amber-50 text-amber-800 p-3 rounded-xl flex items-center">
+                  <FaScroll className="mr-2" />
+                  <p className="text-sm font-medium">Scroll to the bottom of the PDF to mark as completed</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1582,8 +1763,18 @@ const ModuleView = () => {
           </div>
         )}
 
+        {/* All chapters completed notification */}
+        {allChaptersCompleted && !moduleAlreadyCompleted && (
+          <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6">
+            <div className="flex items-center">
+              <FaCheck className="text-green-600 mr-2" />
+              <p className="font-medium">Congratulations! You've completed all chapters in this module.</p>
+            </div>
+          </div>
+        )}
+
         {/* Module Quiz Button (if available) */}
-        {quizzes.length > 0 && isLastChapter && canFinish && !hasPreviousAttempt && (
+        {quizzes.length > 0 && isLastChapter && allChaptersCompleted && !hasPreviousAttempt && (
           <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl mb-6">
             <div className="flex justify-between items-center">
               <div>
@@ -1625,38 +1816,48 @@ const ModuleView = () => {
 
           <button
             className={`flex items-center px-6 py-3 rounded-xl font-medium transition-colors ${
-              canFinish
+              canFinish || canProceedToNext
                 ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             disabled={
-              (isLastChapter && !canFinish) ||
-              (!isLastChapter && !isChapterUnlocked(selectedChapterIndex + 1)) ||
+              (!isLastChapter && !isCurrentChapterCompleted) ||
               savingCompletion ||
-              (isVideoContent(selectedChapter.fileUrl.url || selectedChapter.fileUrl) &&
-                !videoCompleted &&
-                !isCurrentChapterCompleted)
+              (isVideoContent(fileUrl) && !videoCompleted && !isCurrentChapterCompleted)
             }
             onClick={() => {
               if (isLastChapter && canFinish) {
-                if (quizAttemptCount >= 2) {
-                  // If user has 2 or more attempts, directly show results
-                  viewPreviousQuizAttempt()
-                } else if (quizAttemptCount === 1) {
-                  // If user has 1 attempt, show results with retake option
-                  viewPreviousQuizAttempt()
+                if (quizzes.length > 0) {
+                  if (quizAttemptCount >= 2) {
+                    // If user has 2 or more attempts, directly show results
+                    viewPreviousQuizAttempt()
+                  } else if (quizAttemptCount === 1) {
+                    // If user has 1 attempt, show results with retake option
+                    viewPreviousQuizAttempt()
+                  } else {
+                    // If no attempts, show the quiz
+                    setShowQuiz(true)
+                  }
                 } else {
-                  // If no attempts, show the quiz
-                  setShowQuiz(true)
+                  // If no quizzes, complete the module
+                  completeModule()
                 }
-              } else {
+              } else if (canProceedToNext) {
                 goToNextChapter()
               }
             }}
           >
-            {isLastChapter && canFinish ? "Next" : "Next Chapter"} <FaArrowRight className="ml-2" />
+            {isLastChapter && canFinish ? "Finish Module" : "Next Chapter"} <FaArrowRight className="ml-2" />
           </button>
         </div>
+
+        {/* Scroll indicator for image/PDF content */}
+        {(isImageContent(fileUrl) || isPdfContent(fileUrl)) && !isCurrentChapterCompleted && (
+          <div className="fixed bottom-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center">
+            <FaScroll className="mr-2" />
+            <span>Scroll down to continue</span>
+          </div>
+        )}
       </div>
     </div>
   )

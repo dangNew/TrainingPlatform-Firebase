@@ -417,6 +417,7 @@ function Profile() {
   const { expanded } = useContext(SidebarToggleContext)
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
   const [comments, setComments] = useState([])
+  const [userType, setUserType] = useState(null)
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -427,6 +428,7 @@ function Profile() {
 
         if (learnerDoc.exists()) {
           setUserData(learnerDoc.data())
+          setUserType("learner")
         } else {
           // If not found in learner collection, try intern collection
           const internRef = doc(db, "intern", user.uid)
@@ -434,6 +436,7 @@ function Profile() {
 
           if (internDoc.exists()) {
             setUserData(internDoc.data())
+            setUserType("intern")
           }
         }
       }
@@ -586,6 +589,11 @@ function Profile() {
             <h2>{userData.fullName || "User Name"}</h2>
             <p>{userData.email || "email@example.com"}</p>
             <p className="username">@{userData.username || "username"}</p>
+            {userType && (
+              <p className="mt-2 inline-block px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                {userType === "learner" ? "Learner" : "Intern"}
+              </p>
+            )}
           </ProfileInfo>
         </ProfileHeader>
 

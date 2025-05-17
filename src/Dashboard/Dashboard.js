@@ -1,52 +1,28 @@
-import React, { useState, useEffect } from "react";
-import {
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  where,
-  doc,
-  setDoc,
-} from "firebase/firestore";
-import { db } from "../firebase.config";
-import LgNavbar from "../components/LgNavbar";
-import Sidebar from "../adviser/sidebar";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
-import styled from "styled-components";
+"use client"
+
+import { useState, useEffect } from "react"
+import { addDoc, collection, getDocs, query, orderBy, limit, where, doc, setDoc } from "firebase/firestore"
+import { db } from "../firebase.config"
+import LgNavbar from "../components/LgNavbar"
+import Sidebar from "../adviser/sidebar"
+import Calendar from "react-calendar"
+import "react-calendar/dist/Calendar.css"
+import ReactQuill from "react-quill"
+import "react-quill/dist/quill.snow.css"
+import styled, { keyframes } from "styled-components"
 import {
   FaBook,
   FaCheckCircle,
   FaMedal,
   FaClock,
   FaGraduationCap,
-  FaEnvelope,
   FaCalendarAlt,
-  FaPaperclip,
-  FaUsers,
-  FaUserGraduate,
-  FaUserTie,
-  FaUser,
-  FaChevronDown,
   FaPaperPlane,
-  FaCheck,
   FaExclamationTriangle,
-} from "react-icons/fa";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
+  FaTimes,
+  FaInfoCircle,
+} from "react-icons/fa"
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
 
 const MainContent = styled.div`
   flex: 1;
@@ -56,7 +32,7 @@ const MainContent = styled.div`
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   margin-left: 10px;
-`;
+`
 
 const Card = styled.div`
   background: white;
@@ -65,7 +41,7 @@ const Card = styled.div`
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-`;
+`
 
 const SectionTitle = styled.h2`
   font-size: 1.5rem;
@@ -75,12 +51,12 @@ const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: 0.75rem;
-`;
+`
 
 const InputField = styled.div`
   margin-bottom: 1.5rem;
   position: relative;
-`;
+`
 
 const InputLabel = styled.label`
   display: block;
@@ -88,7 +64,7 @@ const InputLabel = styled.label`
   font-weight: 500;
   color: #4b5563;
   margin-bottom: 0.5rem;
-`;
+`
 
 const Input = styled.input`
   width: 100%;
@@ -104,7 +80,7 @@ const Input = styled.input`
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
-`;
+`
 
 const Select = styled.select`
   width: 100%;
@@ -121,7 +97,7 @@ const Select = styled.select`
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
-`;
+`
 
 const Button = styled.button`
   width: 100%;
@@ -147,38 +123,272 @@ const Button = styled.button`
     background-color: #9ca3af;
     cursor: not-allowed;
   }
-`;
+`
 
+// Animation for notification appearance
+const slideIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`
+
+// Pulse animation for the icon
+const pulse = keyframes`
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+`
+
+// Redesigned Success Message
 const SuccessMessage = styled.div`
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #dcfce7;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(to right, #dcfce7, #f0fdf4);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  animation: ${slideIn} 0.3s ease-out forwards;
   border-left: 4px solid #16a34a;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
 
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: #16a34a;
+  }
+
+  .icon-wrapper {
+    background-color: rgba(22, 163, 74, 0.2);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .icon {
+    color: #16a34a;
+    font-size: 1.25rem;
+    animation: ${pulse} 1.5s infinite;
+  }
+
+  .content {
+    flex: 1;
+  }
+
+  .title {
+    font-weight: 600;
+    color: #166534;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
+  .message {
+    color: #14532d;
+    font-size: 0.875rem;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #16a34a;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-left: 0.5rem;
+
+    &:hover {
+      background-color: rgba(22, 163, 74, 0.1);
+    }
+  }
+`
+
+// Redesigned Error Message
 const ErrorMessage = styled.div`
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #fee2e2;
-  border-left: 4px solid #dc2626;
-  border-radius: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(to right, #fee2e2, #fef2f2);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-`;
+  position: relative;
+  overflow: hidden;
+  animation: ${slideIn} 0.3s ease-out forwards;
+  border-left: 4px solid #dc2626;
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: #dc2626;
+  }
+
+  .icon-wrapper {
+    background-color: rgba(220, 38, 38, 0.2);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .icon {
+    color: #dc2626;
+    font-size: 1.25rem;
+    animation: ${pulse} 1.5s infinite;
+  }
+
+  .content {
+    flex: 1;
+  }
+
+  .title {
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
+  .message {
+    color: #7f1d1d;
+    font-size: 0.875rem;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-left: 0.5rem;
+
+    &:hover {
+      background-color: rgba(220, 38, 38, 0.1);
+    }
+  }
+`
+
+// Info Message for additional notifications
+const InfoMessage = styled.div`
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(to right, #dbeafe, #eff6ff);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  animation: ${slideIn} 0.3s ease-out forwards;
+  border-left: 4px solid #2563eb;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: #2563eb;
+  }
+
+  .icon-wrapper {
+    background-color: rgba(37, 99, 235, 0.2);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .icon {
+    color: #2563eb;
+    font-size: 1.25rem;
+    animation: ${pulse} 1.5s infinite;
+  }
+
+  .content {
+    flex: 1;
+  }
+
+  .title {
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
+  .message {
+    color: #1e3a8a;
+    font-size: 0.875rem;
+  }
+
+  .close-button {
+    background: none;
+    border: none;
+    color: #2563eb;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-left: 0.5rem;
+
+    &:hover {
+      background-color: rgba(37, 99, 235, 0.1);
+    }
+  }
+`
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 
 const Dashboard = () => {
-  const [announcements, setAnnouncements] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [quickStats, setQuickStats] = useState({});
+  const [announcements, setAnnouncements] = useState([])
+  const [leaderboard, setLeaderboard] = useState([])
+  const [currentTime, setCurrentTime] = useState(new Date())
+  const [recentActivities, setRecentActivities] = useState([])
+  const [quickStats, setQuickStats] = useState({})
   const [newAnnouncement, setNewAnnouncement] = useState({
     subject: "",
     content: "",
@@ -186,193 +396,225 @@ const Dashboard = () => {
     expiryDate: "",
     attachment: null,
     targetAudience: "All",
-  });
-  const [users, setUsers] = useState([]);
-  const [loggedInUser, setLoggedInUser] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+  })
+  const [users, setUsers] = useState([])
+  const [loggedInUser, setLoggedInUser] = useState(null)
+  const [darkMode, setDarkMode] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
+  const [notifications, setNotifications] = useState([])
+  const [showInfoMessage, setShowInfoMessage] = useState(false)
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const q = query(
-          collection(db, "announcements"),
-          orderBy("timestamp", "desc")
-        );
-        const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"))
+        const querySnapshot = await getDocs(q)
         const announcementsData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
-        setAnnouncements(announcementsData);
+        }))
+        setAnnouncements(announcementsData)
       } catch (error) {
-        console.error("Error fetching announcements:", error);
+        console.error("Error fetching announcements:", error)
       }
-    };
+    }
 
     const fetchLeaderboard = async () => {
       try {
-        const q = query(
-          collection(db, "learner"),
-          orderBy("score", "desc"),
-          limit(5)
-        );
-        const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "learner"), orderBy("score", "desc"), limit(5))
+        const querySnapshot = await getDocs(q)
         const leaderboardData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
-        setLeaderboard(leaderboardData);
+        }))
+        setLeaderboard(leaderboardData)
       } catch (error) {
-        console.error("Error fetching leaderboard:", error);
+        console.error("Error fetching leaderboard:", error)
       }
-    };
+    }
 
     const fetchRecentActivities = async () => {
       try {
-        const q = query(
-          collection(db, "activities"),
-          orderBy("timestamp", "desc"),
-          limit(5)
-        );
-        const querySnapshot = await getDocs(q);
+        const q = query(collection(db, "activities"), orderBy("timestamp", "desc"), limit(5))
+        const querySnapshot = await getDocs(q)
         const activitiesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
-        setRecentActivities(activitiesData);
+        }))
+        setRecentActivities(activitiesData)
       } catch (error) {
-        console.error("Error fetching recent activities:", error);
+        console.error("Error fetching recent activities:", error)
       }
-    };
+    }
 
     const fetchQuickStats = async () => {
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        const coursesSnapshot = await getDocs(collection(db, "courses"));
+        const usersSnapshot = await getDocs(collection(db, "users"))
+        const coursesSnapshot = await getDocs(collection(db, "courses"))
 
         const quickStats = {
           totalUsers: usersSnapshot.size,
           activeCourses: coursesSnapshot.size,
           recentLogins: usersSnapshot.docs.filter(
-            (doc) =>
-              doc.data().lastLogin >
-              new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            (doc) => doc.data().lastLogin > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           ).length,
-        };
-        setQuickStats(quickStats);
+        }
+        setQuickStats(quickStats)
       } catch (error) {
-        console.error("Error fetching quick stats:", error);
+        console.error("Error fetching quick stats:", error)
       }
-    };
+    }
 
     const fetchUsers = async () => {
       try {
-        const users = [];
+        const users = []
 
         const fetchFromCollection = async (collectionName) => {
-          const querySnapshot = await getDocs(collection(db, collectionName));
+          const querySnapshot = await getDocs(collection(db, collectionName))
           const usersData = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          }));
-          users.push(...usersData);
-        };
+          }))
+          users.push(...usersData)
+        }
 
-        await fetchFromCollection("User");
-        await fetchFromCollection("learner");
-        await fetchFromCollection("intern");
+        await fetchFromCollection("User")
+        await fetchFromCollection("learner")
+        await fetchFromCollection("intern")
 
-        setUsers(users);
+        setUsers(users)
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching users:", error)
       }
-    };
+    }
 
     const fetchLoggedInUser = async () => {
       try {
-        const userId = localStorage.getItem("userId");
+        const userId = localStorage.getItem("userId")
         if (userId) {
-          const userDoc = await getDocs(
-            query(collection(db, "users"), where("id", "==", userId))
-          );
+          const userDoc = await getDocs(query(collection(db, "users"), where("id", "==", userId)))
           if (!userDoc.empty) {
-            setLoggedInUser(userDoc.docs[0].data());
+            setLoggedInUser(userDoc.docs[0].data())
           }
         }
       } catch (error) {
-        console.error("Error fetching logged-in user:", error);
+        console.error("Error fetching logged-in user:", error)
       }
-    };
+    }
 
-    fetchAnnouncements();
-    fetchLeaderboard();
-    fetchRecentActivities();
-    fetchQuickStats();
-    fetchUsers();
-    fetchLoggedInUser();
+    fetchAnnouncements()
+    fetchLeaderboard()
+    fetchRecentActivities()
+    fetchQuickStats()
+    fetchUsers()
+    fetchLoggedInUser()
 
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    // Show info message after 2 seconds
+    const infoTimer = setTimeout(() => {
+      setShowInfoMessage(true)
+    }, 2000)
+
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => {
+      clearInterval(timer)
+      clearTimeout(infoTimer)
+    }
+  }, [])
 
   const validateForm = () => {
-    const errors = {};
+    const errors = {}
     if (!newAnnouncement.subject.trim()) {
-      errors.subject = "Title is required";
+      errors.subject = "Title is required"
     }
     if (!newAnnouncement.content.trim()) {
-      errors.content = "Message is required";
+      errors.content = "Message is required"
     }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const ensureAnnouncementsCollectionExists = async () => {
     try {
-      const snapshot = await getDocs(collection(db, "announcements"));
+      const snapshot = await getDocs(collection(db, "announcements"))
       if (snapshot.empty) {
         // Create a dummy document to ensure the collection exists
         await setDoc(doc(collection(db, "announcements"), "dummy"), {
           dummy: true,
-        });
-        console.log("Created 'announcements' collection");
+        })
+        console.log("Created 'announcements' collection")
       }
     } catch (error) {
-      console.error("Error ensuring 'announcements' collection exists:", error);
+      console.error("Error ensuring 'announcements' collection exists:", error)
     }
-  };
+  }
 
   const handleAddAnnouncement = async () => {
     if (!validateForm()) {
-      console.log("Form validation failed");
-      return;
+      console.log("Form validation failed")
+      return
     }
 
-    setLoading(true);
-    setSuccess(false);
-    setError(false);
+    setLoading(true)
+    setSuccess(false)
+    setError(false)
+    setShowInfoMessage(false)
 
     const announcement = {
       ...newAnnouncement,
       timestamp: new Date(),
-    };
+    }
 
     try {
-      console.log("Attempting to add announcement:", announcement);
-      await ensureAnnouncementsCollectionExists();
-      await addDoc(collection(db, "announcements"), announcement);
-      setAnnouncements([...announcements, { id: Date.now(), ...announcement }]);
-      setSuccess(true);
-      console.log("Announcement added successfully");
+      console.log("Attempting to add announcement:", announcement)
+      await ensureAnnouncementsCollectionExists()
+      await addDoc(collection(db, "announcements"), announcement)
+      setAnnouncements([...announcements, { id: Date.now(), ...announcement }])
+      setSuccess(true)
+
+      // Add to notifications
+      setNotifications([
+        ...notifications,
+        {
+          id: Date.now(),
+          type: "success",
+          title: "Announcement Published",
+          message: `Your announcement "${announcement.subject}" has been published successfully.`,
+          timestamp: new Date(),
+        },
+      ])
+
+      console.log("Announcement added successfully")
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setSuccess(false)
+      }, 5000)
     } catch (error) {
-      setError(true);
-      console.error("Error adding announcement:", error);
+      setError(true)
+
+      // Add to notifications
+      setNotifications([
+        ...notifications,
+        {
+          id: Date.now(),
+          type: "error",
+          title: "Publication Failed",
+          message: "There was an error publishing your announcement. Please try again.",
+          timestamp: new Date(),
+        },
+      ])
+
+      console.error("Error adding announcement:", error)
+
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setError(false)
+      }, 5000)
     } finally {
-      setLoading(false);
+      setLoading(false)
       setNewAnnouncement({
         subject: "",
         content: "",
@@ -380,40 +622,50 @@ const Dashboard = () => {
         expiryDate: "",
         attachment: null,
         targetAudience: "All",
-      });
+      })
     }
-  };
+  }
+
+  const handleCloseNotification = (type) => {
+    if (type === "success") {
+      setSuccess(false)
+    } else if (type === "error") {
+      setError(false)
+    } else if (type === "info") {
+      setShowInfoMessage(false)
+    }
+  }
 
   const handleDownloadReport = () => {
-    const csvContent = `Total Users,Active Courses,Recent Logins\n${quickStats.totalUsers},${quickStats.activeCourses},${quickStats.recentLogins}`;
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "dashboard_report.csv";
-    link.click();
-  };
+    const csvContent = `Total Users,Active Courses,Recent Logins\n${quickStats.totalUsers},${quickStats.activeCourses},${quickStats.recentLogins}`
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = "dashboard_report.csv"
+    link.click()
+  }
 
   const prepareProgressChartData = () => {
     return [
       { name: "Completed", value: quickStats.completedCourses || 0 },
       { name: "In Progress", value: quickStats.inProgressCourses || 0 },
       { name: "Not Started", value: quickStats.notStartedCourses || 0 },
-    ];
-  };
+    ]
+  }
 
   const prepareModuleChartData = () => {
     return [
       { name: "Completed", value: quickStats.completedModules || 0 },
       { name: "Remaining", value: quickStats.remainingModules || 0 },
-    ];
-  };
+    ]
+  }
 
   const prepareCourseProgressData = () => {
     return [
       { name: "Course 1", progress: quickStats.course1Progress || 0 },
       { name: "Course 2", progress: quickStats.course2Progress || 0 },
-    ];
-  };
+    ]
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -424,25 +676,16 @@ const Dashboard = () => {
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center">
               <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl mr-4">
-                {loggedInUser
-                  ? loggedInUser.firstName.charAt(0).toUpperCase()
-                  : "D"}
+                {loggedInUser ? loggedInUser.firstName.charAt(0).toUpperCase() : "D"}
               </div>
               <div>
-                <h1 className="text-2xl font-bold">
-                  Welcome, {loggedInUser ? loggedInUser.firstName : "Guest"}
-                </h1>
-                <p className="text-gray-500">
-                  {loggedInUser ? loggedInUser.email : "Not logged in"}
-                </p>
+                <h1 className="text-2xl font-bold">Welcome, {loggedInUser ? loggedInUser.firstName : "Guest"}</h1>
+                <p className="text-gray-500">{loggedInUser ? loggedInUser.email : "Not logged in"}</p>
               </div>
             </div>
             <div className="bg-blue-900 px-4 py-2 rounded-lg text-white shadow-md">
               <p className="text-sm">
-                Last login:{" "}
-                {loggedInUser
-                  ? new Date(loggedInUser.lastLogin.toDate()).toLocaleString()
-                  : "N/A"}
+                Last login: {loggedInUser ? new Date(loggedInUser.lastLogin.toDate()).toLocaleString() : "N/A"}
               </p>
             </div>
           </div>
@@ -455,21 +698,15 @@ const Dashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.completedCourses || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.completedCourses || 0}</p>
                   <p className="text-gray-500">Completed</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.inProgressCourses || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.inProgressCourses || 0}</p>
                   <p className="text-gray-500">In Progress</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.totalCourses || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.totalCourses || 0}</p>
                   <p className="text-gray-500">Total</p>
                 </div>
               </div>
@@ -482,21 +719,15 @@ const Dashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.completedModules || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.completedModules || 0}</p>
                   <p className="text-gray-500">Completed</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.remainingModules || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.remainingModules || 0}</p>
                   <p className="text-gray-500">Remaining</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.totalModules || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.totalModules || 0}</p>
                   <p className="text-gray-500">Total</p>
                 </div>
               </div>
@@ -509,15 +740,11 @@ const Dashboard = () => {
               </div>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.earnedCertificates || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.earnedCertificates || 0}</p>
                   <p className="text-gray-500">Earned</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">
-                    {quickStats.availableCertificates || 0}
-                  </p>
+                  <p className="text-3xl font-bold">{quickStats.availableCertificates || 0}</p>
                   <p className="text-gray-500">Available</p>
                 </div>
               </div>
@@ -538,15 +765,10 @@ const Dashboard = () => {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     >
                       {prepareProgressChartData().map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -568,15 +790,10 @@ const Dashboard = () => {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     >
                       {prepareModuleChartData().map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -586,9 +803,7 @@ const Dashboard = () => {
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h2 className="text-xl font-semibold mb-4">
-                Top Courses Progress
-              </h2>
+              <h2 className="text-xl font-semibold mb-4">Top Courses Progress</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -615,15 +830,10 @@ const Dashboard = () => {
               {recentActivities.length > 0 ? (
                 <ul className="space-y-4">
                   {recentActivities.map((activity) => (
-                    <li
-                      key={activity.id}
-                      className="border-l-2 border-blue-500 pl-4 py-1"
-                    >
+                    <li key={activity.id} className="border-l-2 border-blue-500 pl-4 py-1">
                       <p className="font-medium">{activity.activity}</p>
                       <p className="text-xs text-gray-600">
-                        {new Date(
-                          activity.timestamp.seconds * 1000
-                        ).toLocaleString()}
+                        {new Date(activity.timestamp.seconds * 1000).toLocaleString()}
                       </p>
                     </li>
                   ))}
@@ -641,21 +851,13 @@ const Dashboard = () => {
               {announcements.length > 0 ? (
                 <ul className="space-y-4">
                   {announcements.slice(0, 5).map((announcement) => (
-                    <li
-                      key={announcement.id}
-                      className="border-b border-gray-200 pb-3 last:border-0"
-                    >
+                    <li key={announcement.id} className="border-b border-gray-200 pb-3 last:border-0">
                       <div className="flex justify-between items-center mb-1">
                         <p className="font-medium">{announcement.subject}</p>
-                        <span className="text-sm bg-blue-900 px-2 py-1 rounded">
-                          50% Complete
-                        </span>
+                        <span className="text-sm bg-blue-900 px-2 py-1 rounded">50% Complete</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: "50%" }}
-                        ></div>
+                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: "50%" }}></div>
                       </div>
                     </li>
                   ))}
@@ -693,9 +895,7 @@ const Dashboard = () => {
                 }
                 placeholder="Enter title"
                 aria-invalid={formErrors.subject ? "true" : "false"}
-                aria-describedby={
-                  formErrors.subject ? "subject-error" : undefined
-                }
+                aria-describedby={formErrors.subject ? "subject-error" : undefined}
               />
               {formErrors.subject && (
                 <div id="subject-error" className="text-red-500 text-sm mt-1">
@@ -717,9 +917,7 @@ const Dashboard = () => {
                 placeholder="Write your announcement here..."
                 className="h-48 mb-4"
                 aria-invalid={formErrors.content ? "true" : "false"}
-                aria-describedby={
-                  formErrors.content ? "content-error" : undefined
-                }
+                aria-describedby={formErrors.content ? "content-error" : undefined}
               />
               {formErrors.content && (
                 <div id="content-error" className="text-red-500 text-sm mt-1">
@@ -801,18 +999,72 @@ const Dashboard = () => {
               )}
             </Button>
 
+            {/* Redesigned Success Message */}
             {success && (
               <SuccessMessage>
-                <FaCheck className="text-green-600" />
-                <span>Announcement sent successfully!</span>
+                <div className="icon-wrapper">
+                  <FaCheckCircle className="icon" />
+                </div>
+                <div className="content">
+                  <div className="title">Announcement Published Successfully!</div>
+                  <div className="message">
+                    Your announcement has been sent to{" "}
+                    {newAnnouncement.targetAudience === "All" ? "all users" : newAnnouncement.targetAudience + "s"}.
+                  </div>
+                </div>
+                <button
+                  className="close-button"
+                  onClick={() => handleCloseNotification("success")}
+                  aria-label="Close notification"
+                >
+                  <FaTimes />
+                </button>
               </SuccessMessage>
             )}
 
+            {/* Redesigned Error Message */}
             {error && (
               <ErrorMessage>
-                <FaExclamationTriangle className="text-red-600" />
-                <span>Failed to send announcement. Please try again.</span>
+                <div className="icon-wrapper">
+                  <FaExclamationTriangle className="icon" />
+                </div>
+                <div className="content">
+                  <div className="title">Publication Failed</div>
+                  <div className="message">
+                    There was an error publishing your announcement. Please check your connection and try again.
+                  </div>
+                </div>
+                <button
+                  className="close-button"
+                  onClick={() => handleCloseNotification("error")}
+                  aria-label="Close notification"
+                >
+                  <FaTimes />
+                </button>
               </ErrorMessage>
+            )}
+
+            {/* Info Message */}
+            {showInfoMessage && (
+              <InfoMessage>
+                <div className="icon-wrapper">
+                  <FaInfoCircle className="icon" />
+                </div>
+                <div className="content">
+                  <div className="title">Quick Tip</div>
+                  <div className="message">
+                    You can schedule announcements by setting a future post date. The system will automatically publish
+                    it at the specified time.
+                  </div>
+                </div>
+                <button
+                  className="close-button"
+                  onClick={() => handleCloseNotification("info")}
+                  aria-label="Close notification"
+                >
+                  <FaTimes />
+                </button>
+              </InfoMessage>
             )}
           </Card>
 
@@ -823,23 +1075,12 @@ const Dashboard = () => {
             </SectionTitle>
             <ul>
               {announcements.map((announcement) => (
-                <li
-                  key={announcement.id}
-                  className="mb-4 p-4 border rounded shadow"
-                >
-                  <h3 className="text-lg font-semibold">
-                    {announcement.subject}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {announcement.content}
-                  </p>
+                <li key={announcement.id} className="mb-4 p-4 border rounded shadow">
+                  <h3 className="text-lg font-semibold">{announcement.subject}</h3>
+                  <p className="text-sm text-gray-600">{announcement.content}</p>
+                  <p className="text-xs text-gray-500">Sent to: {announcement.targetAudience}</p>
                   <p className="text-xs text-gray-500">
-                    Sent to: {announcement.targetAudience}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(
-                      announcement.timestamp.seconds * 1000
-                    ).toLocaleString()}
+                    {new Date(announcement.timestamp.seconds * 1000).toLocaleString()}
                   </p>
                 </li>
               ))}
@@ -894,8 +1135,7 @@ const Dashboard = () => {
             <ul className="mt-2">
               {recentActivities.map((activity) => (
                 <li key={activity.id} className="text-sm mt-2">
-                  {activity.activity} -{" "}
-                  {new Date(activity.timestamp.seconds * 1000).toLocaleString()}
+                  {activity.activity} - {new Date(activity.timestamp.seconds * 1000).toLocaleString()}
                 </li>
               ))}
             </ul>
@@ -903,7 +1143,7 @@ const Dashboard = () => {
         </MainContent>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

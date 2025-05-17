@@ -11,6 +11,7 @@ const ProfileProgress = () => {
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedCourse, setExpandedCourse] = useState(null)
+  const [userType, setUserType] = useState(null)
 
   useEffect(() => {
     const fetchUserCourses = async () => {
@@ -19,8 +20,21 @@ const ProfileProgress = () => {
       try {
         setLoading(true)
 
-        // Fetch all courses
-        const coursesCollection = collection(db, "courses")
+        // First, determine if user is a learner or intern
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerDoc = await getDoc(learnerRef)
+
+        let isLearner = false
+
+        if (learnerDoc.exists()) {
+          isLearner = true
+          setUserType("learner")
+        } else {
+          setUserType("intern")
+        }
+
+        // Fetch courses from the appropriate collection based on user type
+        const coursesCollection = collection(db, isLearner ? "courses" : "Intern_Course")
         const coursesSnapshot = await getDocs(coursesCollection)
         const coursesData = coursesSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -30,15 +44,15 @@ const ProfileProgress = () => {
         // For each course, fetch its modules
         const coursesWithModules = await Promise.all(
           coursesData.map(async (course) => {
-            const modulesCollection = collection(db, "courses", course.id, "modules")
+            const modulesCollection = collection(db, isLearner ? "courses" : "Intern_Course", course.id, "modules")
             const modulesSnapshot = await getDocs(modulesCollection)
             const modulesData = modulesSnapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
             }))
 
-            // Get user's progress from Firestore instead of localStorage
-            const userProgressRef = doc(db, "learner", user.uid, "progress", course.id)
+            // Get user's progress from the appropriate collection
+            const userProgressRef = doc(db, isLearner ? "learner" : "intern", user.uid, "progress", course.id)
             const userProgressDoc = await getDoc(userProgressRef)
 
             // Get completed chapters and modules from Firestore
@@ -120,7 +134,9 @@ const ProfileProgress = () => {
 
   return (
     <div className="space-y-8">
-      <h3 className="text-lg font-semibold mb-4 text-blue-950">Your Learning Progress</h3>
+      <h3 className="text-lg font-semibold mb-4 text-blue-950">
+        Your Learning Progress ({userType === "learner" ? "Learner" : "Intern"} Courses)
+      </h3>
 
       {courses.map((course) => (
         <div key={course.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -128,7 +144,7 @@ const ProfileProgress = () => {
             <div className="flex items-center gap-4">
               <div className="h-16 w-16 rounded-lg overflow-hidden bg-gray-100">
                 <img
-                  src={course.fileUrl || "/placeholder.svg"}
+                  src={course.fileUrl?.url || "/placeholder.svg"}
                   alt={course.title}
                   className="h-full w-full object-cover"
                 />

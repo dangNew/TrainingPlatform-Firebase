@@ -1,13 +1,11 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import IntSidebar from "./sidebar"
-import Header from "../Dashboard/Header"
-import { FaFolder, FaSortAlphaDown, FaSortAlphaUp, FaUpload, FaEdit, FaTrash, FaEye, FaFileAlt } from "react-icons/fa"
-import { BsThreeDotsVertical, BsSearch } from "react-icons/bs"
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore"
-import { db } from "../firebase.config"
-import styled from "styled-components"
+import { useState, useEffect } from "react";
+import IntSidebar from "./sidebar";
+import Header from "../Dashboard/Header";
+import { FaFolder, FaSortAlphaDown, FaSortAlphaUp, FaUpload, FaEdit, FaTrash, FaEye, FaFileAlt } from "react-icons/fa";
+import { BsThreeDotsVertical, BsSearch } from "react-icons/bs";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../firebase.config";
+import styled from "styled-components";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -15,22 +13,27 @@ const PageContainer = styled.div`
   flex-direction: column;
   height: 100vh;
   background-color: #f4f6f9;
-`
+`;
 
 const HeaderWrapper = styled.div`
   width: 100%;
+  position: fixed;
+  top: 0;
   z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-`
+  margin-top: 100px; // Adjust this value based on your header's height
+`;
 
 const SidebarWrapper = styled.div`
+  position: fixed;
   height: 100%;
   z-index: 5;
-`
+  width: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -38,87 +41,87 @@ const MainContent = styled.div`
   border-radius: 8px;
   overflow-y: auto;
   transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
+  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const FileLibrary = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [files, setFiles] = useState([])
-  const [menuOpen, setMenuOpen] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortOrder, setSortOrder] = useState("asc")
-  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [files, setFiles] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen)
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Fetch files from Firestore
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "courses"))
+        const querySnapshot = await getDocs(collection(db, "courses"));
         const filesData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
-        setFiles(filesData)
+        }));
+        setFiles(filesData);
       } catch (error) {
-        console.error("Error fetching files:", error)
+        console.error("Error fetching files:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchFiles()
-  }, [])
+    fetchFiles();
+  }, []);
 
   // Toggle menu for each file
   const toggleMenu = (fileId) => {
-    setMenuOpen(menuOpen === fileId ? null : fileId)
-  }
+    setMenuOpen(menuOpen === fileId ? null : fileId);
+  };
 
   // Handle file deletion
   const handleDelete = async (fileId) => {
     try {
-      await deleteDoc(doc(db, "courses", fileId))
-      setFiles(files.filter((file) => file.id !== fileId))
-      setMenuOpen(null)
-      setConfirmDelete(null)
+      await deleteDoc(doc(db, "courses", fileId));
+      setFiles(files.filter((file) => file.id !== fileId));
+      setMenuOpen(null);
+      setConfirmDelete(null);
     } catch (error) {
-      console.error("Error deleting file:", error)
+      console.error("Error deleting file:", error);
     }
-  }
+  };
 
   // Handle file edit
   const handleEdit = (file) => {
-    alert(`Editing file: ${file.title}`)
-    setMenuOpen(null)
-  }
+    alert(`Editing file: ${file.title}`);
+    setMenuOpen(null);
+  };
 
   // Simulated Upload File (Replace with actual upload logic)
   const handleUpload = () => {
-    alert("Upload feature coming soon!")
-  }
+    alert("Upload feature coming soon!");
+  };
 
   // Search functionality
-  const filteredFiles = files.filter((file) => file.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredFiles = files.filter((file) => file.title.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Sorting functionality
   const sortedFiles = [...filteredFiles].sort((a, b) => {
-    return sortOrder === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
-  })
+    return sortOrder === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title);
+  });
 
   // Get file type icon
   const getFileIcon = (file) => {
-    const fileUrl = file.fileUrl?.url || ""
-    if (fileUrl.endsWith(".pdf")) return "pdf"
-    if (fileUrl.endsWith(".doc") || fileUrl.endsWith(".docx")) return "doc"
-    if (fileUrl.endsWith(".ppt") || fileUrl.endsWith(".pptx")) return "ppt"
-    if (fileUrl.endsWith(".xls") || fileUrl.endsWith(".xlsx")) return "xls"
-    if (fileUrl.endsWith(".jpg") || fileUrl.endsWith(".jpeg") || fileUrl.endsWith(".png")) return "image"
-    return "generic"
-  }
+    const fileUrl = file.fileUrl?.url || "";
+    if (fileUrl.endsWith(".pdf")) return "pdf";
+    if (fileUrl.endsWith(".doc") || fileUrl.endsWith(".docx")) return "doc";
+    if (fileUrl.endsWith(".ppt") || fileUrl.endsWith(".pptx")) return "ppt";
+    if (fileUrl.endsWith(".xls") || fileUrl.endsWith(".xlsx")) return "xls";
+    if (fileUrl.endsWith(".jpg") || fileUrl.endsWith(".jpeg") || fileUrl.endsWith(".png")) return "image";
+    return "generic";
+  };
 
   // Get file icon color
   const getFileIconColor = (fileType) => {
@@ -129,9 +132,9 @@ const FileLibrary = () => {
       xls: "text-emerald-500",
       image: "text-purple-500",
       generic: "text-gray-500",
-    }
-    return colors[fileType] || colors.generic
-  }
+    };
+    return colors[fileType] || colors.generic;
+  };
 
   return (
     <PageContainer>
@@ -139,7 +142,7 @@ const FileLibrary = () => {
         <Header />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper>
+        <SidebarWrapper expanded={isSidebarOpen}>
           <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <MainContent expanded={isSidebarOpen}>
@@ -219,8 +222,8 @@ const FileLibrary = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {sortedFiles.map((file) => {
-                const fileType = getFileIcon(file)
-                const iconColor = getFileIconColor(fileType)
+                const fileType = getFileIcon(file);
+                const iconColor = getFileIconColor(fileType);
 
                 return (
                   <div
@@ -245,8 +248,8 @@ const FileLibrary = () => {
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg z-10 border border-gray-100 overflow-hidden">
                               <button
                                 onClick={() => {
-                                  window.open(file.fileUrl?.url, "_blank")
-                                  setMenuOpen(null)
+                                  window.open(file.fileUrl?.url, "_blank");
+                                  setMenuOpen(null);
                                 }}
                                 className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50"
                               >
@@ -260,8 +263,8 @@ const FileLibrary = () => {
                               </button>
                               <button
                                 onClick={() => {
-                                  setConfirmDelete(file.id)
-                                  setMenuOpen(null)
+                                  setConfirmDelete(file.id);
+                                  setMenuOpen(null);
                                 }}
                                 className="flex items-center w-full px-4 py-3 text-left text-rose-600 hover:bg-gray-50"
                               >
@@ -291,7 +294,7 @@ const FileLibrary = () => {
                       </div>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           )}
@@ -329,7 +332,7 @@ const FileLibrary = () => {
         </MainContent>
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default FileLibrary
+export default FileLibrary;

@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom"
 import Sidebar from "../components/LSidebar"
 import styled from "styled-components"
 import { SidebarToggleContext } from "../components/LgNavbar"
-import { CalendarIcon, BellIcon } from "lucide-react"
+import { CalendarIcon, BellIcon, XIcon } from "lucide-react"
 
 // Styled Components
 const PageContainer = styled.div`
@@ -66,7 +66,8 @@ const AnnouncementCard = styled.div`
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   display: flex;
   flex-direction: column;
-  
+  cursor: pointer;
+
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
@@ -104,7 +105,7 @@ const AnnouncementContent = styled.div`
 const AnnouncementText = styled.div`
   margin-bottom: 15px;
   color: #555;
-  
+
   p {
     margin: 0;
   }
@@ -133,11 +134,46 @@ const NoAnnouncements = styled.div`
   font-size: 18px;
 `
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`
+
+const ModalContent = styled.div`
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+`
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+`
+
 const AnnouncementPage = () => {
   const [allAnnouncements, setAllAnnouncements] = useState([])
   const [filteredAnnouncements, setFilteredAnnouncements] = useState([])
   const [userRole, setUserRole] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const { expanded } = useContext(SidebarToggleContext)
   const navigate = useNavigate()
 
@@ -188,41 +224,51 @@ const AnnouncementPage = () => {
   }, []) // Empty dependency array means this runs once on mount
 
   // Second useEffect: Filter announcements when userRole or allAnnouncements change
-useEffect(() => {
-  if (!userRole || allAnnouncements.length === 0) return;
+  useEffect(() => {
+    if (!userRole || allAnnouncements.length === 0) return;
 
-  const currentDate = new Date().toISOString().split("T")[0];
-  console.log("Current date for filtering:", currentDate);
-  console.log("Filtering announcements for role:", userRole);
+    const currentDate = new Date().toISOString().split("T")[0];
+    console.log("Current date for filtering:", currentDate);
+    console.log("Filtering announcements for role:", userRole);
 
-  const filtered = allAnnouncements.filter((announcement) => {
-    // Check if announcement is still valid (not expired)
-    const isValid = announcement.expiryDate >= currentDate;
+    const filtered = allAnnouncements.filter((announcement) => {
+      // Check if announcement is still valid (not expired)
+      const isValid = announcement.expiryDate >= currentDate;
 
-    // Ensure targetAudience is defined before calling toLowerCase
-    const targetAudience = announcement.targetAudience || "";
-    const isTargeted = targetAudience.toLowerCase() === "all" ||
-                       targetAudience.toLowerCase() === userRole.toLowerCase();
+      // Ensure targetAudience is defined before calling toLowerCase
+      const targetAudience = announcement.targetAudience || "";
+      const isTargeted = targetAudience.toLowerCase() === "all" ||
+                         targetAudience.toLowerCase() === "learner" ||
+                         targetAudience.toLowerCase() === userRole.toLowerCase();
 
-    console.log(
-      `Announcement "${announcement.subject}" - Valid: ${isValid}, Targeted: ${isTargeted}, Target Audience: ${targetAudience}`,
-    );
+      console.log(
+        `Announcement "${announcement.subject}" - Valid: ${isValid}, Targeted: ${isTargeted}, Target Audience: ${targetAudience}`,
+      );
 
-    return isValid && isTargeted;
-  });
+      return isValid && isTargeted;
+    });
 
-  console.log("Filtered announcements:", filtered.length);
+    console.log("Filtered announcements:", filtered.length);
 
-  // Sort announcements by date (newest first)
-  filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort announcements by date (newest first)
+    filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  setFilteredAnnouncements(filtered);
-}, [userRole, allAnnouncements]);
-
+    setFilteredAnnouncements(filtered);
+  }, [userRole, allAnnouncements]);
 
   // Function to parse HTML content safely
   const createMarkup = (htmlContent) => {
     return { __html: htmlContent }
+  }
+
+  const handleAnnouncementClick = (announcement) => {
+    setSelectedAnnouncement(announcement)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setSelectedAnnouncement(null)
   }
 
   return (
@@ -240,7 +286,7 @@ useEffect(() => {
           ) : filteredAnnouncements.length > 0 ? (
             <AnnouncementGrid>
               {filteredAnnouncements.map((announcement) => (
-                <AnnouncementCard key={announcement.id}>
+                <AnnouncementCard key={announcement.id} onClick={() => handleAnnouncementClick(announcement)}>
                   <AnnouncementHeader>
                     <AnnouncementTitle>{announcement.subject}</AnnouncementTitle>
                     <AnnouncementBadge type={announcement.targetAudience}>
@@ -273,6 +319,35 @@ useEffect(() => {
           )}
         </MainContent>
       </ContentContainer>
+
+      {isModalOpen && selectedAnnouncement && (
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseButton onClick={closeModal}>
+              <XIcon size={20} />
+            </CloseButton>
+            <AnnouncementHeader>
+              <AnnouncementTitle>{selectedAnnouncement.subject}</AnnouncementTitle>
+              <AnnouncementBadge type={selectedAnnouncement.targetAudience}>
+                {selectedAnnouncement.targetAudience}
+              </AnnouncementBadge>
+            </AnnouncementHeader>
+            <AnnouncementContent>
+              <AnnouncementText dangerouslySetInnerHTML={createMarkup(selectedAnnouncement.content)} />
+            </AnnouncementContent>
+            <AnnouncementFooter>
+              <DateDisplay>
+                <CalendarIcon size={14} />
+                Posted: {selectedAnnouncement.date}
+              </DateDisplay>
+              <DateDisplay>
+                <BellIcon size={14} />
+                Expires: {selectedAnnouncement.expiryDate}
+              </DateDisplay>
+            </AnnouncementFooter>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </PageContainer>
   )
 }

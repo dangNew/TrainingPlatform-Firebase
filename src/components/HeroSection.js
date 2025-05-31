@@ -3,7 +3,7 @@ import video1 from "../assets/video1.mp4";
 import video2 from "../assets/video2.mp4";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 
 export const FadeUp = (delay) => {
   return {
@@ -23,17 +23,17 @@ export const FadeUp = (delay) => {
       }
     }
   }
-}
+};
 
 const HeroSection = () => {
   const [currentVideo, setCurrentVideo] = useState(0);
   const videos = [video1, video2];
-  const navigate = useNavigate(); // Get the navigate function
+  const navigate = useNavigate();
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentVideo((prevVideo) => (prevVideo + 1) % videos.length);
-    }, 10000); // Change video every 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [videos.length]);
@@ -43,7 +43,7 @@ const HeroSection = () => {
   };
 
   const handleGetStartedClick = () => {
-    navigate("/signup"); // Navigate to the /signup route
+    navigate("/signup");
   };
 
   return (
@@ -61,38 +61,48 @@ const HeroSection = () => {
           Your browser does not support the video tag.
         </video>
 
-        {/* Content Overlay with Blurry Effect */}
+        {/* Content Overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 backdrop-blur-sm bg-black bg-opacity-40">
           <motion.h1
             variants={FadeUp(0.6)}
             initial="initial"
             animate="animate"
-            className="text-4xl sm:text-6xl lg:text-7xl tracking-wide text-white-400 font-bold font-poppins pt-10">
+            className="text-4xl sm:text-6xl lg:text-7xl tracking-wide text-white font-bold font-poppins pt-10 drop-shadow-lg"
+          >
             Empower your
             <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-transparent bg-clip-text">
               {" "}
               Career Journey
             </span>
           </motion.h1>
+
           <motion.p
             variants={FadeUp(0.8)}
             initial="initial"
             animate="animate"
-            className="mt-10 text-l text-center text-white-500 max-w-4xl font-poppins">
+            className="mt-10 text-lg text-center text-white max-w-4xl font-poppins drop-shadow"
+          >
             Master essential work skills and accelerate your career with our comprehensive e-learning platform.
           </motion.p>
+
           <motion.div
             variants={FadeUp(0.8)}
             initial="initial"
             animate="animate"
-            className="flex justify-center m-10">
+            className="flex justify-center m-10"
+          >
             <button
-              onClick={handleGetStartedClick} // Add onClick handler
-              className="primary-btn flex bg-gradient-to-r from-yellow-500 to-yellow-600 py-3 px-4 mx-3 text-white rounded-md gap-2 group">
+              onClick={handleGetStartedClick}
+              className="primary-btn flex bg-gradient-to-r from-yellow-500 to-yellow-600 py-3 px-4 mx-3 text-white rounded-md gap-2 group"
+            >
               Get Started
               <IoIosArrowForward className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300" />
             </button>
-            <a href="#" className="py-3 px-4 mx-3 border border-white-700 text-white-700 rounded-md">
+
+            <a
+              href="#"
+              className="py-3 px-4 mx-3 border border-white text-white rounded-md"
+            >
               Learn More
             </a>
           </motion.div>
@@ -113,6 +123,6 @@ const HeroSection = () => {
       </div>
     </div>
   );
-}
+};
 
 export default HeroSection;

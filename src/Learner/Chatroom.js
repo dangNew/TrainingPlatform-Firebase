@@ -1430,611 +1430,130 @@ function ChatRoom() {
 
   // Only showing the return part with the fixed layout
   return (
-    <div className="flex h-screen bg-gray-100">
-      <div className="h-full">
-        <Sidebar />
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+  <div className="h-full">
+    <Sidebar />
+  </div>
+  <div
+    className="flex-1 flex overflow-hidden"
+    style={{
+      marginLeft: expanded ? "16rem" : "4rem",
+      width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
+    }}
+  >
+    {/* Chat List - Fixed to always be visible on desktop */}
+    <div className="min-w-[250px] md:w-1/3 lg:w-1/4 border-r border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
+      <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white">
+        <h2 className="text-xl font-semibold">Messages</h2>
       </div>
-      <div
-        className="flex-1 flex"
-        style={{
-          marginLeft: expanded ? "16rem" : "4rem",
-          width: expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)",
-        }}
-      >
-        {/* Chat List - Fixed to always be visible on desktop */}
-        <div className="min-w-[250px] md:w-1/3 lg:w-1/4 border-r border-gray-200 bg-white flex flex-col overflow-hidden shrink-0">
-          <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white">
-            <h2 className="text-xl font-semibold">Messages</h2>
-          </div>
 
-          <div className="p-3 flex space-x-2">
-            <button
-              onClick={() => {
-                setShowUserSearch(true)
-                setShowCreateGroup(false)
-                setActiveChat(null)
-                setShowAddMembers(false)
-              }}
-              className="flex-1 py-2 px-3 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-sm hover:bg-indigo-700 transition-colors"
-            >
-              <PlusCircle size={18} className="mr-2" />
-              New Chat
-            </button>
-            <button
-              onClick={() => {
-                setShowCreateGroup(true)
-                setShowUserSearch(false)
-                setActiveChat(null)
-                setShowAddMembers(false)
-              }}
-              className="flex-1 py-2 px-3 bg-gray-200 text-gray-800 rounded-xl flex items-center justify-center shadow-sm hover:bg-gray-300 transition-colors"
-            >
-              <Users size={18} className="mr-2" />
-              New Group
-            </button>
-          </div>
+      <div className="p-3 flex space-x-2">
+        <button
+          onClick={() => {
+            setShowUserSearch(true)
+            setShowCreateGroup(false)
+            setActiveChat(null)
+            setShowAddMembers(false)
+          }}
+          className="flex-1 py-2 px-3 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          <PlusCircle size={18} className="mr-2" />
+          New Chat
+        </button>
+        <button
+          onClick={() => {
+            setShowCreateGroup(true)
+            setShowUserSearch(false)
+            setActiveChat(null)
+            setShowAddMembers(false)
+          }}
+          className="flex-1 py-2 px-3 bg-gray-200 text-gray-800 rounded-xl flex items-center justify-center shadow-sm hover:bg-gray-300 transition-colors"
+        >
+          <Users size={18} className="mr-2" />
+          New Group
+        </button>
+      </div>
 
-          {/* Chat List - Always visible */}
-          <div className="overflow-y-auto flex-1">
-            {chats.length > 0 || activeChat ? (
-              <>
-                {/* Display all chats */}
-                {chats.map((chat) => (
-                  <motion.div
-                    key={chat.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors ${
-                      activeChat?.id === chat.id ? "bg-indigo-50" : ""
-                    }`}
-                    onClick={() => {
-                      setActiveChat(chat)
-                      setShowUserSearch(false)
-                      setShowCreateGroup(false)
-                      setShowGroupMembers(false)
-                      setEditingMessage(null)
-                      setShowReactionMenu(null)
-                      setShowMessageOptions(null)
-                      setShowAddMembers(false)
-                    }}
-                  >
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                        {chat.type === "group" ? (
-                          chat.photoURL ? (
-                            <img
-                              src={chat.photoURL || "/placeholder.svg"}
-                              alt="Group"
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <Users size={20} />
-                          )
-                        ) : chat.participantDetails[0]?.photoURL ? (
-                          <img
-                            src={getProfileImageUrl(chat.participantDetails[0]) || "/placeholder.svg"}
-                            alt="User"
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          chat.participantDetails[0]?.fullName?.charAt(0) || "?"
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <h3 className="font-medium text-gray-800">{getChatName(chat)}</h3>
-                          {chat.lastMessage?.sentAt && (
-                            <span className="text-xs text-gray-500">{formatTime(chat.lastMessage.sentAt)}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          {chat.type !== "group" && chat.participantDetails[0] && (
-                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded mr-2">
-                              {getUserRole(chat.participantDetails[0])}
-                            </span>
-                          )}
-                          <p className="text-sm text-gray-600 truncate">
-                            {chat.lastMessage?.text || "No messages yet"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Display active chat if it's not in the chats array */}
-                {activeChat && !chats.some((chat) => chat.id === activeChat.id) && (
-                  <motion.div
-                    key={activeChat.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="p-3 border-b border-gray-200 cursor-pointer bg-indigo-50"
-                  >
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                        {activeChat.type === "group" ? (
-                          <Users size={20} />
-                        ) : activeChat.participantDetails[0]?.photoURL ? (
-                          <img
-                            src={getProfileImageUrl(activeChat.participantDetails[0]) || "/placeholder.svg"}
-                            alt="User"
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <h3 className="font-medium text-gray-800">{getChatName(activeChat)}</h3>
-                          {activeChat.lastMessage?.sentAt && (
-                            <span className="text-xs text-gray-500">{formatTime(activeChat.lastMessage.sentAt)}</span>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          {activeChat.type !== "group" && activeChat.participantDetails[0] && (
-                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded mr-2">
-                              {getUserRole(activeChat.participantDetails[0])}
-                            </span>
-                          )}
-                          <p className="text-sm text-gray-600 truncate">
-                            {activeChat.lastMessage?.text || messages.length > 0
-                              ? messages[messages.length - 1]?.text
-                              : "No messages yet"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </>
-            ) : (
-              <div className="p-4 text-center text-gray-500">
-                <p>No conversations yet</p>
-                <p className="text-sm">Start a new chat to begin messaging</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="hidden md:flex md:flex-col md:w-2/3 lg:w-3/4 overflow-y-auto">
-          {/* Rest of the content remains the same... */}
-          {/* The content here is kept the same, just ensuring the container has proper overflow handling */}
-          {/* User Search Panel */}
-          <AnimatePresence>
-            {showUserSearch && (
+      {/* Chat List - Always visible */}
+      <div className="overflow-y-auto flex-1">
+        {chats.length > 0 || activeChat ? (
+          <>
+            {/* Display all chats */}
+            {chats.map((chat) => (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full h-full bg-white"
+                key={chat.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className={`p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors ${
+                  activeChat?.id === chat.id ? "bg-indigo-50" : ""
+                }`}
+                onClick={() => {
+                  setActiveChat(chat)
+                  setShowUserSearch(false)
+                  setShowCreateGroup(false)
+                  setShowGroupMembers(false)
+                  setEditingMessage(null)
+                  setShowReactionMenu(null)
+                  setShowMessageOptions(null)
+                  setShowAddMembers(false)
+                }}
               >
-                <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">New Message</h2>
-                  <button
-                    onClick={() => setShowUserSearch(false)}
-                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search by name or email..."
-                      className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                    {searchResults.length > 0 ? (
-                      searchResults.map((user) => (
-                        <motion.div
-                          key={user.id}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
-                          onClick={() => startChat(user)}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                            {user.photoURL ? (
-                              <img
-                                src={getProfileImageUrl(user) || "/placeholder.svg"}
-                                alt="User"
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              user.fullName?.charAt(0) || "?"
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center">
-                              <h3 className="font-medium text-gray-800">{user.fullName}</h3>
-                              <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
-                                {getUserRole(user)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                          </div>
-                        </motion.div>
-                      ))
-                    ) : searchTerm.length > 0 ? (
-                      <p className="text-center py-4 text-gray-500">No users found</p>
-                    ) : (
-                      <p className="text-center py-4 text-gray-500">Type at least 1 character to search</p>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Create Group Panel */}
-          <AnimatePresence>
-            {showCreateGroup && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full h-full bg-white"
-              >
-                <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Create Group Chat</h2>
-                  <button
-                    onClick={() => setShowCreateGroup(false)}
-                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-1 text-gray-700">Group Name</label>
-                    <input
-                      type="text"
-                      placeholder="Enter group name"
-                      className="w-full p-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                    />
-                  </div>
-
-                  {selectedUsers.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        Selected Users ({selectedUsers.length})
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedUsers.map((user) => (
-                          <motion.div
-                            key={user.id}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="flex items-center bg-indigo-100 rounded-full pl-2 pr-1 py-1"
-                          >
-                            <span className="text-sm text-indigo-800">{user.fullName}</span>
-                            <button
-                              className="ml-1 text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-200 transition-colors"
-                              onClick={() => handleRemoveUser(user.id)}
-                            >
-                              <X size={14} />
-                            </button>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search users to add..."
-                      className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="overflow-y-auto max-h-[calc(100vh-350px)]">
-                    {searchResults
-                      .filter((user) => !selectedUsers.some((selected) => selected.id === user.id))
-                      .map((user) => (
-                        <motion.div
-                          key={user.id}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
-                          onClick={() => handleSelectUser(user)}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                            {user.photoURL ? (
-                              <img
-                                src={getProfileImageUrl(user) || "/placeholder.svg"}
-                                alt="User"
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              user.fullName?.charAt(0) || "?"
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center">
-                              <h3 className="font-medium text-gray-800">{user.fullName}</h3>
-                              <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
-                                {getUserRole(user)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                  </div>
-
-                  <button
-                    className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
-                    disabled={!groupName.trim() || selectedUsers.length === 0}
-                    onClick={createGroupChat}
-                  >
-                    Create Group Chat
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Group Members Panel */}
-          <AnimatePresence>
-            {showGroupMembers && activeChat && activeChat.type === "group" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full h-full bg-white"
-              >
-                <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Group Members</h2>
-                  <button
-                    onClick={() => setShowGroupMembers(false)}
-                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  {editingGroupName ? (
-                    <div className="mb-4 flex items-center">
-                      <input
-                        type="text"
-                        value={newGroupName}
-                        onChange={(e) => setNewGroupName(e.target.value)}
-                        placeholder="Enter new group name"
-                        className="flex-1 p-2 border border-gray-300 rounded-l-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                      />
-                      <button
-                        onClick={updateGroupName}
-                        disabled={!newGroupName.trim()}
-                        className="bg-indigo-600 text-white p-2 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors"
-                      >
-                        <Check size={20} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-800">{activeChat.name}</h3>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setShowAddMembers(true)
-                            setShowGroupMembers(false)
-                            setSearchTerm("")
-                            setSelectedUsers([])
-                          }}
-                          className="text-indigo-600 hover:text-indigo-800 flex items-center p-2 rounded hover:bg-gray-100 transition-colors"
-                        >
-                          <UserPlus size={16} className="mr-1" />
-                          Add Member
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingGroupName(true)
-                            setNewGroupName(activeChat.name)
-                          }}
-                          className="text-indigo-600 hover:text-indigo-800 flex items-center p-2 rounded hover:bg-gray-100 transition-colors"
-                        >
-                          <Edit2 size={16} className="mr-1" />
-                          Edit Name
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
-                    {allGroupMembers.map((member) => (
-                      <motion.div
-                        key={member.id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="p-3 border-b border-gray-200 flex items-center rounded-xl mb-2"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                          {member.photoURL ? (
-                            <img
-                              src={getProfileImageUrl(member) || "/placeholder.svg"}
-                              alt="User"
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            member.fullName?.charAt(0) || "?"
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center">
-                            <h3 className="font-medium text-gray-800">
-                              {member.fullName} {member.isCurrentUser && "(You)"}
-                            </h3>
-                            <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
-                              {member.role}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600">{member.email}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={leaveGroupChat}
-                    className="w-full mt-4 py-3 bg-rose-600 text-white rounded-xl shadow-md hover:bg-rose-700 transition-colors flex items-center justify-center"
-                  >
-                    <LogOut size={18} className="mr-2" />
-                    Leave Group
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Add Members Panel */}
-          <AnimatePresence>
-            {showAddMembers && activeChat && activeChat.type === "group" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="w-full h-full bg-white"
-              >
-                <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Add Members to Group</h2>
-                  <button
-                    onClick={() => setShowAddMembers(false)}
-                    className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium mb-2 text-gray-700">
-                      Add people to "{activeChat.name}"
-                    </label>
-                  </div>
-
-                  {selectedUsers.length > 0 && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
-                        Selected Users ({selectedUsers.length})
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedUsers.map((user) => (
-                          <motion.div
-                            key={user.id}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="flex items-center bg-indigo-100 rounded-full pl-2 pr-1 py-1"
-                          >
-                            <span className="text-sm text-indigo-800">{user.fullName}</span>
-                            <button
-                              className="ml-1 text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-200 transition-colors"
-                              onClick={() => handleRemoveUser(user.id)}
-                            >
-                              <X size={14} />
-                            </button>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="relative mb-4">
-                    <Search className="absolute left-3 top-3 text-gray-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search users to add..."
-                      className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="overflow-y-auto max-h-[calc(100vh-350px)]">
-                    {searchResults
-                      .filter(
-                        (user) => !selectedUsers.some((selected) => selected.id === user.id) && !isUserInGroup(user.id),
-                      )
-                      .map((user) => (
-                        <motion.div
-                          key={user.id}
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
-                          onClick={() => handleSelectUser(user)}
-                        >
-                          <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
-                            {user.photoURL ? (
-                              <img
-                                src={getProfileImageUrl(user) || "/placeholder.svg"}
-                                alt="User"
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              user.fullName?.charAt(0) || "?"
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center">
-                              <h3 className="font-medium text-gray-800">{user.fullName}</h3>
-                              <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
-                                {getUserRole(user)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">{user.email}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                  </div>
-
-                  <button
-                    className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
-                    disabled={selectedUsers.length === 0}
-                    onClick={addMembersToGroup}
-                  >
-                    Add to Group
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Chat Messages */}
-          {activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && !showAddMembers && (
-            <div className="w-full h-full flex flex-col bg-white">
-              <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 flex items-center justify-between shadow-sm">
                 <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-indigo-600 mr-3 overflow-hidden shadow-sm">
-                    {activeChat.type === "group" ? (
-                      activeChat.photoURL ? (
+                  <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                    {chat.type === "group" ? (
+                      chat.photoURL ? (
                         <img
-                          src={activeChat.photoURL || "/placeholder.svg"}
+                          src={chat.photoURL || "/placeholder.svg"}
                           alt="Group"
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
                         <Users size={20} />
                       )
+                    ) : chat.participantDetails[0]?.photoURL ? (
+                      <img
+                        src={getProfileImageUrl(chat.participantDetails[0]) || "/placeholder.svg"}
+                        alt="User"
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      chat.participantDetails[0]?.fullName?.charAt(0) || "?"
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium text-gray-800">{getChatName(chat)}</h3>
+                      {chat.lastMessage?.sentAt && (
+                        <span className="text-xs text-gray-500">{formatTime(chat.lastMessage.sentAt)}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      {chat.type !== "group" && chat.participantDetails[0] && (
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded mr-2">
+                          {getUserRole(chat.participantDetails[0])}
+                        </span>
+                      )}
+                      <p className="text-sm text-gray-600 truncate">
+                        {chat.lastMessage?.text || "No messages yet"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+
+            {/* Display active chat if it's not in the chats array */}
+            {activeChat && !chats.some((chat) => chat.id === activeChat.id) && (
+              <motion.div
+                key={activeChat.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="p-3 border-b border-gray-200 cursor-pointer bg-indigo-50"
+              >
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                    {activeChat.type === "group" ? (
+                      <Users size={20} />
                     ) : activeChat.participantDetails[0]?.photoURL ? (
                       <img
                         src={getProfileImageUrl(activeChat.participantDetails[0]) || "/placeholder.svg"}
@@ -2045,526 +1564,1003 @@ function ChatRoom() {
                       activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
                     )}
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-white">{getChatName(activeChat)}</h2>
-                    {activeChat.type !== "group" && activeChat.participantDetails[0] && (
-                      <div className="flex items-center">
-                        <span className="text-xs px-1.5 py-0.5 bg-white/20 text-white rounded">
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium text-gray-800">{getChatName(activeChat)}</h3>
+                      {activeChat.lastMessage?.sentAt && (
+                        <span className="text-xs text-gray-500">{formatTime(activeChat.lastMessage.sentAt)}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      {activeChat.type !== "group" && activeChat.participantDetails[0] && (
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded mr-2">
                           {getUserRole(activeChat.participantDetails[0])}
                         </span>
-                      </div>
-                    )}
+                      )}
+                      <p className="text-sm text-gray-600 truncate">
+                        {activeChat.lastMessage?.text || messages.length > 0
+                          ? messages[messages.length - 1]?.text
+                          : "No messages yet"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                {/* Group chat options */}
-                {activeChat.type === "group" && (
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => setShowChatInfo(!showChatInfo)}
-                      className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
-                      title="Chat Information"
-                    >
-                      <Info size={20} />
-                    </button>
-                  </div>
-                )}
-
-                {activeChat.type !== "group" && (
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => setShowChatInfo(!showChatInfo)}
-                      className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
-                      title="Chat Information"
-                    >
-                      <Info size={20} />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div
-                className="flex-1 overflow-y-auto p-4 relative"
-                style={{
-                  backgroundColor: chatTheme[activeChat?.id] ? themeColors[chatTheme[activeChat.id]].light : "#f9fafb",
-                  height: "calc(100vh - 160px)",
-                  overflowY: "auto",
-                }}
-              >
-                {isMessagesLoading ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <div className="w-8 h-8 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin mb-2"></div>
-                    <p>Loading messages...</p>
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <MessageCircle size={48} className="text-indigo-300" />
-                    <p className="mt-2">No messages yet</p>
-                    <p className="text-sm">Start the conversation!</p>
-                  </div>
-                ) : (
-                  <AnimatePresence initial={false}>
-                    {/* Pinned Messages Section */}
-                    {pinnedMessages && Object.keys(pinnedMessages).length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex items-center mb-2">
-                          <X size={16} className="mr-2 text-yellow-500" />
-                          <span className="font-medium text-gray-700">Pinned Messages</span>
-                        </div>
-                        {messages
-                          .filter(msg => pinnedMessages[msg.id])
-                          .map(pinnedMsg => (
-                            <div key={pinnedMsg.id} className="mb-2 p-3 bg-yellow-50 rounded-lg">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="font-medium">{pinnedMsg.senderName}</div>
-                                  <div>{pinnedMsg.text}</div>
-                                </div>
-                                <button
-                                  onClick={() => togglePinMessage(pinnedMsg.id)}
-                                  className="text-gray-500 hover:text-gray-700"
-                                >
-                                  <X size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {messages.map((msg, index) => {
-                      const isCurrentUser = msg.senderId === currentUser?.id
-                      const isSystemMessage = msg.senderId === "system" || msg.isSystemMessage
-                      const prevMsg = index > 0 ? messages[index - 1] : null
-                      const showDateHeader = shouldShowDate(msg, prevMsg)
-
-                      // Render date header if needed
-                      return (
-                        <motion.div
-                          key={msg.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          {showDateHeader && msg.createdAt && (
-                            <div className="flex justify-center my-4">
-                              <div className="px-3 py-1 bg-white text-gray-600 text-xs rounded-full flex items-center shadow-sm">
-                                <Calendar size={12} className="mr-1" />
-                                {formatDate(msg.createdAt)}
-                              </div>
-                            </div>
-                          )}
-
-                          {isSystemMessage ? (
-                            <div className="mb-4 flex justify-center">
-                              <div className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">{msg.text}</div>
-                            </div>
-                          ) : (
-                            <div className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
-                              <div className={`flex max-w-[75%] ${isCurrentUser ? "flex-row-reverse" : ""}`}>
-                                {!isCurrentUser && (
-                                  <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-2 overflow-hidden shadow-sm">
-                                    {msg.senderPhoto ? (
-                                      <img
-                                        src={
-                                          typeof msg.senderPhoto === "object"
-                                            ? msg.senderPhoto.url
-                                            : msg.senderPhoto || "/placeholder.svg"
-                                        }
-                                        alt="User"
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                    ) : (
-                                      msg.senderName?.charAt(0) || "?"
-                                    )}
-                                  </div>
-                                )}
-
-                                <div>
-                                  <div className={`flex items-center mb-1 ${isCurrentUser ? "justify-end" : ""}`}>
-                                    {!isCurrentUser && (
-                                      <>
-                                        <span className="text-xs font-medium text-gray-800">{msg.senderName}</span>
-                                        {msg.senderRole && (
-                                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-1">
-                                            {msg.senderRole}
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                    <span className="text-xs text-gray-500 ml-2">
-                                      {msg.createdAt && formatTime(msg.createdAt)}
-                                    </span>
-                                    {isCurrentUser && (
-                                      <span className="text-xs font-medium ml-2 text-gray-800">You</span>
-                                    )}
-                                    {msg.isEdited && <span className="text-xs text-gray-500 ml-1">(edited)</span>}
-                                  </div>
-
-                                  {editingMessage === msg.id ? (
-                                    <div className="flex items-center">
-                                      <input
-                                        type="text"
-                                        value={editMessageText}
-                                        onChange={(e) => setEditMessageText(e.target.value)}
-                                        className="p-2 border border-gray-300 rounded-l-xl w-full shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={() => editMessage(msg.id, editMessageText)}
-                                        disabled={!editMessageText.trim()}
-                                        className="bg-indigo-600 text-white p-2 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors"
-                                      >
-                                        <Check size={20} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="relative group">
-                                      <div
-                                        className={`p-3 rounded-xl ${
-                                          isCurrentUser
-                                            ? chatTheme[activeChat?.id]
-                                              ? `bg-${themeColors[chatTheme[activeChat.id]].messageBackground} text-${themeColors[chatTheme[activeChat.id]].messageText} rounded-tr-none`
-                                              : "bg-indigo-600 text-white rounded-tr-none"
-                                            : "bg-white text-gray-800 rounded-tl-none"
-                                        } shadow-sm`}
-                                      >
-                                        {msg.text}
-                                      </div>
-
-                                      {/* Message options button for current user's messages */}
-                                      {isCurrentUser && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)
-                                          }}
-                                          className="absolute top-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                          <MoreHorizontal size={16} />
-                                        </button>
-                                      )}
-
-                                      {/* Message options menu */}
-                                     {showMessageOptions === msg.id && (
-  <div className="absolute top-0 right-8 bg-white shadow-md rounded-xl py-1 z-10 message-options">
-    <button
-      onClick={() => {
-        setEditingMessage(msg.id);
-        setEditMessageText(msg.text);
-        setShowMessageOptions(null);
-      }}
-      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
-    >
-      <Edit2 size={14} className="mr-2" /> Edit
-    </button>
-    <button
-      onClick={() => deleteMessage(msg.id)}
-      disabled={isDeleting}
-      className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-gray-100 flex items-center transition-colors"
-    >
-      {isDeleting ? (
-        <>
-          <div className="w-4 h-4 border-2 border-gray-300 border-t-rose-600 rounded-full animate-spin mr-2"></div>
-          Deleting...
-        </>
-      ) : (
-        <>
-          <Trash2 size={14} className="mr-2" /> Delete
-        </>
-      )}
-    </button>
-    <button
-      onClick={() => {
-        toggleMarkAsUnread(msg.id);
-        setShowMessageOptions(null);
-      }}
-      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
-    >
-      {unreadMessages[msg.id] ? (
-        <>
-          <MessageCircle size={14} className="mr-2" /> Mark as Read
-        </>
-      ) : (
-        <>
-          <MessageCircle size={14} className="mr-2" /> Mark as Unread
-        </>
-      )}
-    </button>
-    <button
-      onClick={() => {
-        togglePinMessage(msg.id);
-        setShowMessageOptions(null);
-      }}
-      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
-    >
-      {pinnedMessages[msg.id] ? (
-        <>
-          <X size={14} className="mr-2" /> Unpin
-        </>
-      ) : (
-        <>
-          <X size={14} className="mr-2" /> Pin
-        </>
-      )}
-    </button>
-  </div>
-)}
-
-                                      {/* Reaction button */}
-                                      <button
-                                        onClick={() => setShowReactionMenu(showReactionMenu === msg.id ? null : msg.id)}
-                                        className="absolute bottom-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        <Smile size={16} />
-                                      </button>
-
-                                      {/* Reaction menu */}
-                                      {showReactionMenu === msg.id && (
-                                        <div className="absolute bottom-8 right-0 bg-white shadow-md rounded-full py-1 px-2 flex space-x-2 z-10 reaction-menu">
-                                          {Object.entries(reactionEmojis).map(([type, emoji]) => (
-                                            <button
-                                              key={type}
-                                              onClick={() => addReaction(msg.id, type)}
-                                              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full text-lg transition-colors"
-                                            >
-                                              {emoji}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
-
-                                      {/* Display reactions */}
-                                      {msg.reactions && Object.entries(msg.reactions).length > 0 && (
-                                        <div className="flex mt-1 flex-wrap">
-                                          {Object.entries(msg.reactions).map(([type, users]) =>
-                                            users && users.length > 0 ? (
-                                              <div
-                                                key={type}
-                                                className="bg-white rounded-full px-2 py-0.5 text-xs flex items-center mr-1 mb-1 border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
-                                                title={users.map((u) => u.userName).join(", ")}
-                                              >
-                                                {reactionEmojis[type]} {users.length}
-                                              </div>
-                                            ) : null,
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </motion.div>
-                      )
-                    })}
-                  </AnimatePresence>
-                )}
-                <div ref={messagesEndRef}></div>
-              </div>
-
-              <form
-                onSubmit={sendMessage}
-                className="border-t border-gray-200 p-4 bg-white"
-                style={{ position: "sticky", bottom: 0, zIndex: 10 }}
-              >
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    value={formValue}
-                    onChange={(e) => setFormValue(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 p-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleEmojiClick}
-                    className="bg-gray-100 text-gray-800 p-3 hover:bg-gray-200 transition-colors flex items-center justify-center"
-                  >
-                    {selectedEmoji}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!formValue.trim()}
-                    className="bg-indigo-600 text-white p-3 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                  >
-                    <Send size={20} />
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && !showAddMembers && (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-white">
-              <div className="bg-indigo-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
-                <MessageCircle size={40} className="text-indigo-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Chat</h2>
-              <p className="text-gray-600 mb-6">Select a conversation or start a new one</p>
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setShowUserSearch(true)}
-                  className="py-3 px-6 bg-indigo-600 text-white rounded-xl flex items-center shadow-md hover:bg-indigo-700 transition-colors"
-                >
-                  <PlusCircle size={18} className="mr-2" />
-                  New Chat
-                </button>
-                <button
-                  onClick={() => setShowCreateGroup(true)}
-                  className="py-3 px-6 bg-gray-200 text-gray-800 rounded-xl flex items-center shadow-md hover:bg-gray-300 transition-colors"
-                >
-                  <Users size={18} className="mr-2" />
-                  New Group
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-        {showChatInfo && activeChat && (
-          <div className="absolute top-16 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
-            <div className="text-lg font-medium mb-2 border-b pb-2 flex justify-between items-center">
-              <span>Chat info</span>
-              <button
-                onClick={() => setShowChatInfo(false)}
-                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-3 py-2">
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                onClick={() => {
-                  setEditingGroupName(true)
-                  setNewGroupName(activeChat.name)
-                }}
-              >
-                <Edit2 size={18} className="mr-3 text-indigo-600" />
-                <span className="text-gray-700">Change chat name</span>
-              </button>
-
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <ImageIcon size={18} className="mr-3 text-indigo-600" />
-                <span className="text-gray-700">Change photo</span>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                />
-              </button>
-
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                onClick={() => setShowThemeSelector(!showThemeSelector)}
-              >
-                <Palette size={18} className="mr-3 text-indigo-600" />
-                <span className="text-gray-700">Change theme</span>
-              </button>
-
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                onClick={() => setShowEmojiSelector(!showEmojiSelector)}
-              >
-                <Smile size={18} className="mr-3 text-indigo-600" />
-                <span className="text-gray-700">Change emoji</span>
-              </button>
-
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                onClick={() => {
-                  setShowChatInfo(false)
-                  if (activeChat.type === "group") {
-                    setShowGroupMembers(true)
-                  }
-                }}
-              >
-                <Users size={18} className="mr-3 text-indigo-600" />
-                <span className="text-gray-700">{activeChat.type === "group" ? "Chat members" : "Edit nicknames"}</span>
-              </button>
-
-              {activeChat.type === "group" && (
-                <button
-                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-                  onClick={() => {
-                    setShowChatInfo(false)
-                    setShowAddMembers(true)
-                    setSelectedUsers([])
-                    setSearchTerm("")
-                  }}
-                >
-                  <UserPlus size={18} className="mr-3 text-indigo-600" />
-                  <span className="text-gray-700">Add members</span>
-                </button>
-              )}
-
-              <div className="border-t pt-2 mt-2">
-                <button
-                  className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center"
-                  onClick={() => {
-                    setShowChatInfo(false)
-                    if (activeChat.type === "group") {
-                      leaveGroupChat()
-                    } else {
-                      deleteChat(activeChat.id)
-                    }
-                  }}
-                >
-                  <LogOut size={18} className="mr-3" />
-                  <span>{activeChat.type === "group" ? "Leave group" : "Delete chat"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Theme selector panel */}
-        {showThemeSelector && (
-          <div className="absolute top-48 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
-            <div className="text-lg font-medium mb-2 border-b pb-2">Select Theme</div>
-            <div className="grid grid-cols-3 gap-2 p-2">
-              {Object.entries(themeColors).map(([color, _]) => (
-                <button
-                  key={color}
-                  className="w-full h-10 rounded-lg border border-gray-200 flex items-center justify-center capitalize hover:border-indigo-500 transition-colors"
-                  style={{ backgroundColor: themeColors[color].light }}
-                  onClick={() => changeChatTheme(color)}
-                >
-                  {color}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Emoji selector panel */}
-        {showEmojiSelector && (
-          <div className="absolute top-64 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
-            <div className="text-lg font-medium mb-2 border-b pb-2">Select Emoji</div>
-            <div className="grid grid-cols-4 gap-2 p-2">
-              {emojiOptions.map((emoji) => (
-                <button
-                  key={emoji}
-                  className="w-full h-10 rounded-lg border border-gray-200 flex items-center justify-center text-xl hover:bg-gray-100 hover:border-indigo-500 transition-colors"
-                  onClick={() => changeChatEmoji(emoji)}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+              </motion.div>
+            )}
+          </>
+        ) : (
+          <div className="p-4 text-center text-gray-500">
+            <p>No conversations yet</p>
+            <p className="text-sm">Start a new chat to begin messaging</p>
           </div>
         )}
       </div>
     </div>
+
+    {/* Main Content Area */}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* User Search Panel */}
+      <AnimatePresence>
+        {showUserSearch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full bg-white overflow-y-auto"
+          >
+            <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
+              <h2 className="text-xl font-semibold">New Message</h2>
+              <button
+                onClick={() => setShowUserSearch(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                {searchResults.length > 0 ? (
+                  searchResults.map((user) => (
+                    <motion.div
+                      key={user.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
+                      onClick={() => startChat(user)}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                        {user.photoURL ? (
+                          <img
+                            src={getProfileImageUrl(user) || "/placeholder.svg"}
+                            alt="User"
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          user.fullName?.charAt(0) || "?"
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className="font-medium text-gray-800">{user.fullName}</h3>
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
+                            {getUserRole(user)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : searchTerm.length > 0 ? (
+                  <p className="text-center py-4 text-gray-500">No users found</p>
+                ) : (
+                  <p className="text-center py-4 text-gray-500">Type at least 1 character to search</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Group Panel */}
+      <AnimatePresence>
+        {showCreateGroup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full bg-white overflow-y-auto"
+          >
+            <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Create Group Chat</h2>
+              <button
+                onClick={() => setShowCreateGroup(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1 text-gray-700">Group Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter group name"
+                  className="w-full p-2 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                />
+              </div>
+
+              {selectedUsers.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Selected Users ({selectedUsers.length})
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUsers.map((user) => (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center bg-indigo-100 rounded-full pl-2 pr-1 py-1"
+                      >
+                        <span className="text-sm text-indigo-800">{user.fullName}</span>
+                        <button
+                          className="ml-1 text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-200 transition-colors"
+                          onClick={() => handleRemoveUser(user.id)}
+                        >
+                          <X size={14} />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search users to add..."
+                  className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="overflow-y-auto max-h-[calc(100vh-350px)]">
+                {searchResults
+                  .filter((user) => !selectedUsers.some((selected) => selected.id === user.id))
+                  .map((user) => (
+                    <motion.div
+                      key={user.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
+                      onClick={() => handleSelectUser(user)}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                        {user.photoURL ? (
+                          <img
+                            src={getProfileImageUrl(user) || "/placeholder.svg"}
+                            alt="User"
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          user.fullName?.charAt(0) || "?"
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className="font-medium text-gray-800">{user.fullName}</h3>
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
+                            {getUserRole(user)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+              </div>
+
+              <button
+                className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
+                disabled={!groupName.trim() || selectedUsers.length === 0}
+                onClick={createGroupChat}
+              >
+                Create Group Chat
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Group Members Panel */}
+      <AnimatePresence>
+        {showGroupMembers && activeChat && activeChat.type === "group" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full bg-white overflow-y-auto"
+          >
+            <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Group Members</h2>
+              <button
+                onClick={() => setShowGroupMembers(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              {editingGroupName ? (
+                <div className="mb-4 flex items-center">
+                  <input
+                    type="text"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Enter new group name"
+                    className="flex-1 p-2 border border-gray-300 rounded-l-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                  />
+                  <button
+                    onClick={updateGroupName}
+                    disabled={!newGroupName.trim()}
+                    className="bg-indigo-600 text-white p-2 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors"
+                  >
+                    <Check size={20} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-800">{activeChat.name}</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setShowAddMembers(true)
+                        setShowGroupMembers(false)
+                        setSearchTerm("")
+                        setSelectedUsers([])
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 flex items-center p-2 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <UserPlus size={16} className="mr-1" />
+                      Add Member
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingGroupName(true)
+                        setNewGroupName(activeChat.name)
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 flex items-center p-2 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <Edit2 size={16} className="mr-1" />
+                      Edit Name
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+                {allGroupMembers.map((member) => (
+                  <motion.div
+                    key={member.id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="p-3 border-b border-gray-200 flex items-center rounded-xl mb-2"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                      {member.photoURL ? (
+                        <img
+                          src={getProfileImageUrl(member) || "/placeholder.svg"}
+                          alt="User"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        member.fullName?.charAt(0) || "?"
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <h3 className="font-medium text-gray-800">
+                          {member.fullName} {member.isCurrentUser && "(You)"}
+                        </h3>
+                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
+                          {member.role}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">{member.email}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <button
+                onClick={leaveGroupChat}
+                className="w-full mt-4 py-3 bg-rose-600 text-white rounded-xl shadow-md hover:bg-rose-700 transition-colors flex items-center justify-center"
+              >
+                <LogOut size={18} className="mr-2" />
+                Leave Group
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Members Panel */}
+      <AnimatePresence>
+        {showAddMembers && activeChat && activeChat.type === "group" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full h-full bg-white overflow-y-auto"
+          >
+            <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 text-white flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Add Members to Group</h2>
+              <button
+                onClick={() => setShowAddMembers(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2 text-gray-700">
+                  Add people to "{activeChat.name}"
+                </label>
+              </div>
+
+              {selectedUsers.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Selected Users ({selectedUsers.length})
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUsers.map((user) => (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center bg-indigo-100 rounded-full pl-2 pr-1 py-1"
+                      >
+                        <span className="text-sm text-indigo-800">{user.fullName}</span>
+                        <button
+                          className="ml-1 text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-200 transition-colors"
+                          onClick={() => handleRemoveUser(user.id)}
+                        >
+                          <X size={14} />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search users to add..."
+                  className="w-full p-2 pl-10 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="overflow-y-auto max-h-[calc(100vh-350px)]">
+                {searchResults
+                  .filter(
+                    (user) => !selectedUsers.some((selected) => selected.id === user.id) && !isUserInGroup(user.id),
+                  )
+                  .map((user) => (
+                    <motion.div
+                      key={user.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100 flex items-center transition-colors rounded-xl"
+                      onClick={() => handleSelectUser(user)}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-3 overflow-hidden shadow-sm">
+                        {user.photoURL ? (
+                          <img
+                            src={getProfileImageUrl(user) || "/placeholder.svg"}
+                            alt="User"
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          user.fullName?.charAt(0) || "?"
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className="font-medium text-gray-800">{user.fullName}</h3>
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-2">
+                            {getUserRole(user)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+              </div>
+
+              <button
+                className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors"
+                disabled={selectedUsers.length === 0}
+                onClick={addMembersToGroup}
+              >
+                Add to Group
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Messages */}
+      {activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && !showAddMembers && (
+        <div className="w-full h-full flex flex-col bg-white overflow-hidden">
+          <div className="bg-gradient-to-r from-sky-500 to-indigo-600 p-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-indigo-600 mr-3 overflow-hidden shadow-sm">
+                {activeChat.type === "group" ? (
+                  activeChat.photoURL ? (
+                    <img
+                      src={activeChat.photoURL || "/placeholder.svg"}
+                      alt="Group"
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Users size={20} />
+                  )
+                ) : activeChat.participantDetails[0]?.photoURL ? (
+                  <img
+                    src={getProfileImageUrl(activeChat.participantDetails[0]) || "/placeholder.svg"}
+                    alt="User"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  activeChat.participantDetails[0]?.fullName?.charAt(0) || "?"
+                )}
+              </div>
+              <div>
+                <h2 className="font-semibold text-white">{getChatName(activeChat)}</h2>
+                {activeChat.type !== "group" && activeChat.participantDetails[0] && (
+                  <div className="flex items-center">
+                    <span className="text-xs px-1.5 py-0.5 bg-white/20 text-white rounded">
+                      {getUserRole(activeChat.participantDetails[0])}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Group chat options */}
+            {activeChat.type === "group" && (
+              <div className="flex items-center">
+                <button
+                  onClick={() => setShowChatInfo(!showChatInfo)}
+                  className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                  title="Chat Information"
+                >
+                  <Info size={20} />
+                </button>
+              </div>
+            )}
+
+            {activeChat.type !== "group" && (
+              <div className="flex items-center">
+                <button
+                  onClick={() => setShowChatInfo(!showChatInfo)}
+                  className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                  title="Chat Information"
+                >
+                  <Info size={20} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div
+            className="flex-1 overflow-y-auto p-4 relative"
+            style={{
+              backgroundColor: chatTheme[activeChat?.id] ? themeColors[chatTheme[activeChat.id]].light : "#f9fafb",
+              height: "calc(100vh - 160px)",
+            }}
+          >
+            {isMessagesLoading ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <div className="w-8 h-8 border-2 border-gray-300 border-t-indigo-500 rounded-full animate-spin mb-2"></div>
+                <p>Loading messages...</p>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <MessageCircle size={48} className="text-indigo-300" />
+                <p className="mt-2">No messages yet</p>
+                <p className="text-sm">Start the conversation!</p>
+              </div>
+            ) : (
+              <AnimatePresence initial={false}>
+                {/* Pinned Messages Section */}
+                {pinnedMessages && Object.keys(pinnedMessages).length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center mb-2">
+                      <X size={16} className="mr-2 text-yellow-500" />
+                      <span className="font-medium text-gray-700">Pinned Messages</span>
+                    </div>
+                    {messages
+                      .filter(msg => pinnedMessages[msg.id])
+                      .map(pinnedMsg => (
+                        <div key={pinnedMsg.id} className="mb-2 p-3 bg-yellow-50 rounded-lg">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{pinnedMsg.senderName}</div>
+                              <div>{pinnedMsg.text}</div>
+                            </div>
+                            <button
+                              onClick={() => togglePinMessage(pinnedMsg.id)}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {messages.map((msg, index) => {
+                  const isCurrentUser = msg.senderId === currentUser?.id
+                  const isSystemMessage = msg.senderId === "system" || msg.isSystemMessage
+                  const prevMsg = index > 0 ? messages[index - 1] : null
+                  const showDateHeader = shouldShowDate(msg, prevMsg)
+
+                  // Render date header if needed
+                  return (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {showDateHeader && msg.createdAt && (
+                        <div className="flex justify-center my-4">
+                          <div className="px-3 py-1 bg-white text-gray-600 text-xs rounded-full flex items-center shadow-sm">
+                            <Calendar size={12} className="mr-1" />
+                            {formatDate(msg.createdAt)}
+                          </div>
+                        </div>
+                      )}
+
+                      {isSystemMessage ? (
+                        <div className="mb-4 flex justify-center">
+                          <div className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">{msg.text}</div>
+                        </div>
+                      ) : (
+                        <div className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+                          <div className={`flex max-w-[75%] ${isCurrentUser ? "flex-row-reverse" : ""}`}>
+                            {!isCurrentUser && (
+                              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white mr-2 overflow-hidden shadow-sm">
+                                {msg.senderPhoto ? (
+                                  <img
+                                    src={
+                                      typeof msg.senderPhoto === "object"
+                                        ? msg.senderPhoto.url
+                                        : msg.senderPhoto || "/placeholder.svg"
+                                    }
+                                    alt="User"
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  msg.senderName?.charAt(0) || "?"
+                                )}
+                              </div>
+                            )}
+
+                            <div>
+                              <div className={`flex items-center mb-1 ${isCurrentUser ? "justify-end" : ""}`}>
+                                {!isCurrentUser && (
+                                  <>
+                                    <span className="text-xs font-medium text-gray-800">{msg.senderName}</span>
+                                    {msg.senderRole && (
+                                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded ml-1">
+                                        {msg.senderRole}
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {msg.createdAt && formatTime(msg.createdAt)}
+                                </span>
+                                {isCurrentUser && (
+                                  <span className="text-xs font-medium ml-2 text-gray-800">You</span>
+                                )}
+                                {msg.isEdited && <span className="text-xs text-gray-500 ml-1">(edited)</span>}
+                              </div>
+
+                              {editingMessage === msg.id ? (
+                                <div className="flex items-center">
+                                  <input
+                                    type="text"
+                                    value={editMessageText}
+                                    onChange={(e) => setEditMessageText(e.target.value)}
+                                    className="p-2 border border-gray-300 rounded-l-xl w-full shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => editMessage(msg.id, editMessageText)}
+                                    disabled={!editMessageText.trim()}
+                                    className="bg-indigo-600 text-white p-2 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors"
+                                  >
+                                    <Check size={20} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="relative group">
+                                  <div
+                                    className={`p-3 rounded-xl ${
+                                      isCurrentUser
+                                        ? chatTheme[activeChat?.id]
+                                          ? `bg-${themeColors[chatTheme[activeChat.id]].messageBackground} text-${themeColors[chatTheme[activeChat.id]].messageText} rounded-tr-none`
+                                          : "bg-indigo-600 text-white rounded-tr-none"
+                                        : "bg-white text-gray-800 rounded-tl-none"
+                                    } shadow-sm`}
+                                  >
+                                    {msg.text}
+                                  </div>
+
+                                  {/* Message options button for current user's messages */}
+                                  {isCurrentUser && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)
+                                      }}
+                                      className="absolute top-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <MoreHorizontal size={16} />
+                                    </button>
+                                  )}
+
+                                  {/* Message options menu */}
+                                  {showMessageOptions === msg.id && (
+                                    <div className="absolute top-0 right-8 bg-white shadow-md rounded-xl py-1 z-10 message-options">
+                                      <button
+                                        onClick={() => {
+                                          setEditingMessage(msg.id);
+                                          setEditMessageText(msg.text);
+                                          setShowMessageOptions(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+                                      >
+                                        <Edit2 size={14} className="mr-2" /> Edit
+                                      </button>
+                                      <button
+                                        onClick={() => deleteMessage(msg.id)}
+                                        disabled={isDeleting}
+                                        className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-gray-100 flex items-center transition-colors"
+                                      >
+                                        {isDeleting ? (
+                                          <>
+                                            <div className="w-4 h-4 border-2 border-gray-300 border-t-rose-600 rounded-full animate-spin mr-2"></div>
+                                            Deleting...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Trash2 size={14} className="mr-2" /> Delete
+                                          </>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          toggleMarkAsUnread(msg.id);
+                                          setShowMessageOptions(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+                                      >
+                                        {unreadMessages[msg.id] ? (
+                                          <>
+                                            <MessageCircle size={14} className="mr-2" /> Mark as Read
+                                          </>
+                                        ) : (
+                                          <>
+                                            <MessageCircle size={14} className="mr-2" /> Mark as Unread
+                                          </>
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          togglePinMessage(msg.id);
+                                          setShowMessageOptions(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center transition-colors"
+                                      >
+                                        {pinnedMessages[msg.id] ? (
+                                          <>
+                                            <X size={14} className="mr-2" /> Unpin
+                                          </>
+                                        ) : (
+                                          <>
+                                            <X size={14} className="mr-2" /> Pin
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* Reaction button */}
+                                  <button
+                                    onClick={() => setShowReactionMenu(showReactionMenu === msg.id ? null : msg.id)}
+                                    className="absolute bottom-0 right-0 p-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <Smile size={16} />
+                                  </button>
+
+                                  {/* Reaction menu */}
+                                  {showReactionMenu === msg.id && (
+                                    <div className="absolute bottom-8 right-0 bg-white shadow-md rounded-full py-1 px-2 flex space-x-2 z-10 reaction-menu">
+                                      {Object.entries(reactionEmojis).map(([type, emoji]) => (
+                                        <button
+                                          key={type}
+                                          onClick={() => addReaction(msg.id, type)}
+                                          className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-full text-lg transition-colors"
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Display reactions */}
+                                  {msg.reactions && Object.entries(msg.reactions).length > 0 && (
+                                    <div className="flex mt-1 flex-wrap">
+                                      {Object.entries(msg.reactions).map(([type, users]) =>
+                                        users && users.length > 0 ? (
+                                          <div
+                                            key={type}
+                                            className="bg-white rounded-full px-2 py-0.5 text-xs flex items-center mr-1 mb-1 border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+                                            title={users.map((u) => u.userName).join(", ")}
+                                          >
+                                            {reactionEmojis[type]} {users.length}
+                                          </div>
+                                        ) : null,
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
+            )}
+            <div ref={messagesEndRef}></div>
+          </div>
+
+          <form
+            onSubmit={sendMessage}
+            className="border-t border-gray-200 p-4 bg-white"
+            style={{ position: "sticky", bottom: 0, zIndex: 10 }}
+          >
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={formValue}
+                onChange={(e) => setFormValue(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 p-3 border border-gray-300 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
+              />
+              <button
+                type="button"
+                onClick={handleEmojiClick}
+                className="bg-gray-100 text-gray-800 p-3 hover:bg-gray-200 transition-colors flex items-center justify-center"
+              >
+                {selectedEmoji}
+              </button>
+              <button
+                type="submit"
+                disabled={!formValue.trim()}
+                className="bg-indigo-600 text-white p-3 rounded-r-xl disabled:bg-gray-300 hover:bg-indigo-700 transition-colors flex items-center justify-center"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!activeChat && !showUserSearch && !showCreateGroup && !showGroupMembers && !showAddMembers && (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-white">
+          <div className="bg-indigo-100 p-4 rounded-full inline-flex items-center justify-center mb-4">
+            <MessageCircle size={40} className="text-indigo-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to Chat</h2>
+          <p className="text-gray-600 mb-6">Select a conversation or start a new one</p>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setShowUserSearch(true)}
+              className="py-3 px-6 bg-indigo-600 text-white rounded-xl flex items-center shadow-md hover:bg-indigo-700 transition-colors"
+            >
+              <PlusCircle size={18} className="mr-2" />
+              New Chat
+            </button>
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              className="py-3 px-6 bg-gray-200 text-gray-800 rounded-xl flex items-center shadow-md hover:bg-gray-300 transition-colors"
+            >
+              <Users size={18} className="mr-2" />
+              New Group
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+    {showChatInfo && activeChat && (
+      <div className="absolute top-16 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
+        <div className="text-lg font-medium mb-2 border-b pb-2 flex justify-between items-center">
+          <span>Chat info</span>
+          <button
+            onClick={() => setShowChatInfo(false)}
+            className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-3 py-2">
+          <button
+            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+            onClick={() => {
+              setEditingGroupName(true)
+              setNewGroupName(activeChat.name)
+            }}
+          >
+            <Edit2 size={18} className="mr-3 text-indigo-600" />
+            <span className="text-gray-700">Change chat name</span>
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImageIcon size={18} className="mr-3 text-indigo-600" />
+            <span className="text-gray-700">Change photo</span>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+            />
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+            onClick={() => setShowThemeSelector(!showThemeSelector)}
+          >
+            <Palette size={18} className="mr-3 text-indigo-600" />
+            <span className="text-gray-700">Change theme</span>
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+            onClick={() => setShowEmojiSelector(!showEmojiSelector)}
+          >
+            <Smile size={18} className="mr-3 text-indigo-600" />
+            <span className="text-gray-700">Change emoji</span>
+          </button>
+
+          <button
+            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+            onClick={() => {
+              setShowChatInfo(false)
+              if (activeChat.type === "group") {
+                setShowGroupMembers(true)
+              }
+            }}
+          >
+            <Users size={18} className="mr-3 text-indigo-600" />
+            <span className="text-gray-700">{activeChat.type === "group" ? "Chat members" : "Edit nicknames"}</span>
+          </button>
+
+          {activeChat.type === "group" && (
+            <button
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+              onClick={() => {
+                setShowChatInfo(false)
+                setShowAddMembers(true)
+                setSelectedUsers([])
+                setSearchTerm("")
+              }}
+            >
+              <UserPlus size={18} className="mr-3 text-indigo-600" />
+              <span className="text-gray-700">Add members</span>
+            </button>
+          )}
+
+          <div className="border-t pt-2 mt-2">
+            <button
+              className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center"
+              onClick={() => {
+                setShowChatInfo(false)
+                if (activeChat.type === "group") {
+                  leaveGroupChat()
+                } else {
+                  deleteChat(activeChat.id)
+                }
+              }}
+            >
+              <LogOut size={18} className="mr-3" />
+              <span>{activeChat.type === "group" ? "Leave group" : "Delete chat"}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Theme selector panel */}
+    {showThemeSelector && (
+      <div className="absolute top-48 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
+        <div className="text-lg font-medium mb-2 border-b pb-2">Select Theme</div>
+        <div className="grid grid-cols-3 gap-2 p-2">
+          {Object.entries(themeColors).map(([color, _]) => (
+            <button
+              key={color}
+              className="w-full h-10 rounded-lg border border-gray-200 flex items-center justify-center capitalize hover:border-indigo-500 transition-colors"
+              style={{ backgroundColor: themeColors[color].light }}
+              onClick={() => changeChatTheme(color)}
+            >
+              {color}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Emoji selector panel */}
+    {showEmojiSelector && (
+      <div className="absolute top-64 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
+        <div className="text-lg font-medium mb-2 border-b pb-2">Select Emoji</div>
+        <div className="grid grid-cols-4 gap-2 p-2">
+          {emojiOptions.map((emoji) => (
+            <button
+              key={emoji}
+              className="w-full h-10 rounded-lg border border-gray-200 flex items-center justify-center text-xl hover:bg-gray-100 hover:border-indigo-500 transition-colors"
+              onClick={() => changeChatEmoji(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+</div>
   )
 }
-
 export default ChatRoom

@@ -1,16 +1,48 @@
 "use client"
 
-import { collection, deleteDoc, doc, getDocs, query, where } from "firebase/firestore"
+import { collection, deleteDoc, doc, getDocs, query, where, getDoc, updateDoc, deleteField } from "firebase/firestore"
 import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 import { useEffect, useRef, useState, useContext } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
-import { FaCertificate, FaDownload, FaEye, FaTrash } from "react-icons/fa"
-import styled from "styled-components"
+import {
+  FaCertificate,
+  FaEye,
+  FaTrash,
+  FaSearch,
+  FaFilter,
+  FaSortAmountDown,
+  FaCalendarAlt,
+  FaFileDownload,
+  FaImage,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaTimes,
+} from "react-icons/fa"
+import styled, { keyframes } from "styled-components"
 import Sidebar from "../components/LSidebar"
 import { auth, db } from "../firebase.config"
-import { SidebarToggleContext } from "../components/LgNavbar"; // Import the context
+import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
 
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`
+
+const shimmer = keyframes`
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+`
 
 const PageContainer = styled.div`
   display: flex;
@@ -32,104 +64,685 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`;
+`
+
+const PageHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+  background: linear-gradient(to right, #3b82f6, #6366f1);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  width: 100%;
+`
+
+const HeaderContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`
 
 const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-  border-bottom: 3px solid #3498db;
-  padding-bottom: 10px;
-  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`
+
+const Subtitle = styled.p`
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  margin-left: 3rem;
+`
+
+const ActionBar = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+`
+
+const SearchBar = styled.div`
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+`
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: white;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+`
+
+const SearchIcon = styled.div`
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+`
+
+const FilterButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  
+  &:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+  }
+`
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  
+  &:hover {
+    background: linear-gradient(to right, #2563eb, #1d4ed8);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    background: linear-gradient(to right, #9ca3af, #6b7280);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
 `
 
 const CertificateGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  animation: ${fadeIn} 0.5s ease-out;
 `
 
 const CertificateCard = styled.div`
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  background: white;
+  border-radius: 1rem;
   overflow: hidden;
-  transition: transform 0.3s ease;
-
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  position: relative;
+  
   &:hover {
     transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(to right, #3b82f6, #2563eb);
   }
 `
 
-const CertificateHeader = styled.div`
-  padding: 15px;
-  border-bottom: 1px solid #eaeaea;
+const CertificateImagePreview = styled.div`
+  height: 160px;
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.5), transparent);
+    background-size: 200% 100%;
+    animation: ${shimmer} 1.5s infinite;
+  }
+`
+
+const CertificateIcon = styled.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  font-size: 2rem;
+  z-index: 1;
 `
 
 const CertificateContent = styled.div`
-  padding: 15px;
+  padding: 1.5rem;
 `
 
 const CertificateTitle = styled.h3`
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
-  margin: 0 0 5px 0;
-  color: #2c3e50;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `
 
 const CertificateDate = styled.p`
-  font-size: 14px;
-  color: #7f8c8d;
-  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `
 
 const CertificateFooter = styled.div`
   display: flex;
   justify-content: space-between;
-  padding: 10px 15px;
-  background-color: #f9f9f9;
-  border-top: 1px solid #eaeaea;
+  padding: 1rem 1.5rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #f3f4f6;
 `
 
 const CertificateButton = styled.button`
   background: none;
   border: none;
-  color: #3498db;
-  font-size: 14px;
+  color: #3b82f6;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
 
   &:hover {
-    background-color: rgba(52, 152, 219, 0.1);
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  
+  &.delete {
+    color: #ef4444;
+    
+    &:hover {
+      background-color: rgba(239, 68, 68, 0.1);
+    }
   }
 `
 
 const EmptyState = styled.div`
   text-align: center;
-  padding: 40px 20px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  margin-top: 20px;
+  padding: 4rem 2rem;
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  animation: ${fadeIn} 0.5s ease-out;
+`
+
+const EmptyStateIcon = styled.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  color: #9ca3af;
+  font-size: 2rem;
+`
+
+const EmptyStateTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+`
+
+const EmptyStateText = styled.p`
+  font-size: 1rem;
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+`
+
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+`
+
+const LoadingSpinner = styled.div`
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(59, 130, 246, 0.2);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`
+
+const LoadingText = styled.p`
+  font-size: 1rem;
+  color: #6b7280;
+  margin: 0;
+`
+
+const Modal = styled.div`
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  animation: ${fadeIn} 0.3s ease-out;
+`
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+`
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  color: white;
+`
+
+const ModalTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+`
+
+const ModalCloseButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+`
+
+const ModalBody = styled.div`
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+`
+
+const ModalFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+`
+
+const ModalButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  
+  &.primary {
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+    
+    &:hover {
+      background: linear-gradient(to right, #2563eb, #1d4ed8);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+  }
+  
+  &.secondary {
+    background-color: white;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+    
+    &:hover {
+      background-color: #f9fafb;
+      border-color: #d1d5db;
+    }
+  }
+  
+  &.danger {
+    background: linear-gradient(to right, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+    
+    &:hover {
+      background: linear-gradient(to right, #dc2626, #b91c1c);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 8px -1px rgba(239, 68, 68, 0.4);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`
+
+const CertificatePreview = styled.div`
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+`
+
+const Alert = styled.div`
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  animation: ${fadeIn} 0.3s ease-out;
+  max-width: 400px;
+  z-index: 100;
+  
+  &.success {
+    background: linear-gradient(to right, #dcfce7, #f0fdf4);
+    border-left: 4px solid #16a34a;
+  }
+  
+  &.error {
+    background: linear-gradient(to right, #fee2e2, #fef2f2);
+    border-left: 4px solid #dc2626;
+  }
+`
+
+const AlertIcon = styled.div`
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  
+  &.success {
+    background-color: rgba(22, 163, 74, 0.2);
+    color: #16a34a;
+  }
+  
+  &.error {
+    background-color: rgba(220, 38, 38, 0.2);
+    color: #dc2626;
+  }
+`
+
+const AlertContent = styled.div`
+  flex: 1;
+`
+
+const AlertTitle = styled.h4`
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  
+  &.success {
+    color: #166534;
+  }
+  
+  &.error {
+    color: #991b1b;
+  }
+`
+
+const AlertMessage = styled.p`
+  font-size: 0.75rem;
+  margin: 0;
+  
+  &.success {
+    color: #14532d;
+  }
+  
+  &.error {
+    color: #7f1d1d;
+  }
+`
+
+const AlertCloseButton = styled.button`
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  
+  &.success {
+    color: #16a34a;
+    
+    &:hover {
+      background-color: rgba(22, 163, 74, 0.1);
+    }
+  }
+  
+  &.error {
+    color: #dc2626;
+    
+    &:hover {
+      background-color: rgba(220, 38, 38, 0.1);
+    }
+  }
+`
+
+const ConfirmDialog = styled.div`
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: ${fadeIn} 0.3s ease-out;
+`
+
+const ConfirmDialogContent = styled.div`
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+`
+
+const ConfirmDialogHeader = styled.div`
+  padding: 1.5rem 1.5rem 0.5rem;
+  text-align: center;
+`
+
+const ConfirmDialogIcon = styled.div`
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin: 0 auto 1rem;
+`
+
+const ConfirmDialogTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+`
+
+const ConfirmDialogMessage = styled.p`
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+`
+
+const ConfirmDialogFooter = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem;
+`
+
+const AddCourseButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(to right, #8b5cf6, #7c3aed);
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
+
+  &:hover {
+    background: linear-gradient(to right, #7c3aed, #6d28d9);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(139, 92, 246, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 `
 
 const CertificatePage = () => {
   const [user] = useAuthState(auth)
-  const { expanded } = useContext(SidebarToggleContext);
+  const { expanded } = useContext(SidebarToggleContext)
   const [certificates, setCertificates] = useState([])
+  const [filteredCertificates, setFilteredCertificates] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCertificate, setSelectedCertificate] = useState(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
   const certificateRef = useRef(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [certificateToDelete, setCertificateToDelete] = useState(null)
+
+  const [showAddCourseModal, setShowAddCourseModal] = useState(false)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [showSortModal, setShowSortModal] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState("All Categories")
+  const [sortOption, setSortOption] = useState("Date")
 
   const confirmDeleteCertificate = (certificateId) => {
     setCertificateToDelete(certificateId)
@@ -142,8 +755,32 @@ const CertificatePage = () => {
     try {
       setDeleteLoading(true)
 
-      // Delete the certificate from Firestore
-      await deleteDoc(doc(db, "certificates", certificateToDelete))
+      const certificateToRemove = certificates.find((cert) => cert.id === certificateToDelete)
+
+      if (certificateToRemove?.isLegacy) {
+        // Delete from old certificates collection
+        await deleteDoc(doc(db, "certificates", certificateToDelete))
+      } else {
+        // Delete from progress collection
+        // Determine user type
+        let userType = null
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerSnap = await getDoc(learnerRef)
+
+        if (learnerSnap.exists()) {
+          userType = "learner"
+        } else {
+          userType = "intern"
+        }
+
+        if (certificateToRemove?.courseId) {
+          // Remove certificate field from progress document
+          const progressRef = doc(db, userType, user.uid, "progress", certificateToRemove.courseId)
+          await updateDoc(progressRef, {
+            certificate: deleteField(),
+          })
+        }
+      }
 
       // Show success message
       setAlert({
@@ -188,30 +825,135 @@ const CertificatePage = () => {
         // Clear any existing certificates data
         setCertificates([])
 
-        // Fetch fresh data from Firestore
-        const certificatesQuery = query(collection(db, "certificates"), where("userId", "==", user.uid))
+        // Determine user type first
+        let userType = null
 
-        const querySnapshot = await getDocs(certificatesQuery)
+        // Check if user exists in learner collection
+        const learnerRef = doc(db, "learner", user.uid)
+        const learnerSnap = await getDoc(learnerRef)
 
-        if (querySnapshot.empty) {
+        // Check if user exists in intern collection
+        const internRef = doc(db, "intern", user.uid)
+        const internSnap = await getDoc(internRef)
+
+        if (learnerSnap.exists()) {
+          userType = "learner"
+        } else if (internSnap.exists()) {
+          userType = "intern"
+        } else {
+          console.warn("User document not found in 'learner' or 'intern' collection")
           setCertificates([])
+          setFilteredCertificates([])
           return
         }
 
-        const data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          // Ensure formattedDate exists
-          formattedDate:
-            doc.data().formattedDate ||
-            new Date(doc.data().issueDate?.toDate()).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }),
-        }))
+        // Fetch all progress documents for the user
+        const progressCollection = collection(db, userType, user.uid, "progress")
+        const progressSnapshot = await getDocs(progressCollection)
 
-        setCertificates(data)
+        const certificatesData = []
+
+        // Check each progress document for certificates
+        for (const progressDoc of progressSnapshot.docs) {
+          const progressData = progressDoc.data()
+
+          // Check if this progress document has a certificate
+          if (progressData.certificate) {
+            const certificate = {
+              id: `${progressDoc.id}_${progressData.certificate.certificateId}`, // Create unique ID
+              courseId: progressDoc.id, // The document ID is the courseId
+              ...progressData.certificate,
+              // Ensure formattedDate exists
+              formattedDate:
+                progressData.certificate.formattedDate ||
+                (progressData.certificate.issueDate?.toDate
+                  ? progressData.certificate.issueDate.toDate().toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : new Date().toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })),
+            }
+
+            certificatesData.push(certificate)
+          }
+        }
+
+        // Add this inside the fetchCertificates function, after getting certificates from progress collection
+        for (const certificate of certificatesData) {
+          try {
+            // Fetch course data to get title and image
+            if (certificate.courseId) {
+              const courseRef = doc(db, userType === "intern" ? "Intern_Course" : "courses", certificate.courseId)
+              const courseSnap = await getDoc(courseRef)
+
+              if (courseSnap.exists()) {
+                const courseData = courseSnap.data()
+
+                // Update certificate with course data
+                certificate.courseImage = courseData.fileUrl?.url || null
+
+                // Only update courseTitle if it's not already set
+                if (!certificate.courseTitle || certificate.courseTitle === "Complete Course") {
+                  certificate.courseTitle = courseData.title || "Unknown Course"
+                }
+
+                // Add course description if available
+                if (courseData.description) {
+                  certificate.courseDescription = courseData.description
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching course data for certificate ${certificate.id}:`, error)
+          }
+        }
+
+        // Fallback: Also check the old certificates collection for backward compatibility
+        try {
+          const oldCertificatesQuery = query(collection(db, "certificates"), where("userId", "==", user.uid))
+          const oldCertificatesSnapshot = await getDocs(oldCertificatesQuery)
+
+          const oldCertificatesData = oldCertificatesSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            isLegacy: true, // Mark as legacy certificate
+            formattedDate:
+              doc.data().formattedDate ||
+              (doc.data().issueDate?.toDate
+                ? doc.data().issueDate.toDate().toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : new Date().toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })),
+          }))
+
+          // Combine new and old certificates, avoiding duplicates
+          const allCertificates = [...certificatesData]
+          oldCertificatesData.forEach((oldCert) => {
+            const isDuplicate = certificatesData.some((newCert) => newCert.certificateId === oldCert.certificateId)
+            if (!isDuplicate) {
+              allCertificates.push(oldCert)
+            }
+          })
+
+          setCertificates(allCertificates)
+          setFilteredCertificates(allCertificates)
+        } catch (error) {
+          console.error("Error fetching legacy certificates:", error)
+          // If legacy fetch fails, just use the new certificates
+          setCertificates(certificatesData)
+          setFilteredCertificates(certificatesData)
+        }
       } catch (error) {
         console.error("Error fetching certificates:", error)
         setAlert({
@@ -226,6 +968,32 @@ const CertificatePage = () => {
 
     fetchCertificates()
   }, [user, refreshTrigger])
+
+  // Filter certificates when search term changes
+  useEffect(() => {
+    let filtered = certificates
+
+    if (searchTerm.trim() !== "") {
+      filtered = filtered.filter(
+        (cert) =>
+          cert.moduleTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cert.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cert.courseTitle?.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    if (selectedCategory !== "All Categories") {
+      filtered = filtered.filter((cert) => cert.category === selectedCategory)
+    }
+
+    if (sortOption === "Date") {
+      filtered.sort((a, b) => new Date(b.formattedDate) - new Date(a.formattedDate))
+    } else if (sortOption === "Title") {
+      filtered.sort((a, b) => a.title.localeCompare(b.title))
+    }
+
+    setFilteredCertificates(filtered)
+  }, [searchTerm, certificates, selectedCategory, sortOption])
 
   const viewCertificate = (certificate) => {
     setSelectedCertificate(certificate)
@@ -262,6 +1030,12 @@ const CertificatePage = () => {
       pdf.save(
         `${certificate.userName.replace(/\s+/g, "_")}_${certificate.courseTitle.replace(/\s+/g, "_")}_Certificate.pdf`,
       )
+
+      setAlert({
+        show: true,
+        message: "Certificate downloaded as PDF successfully",
+        type: "success",
+      })
     } catch (error) {
       console.error("Error generating PDF:", error)
       setAlert({
@@ -292,6 +1066,12 @@ const CertificatePage = () => {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+
+      setAlert({
+        show: true,
+        message: "Certificate downloaded as image successfully",
+        type: "success",
+      })
     } catch (error) {
       console.error("Error downloading image:", error)
       setAlert({
@@ -328,10 +1108,19 @@ const CertificatePage = () => {
           <Sidebar />
         </SidebarWrapper>
         <MainContent expanded={expanded}>
-          <Title>Certificates</Title>
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
+          <PageHeader>
+            <HeaderContent>
+              <Title>
+                <FaCertificate /> Certificates
+              </Title>
+              <Subtitle>View and manage your earned certificates</Subtitle>
+            </HeaderContent>
+          </PageHeader>
+
+          <LoadingContainer>
+            <LoadingSpinner />
+            <LoadingText>Loading your certificates...</LoadingText>
+          </LoadingContainer>
         </MainContent>
       </PageContainer>
     )
@@ -343,43 +1132,82 @@ const CertificatePage = () => {
         <Sidebar />
       </SidebarWrapper>
       <MainContent expanded={expanded}>
-        <Title>Certificates</Title>
-
-        {/* Refresh button */}
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setRefreshTrigger((prev) => prev + 1)}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-            disabled={loading}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                clipRule="evenodd"
+        <PageHeader>
+          <HeaderContent>
+            <Title>
+              <FaCertificate /> Certificates
+            </Title>
+            <Subtitle>View and manage your earned certificates</Subtitle>
+          </HeaderContent>
+          <ActionBar>
+            <SearchBar>
+              <SearchIcon>
+                <FaSearch />
+              </SearchIcon>
+              <SearchInput
+                type="text"
+                placeholder="Search courses by title or description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </svg>
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
+            </SearchBar>
+            {/* <FilterButton onClick={() => setShowFilterModal(true)}>
+              <FaFilter />
+              {selectedCategory}
+            </FilterButton>
+            <FilterButton onClick={() => setShowSortModal(true)}>
+              <FaSortAmountDown />
+              Sort by {sortOption}
+            </FilterButton>
+            <AddCourseButton onClick={() => setShowAddCourseModal(true)}>
+              <FaCertificate />
+              Add New Course
+            </AddCourseButton> */}
+          </ActionBar>
+        </PageHeader>
 
-        {certificates.length > 0 ? (
+        {filteredCertificates.length > 0 ? (
           <CertificateGrid>
-            {certificates.map((cert) => (
+            {filteredCertificates.map((cert) => (
               <CertificateCard key={cert.id}>
+                <CertificateImagePreview>
+                  {cert.courseImage ? (
+                    <img
+                      src={cert.courseImage || "/placeholder.svg"}
+                      alt={cert.courseTitle || "Certificate"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <CertificateIcon>
+                      <FaCertificate />
+                    </CertificateIcon>
+                  )}
+                </CertificateImagePreview>
+
                 <CertificateContent>
-                  <CertificateTitle>{cert.moduleTitle || cert.title}</CertificateTitle>
-                  <CertificateDate>Issued on {cert.formattedDate}</CertificateDate>
+                  <CertificateTitle>
+                    {cert.courseTitle || cert.moduleTitle || cert.title || "Certificate"}
+                  </CertificateTitle>
+                  <CertificateDate>
+                    <FaCalendarAlt />
+                    Issued on {cert.formattedDate}
+                  </CertificateDate>
                 </CertificateContent>
+
                 <CertificateFooter>
                   <CertificateButton onClick={() => viewCertificate(cert)}>
-                    <FaEye /> View
+                    <FaEye />
+                    View
                   </CertificateButton>
+
                   <CertificateButton onClick={() => downloadAsPDF(cert)}>
-                    <FaDownload /> PDF
+                    <FaFileDownload />
+                    PDF
                   </CertificateButton>
-                  <CertificateButton onClick={() => confirmDeleteCertificate(cert.id)}>
-                    <FaTrash className="text-red-500" /> Delete
+
+                  <CertificateButton className="delete" onClick={() => confirmDeleteCertificate(cert.id)}>
+                    <FaTrash />
+                    Delete
                   </CertificateButton>
                 </CertificateFooter>
               </CertificateCard>
@@ -387,25 +1215,104 @@ const CertificatePage = () => {
           </CertificateGrid>
         ) : (
           <EmptyState>
-            <FaCertificate className="mx-auto mb-4 text-gray-400" size={48} />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No certificates yet</h3>
-            <p className="text-gray-500">Complete modules to earn certificates.</p>
+            <EmptyStateIcon>
+              <FaCertificate />
+            </EmptyStateIcon>
+            <EmptyStateTitle>No certificates yet</EmptyStateTitle>
+            <EmptyStateText>
+              Complete courses and modules to earn certificates. They will appear here once you've earned them.
+            </EmptyStateText>
           </EmptyState>
+        )}
+
+        {/* Add Course Modal */}
+        {showAddCourseModal && (
+          <Modal>
+            <ModalContent>
+              <ModalHeader>
+                <ModalTitle>Add New Course</ModalTitle>
+                <ModalCloseButton onClick={() => setShowAddCourseModal(false)}>
+                  <FaTimes />
+                </ModalCloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p>Add course form goes here.</p>
+              </ModalBody>
+              <ModalFooter>
+                <ModalButton className="secondary" onClick={() => setShowAddCourseModal(false)}>
+                  Cancel
+                </ModalButton>
+                <ModalButton className="primary" onClick={() => setShowAddCourseModal(false)}>
+                  Add Course
+                </ModalButton>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Filter Modal */}
+        {showFilterModal && (
+          <Modal>
+            <ModalContent>
+              <ModalHeader>
+                <ModalTitle>Filter by Category</ModalTitle>
+                <ModalCloseButton onClick={() => setShowFilterModal(false)}>
+                  <FaTimes />
+                </ModalCloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p>Filter options go here.</p>
+              </ModalBody>
+              <ModalFooter>
+                <ModalButton className="secondary" onClick={() => setShowFilterModal(false)}>
+                  Cancel
+                </ModalButton>
+                <ModalButton className="primary" onClick={() => setShowFilterModal(false)}>
+                  Apply
+                </ModalButton>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        )}
+
+        {/* Sort Modal */}
+        {showSortModal && (
+          <Modal>
+            <ModalContent>
+              <ModalHeader>
+                <ModalTitle>Sort by</ModalTitle>
+                <ModalCloseButton onClick={() => setShowSortModal(false)}>
+                  <FaTimes />
+                </ModalCloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <p>Sort options go here.</p>
+              </ModalBody>
+              <ModalFooter>
+                <ModalButton className="secondary" onClick={() => setShowSortModal(false)}>
+                  Cancel
+                </ModalButton>
+                <ModalButton className="primary" onClick={() => setShowSortModal(false)}>
+                  Apply
+                </ModalButton>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         )}
 
         {/* Certificate Viewer Modal */}
         {selectedCertificate && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 overflow-hidden">
-              <div className="p-4 bg-blue-900 text-white flex justify-between items-center">
-                <h3 className="text-xl font-bold">Certificate of Completion</h3>
-                <button onClick={closeCertificateView} className="text-white hover:text-gray-300">
-                  &times;
-                </button>
-              </div>
+          <Modal>
+            <ModalContent>
+              <ModalHeader>
+                <ModalTitle>Certificate of Completion</ModalTitle>
+                <ModalCloseButton onClick={closeCertificateView}>
+                  <FaTimes />
+                </ModalCloseButton>
+              </ModalHeader>
 
-              <div className="p-4 overflow-auto max-h-[80vh]">
-                <div ref={certificateRef}>
+              <ModalBody>
+                <CertificatePreview ref={certificateRef}>
                   <div className="w-[800px] h-[600px] bg-white p-8 relative mx-auto">
                     {/* Decorative Border */}
                     <div className="absolute inset-0 border-[12px] border-double border-blue-900 m-4 pointer-events-none"></div>
@@ -437,7 +1344,7 @@ const CertificatePage = () => {
                       <div className="flex-1 flex flex-col items-center justify-center">
                         <div className="text-gray-700 text-lg mb-2">has successfully completed</div>
                         <div className="text-blue-900 text-2xl font-semibold mb-4">
-                          {selectedCertificate.courseTitle}
+                          {selectedCertificate.courseTitle || "Complete Course"}
                         </div>
 
                         {selectedCertificate.courseDescription && (
@@ -491,136 +1398,79 @@ const CertificatePage = () => {
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border-4 border-blue-100 rounded-full opacity-10 pointer-events-none"></div>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border-4 border-blue-100 rounded-full opacity-10 pointer-events-none"></div>
                   </div>
-                </div>
-              </div>
+                </CertificatePreview>
+              </ModalBody>
 
-              <div className="bg-gray-100 p-4 flex justify-between">
-                <button
+              <ModalFooter>
+                <ModalButton
+                  className="danger"
                   onClick={() => confirmDeleteCertificate(selectedCertificate.id)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded flex items-center"
                   disabled={deleteLoading}
                 >
                   {deleteLoading ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                       Deleting...
                     </>
                   ) : (
                     <>
-                      <FaTrash className="mr-2" /> Delete
+                      <FaTrash /> Delete
                     </>
                   )}
-                </button>
+                </ModalButton>
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => downloadAsImage(selectedCertificate)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Download Image
-                  </button>
+                <ButtonGroup>
+                  <ModalButton className="secondary" onClick={() => downloadAsImage(selectedCertificate)}>
+                    <FaImage /> Download Image
+                  </ModalButton>
 
-                  <button
-                    onClick={() => downloadAsPDF(selectedCertificate)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Download PDF
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+                  <ModalButton className="primary" onClick={() => downloadAsPDF(selectedCertificate)}>
+                    <FaFileDownload /> Download PDF
+                  </ModalButton>
+                </ButtonGroup>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
         )}
 
         {/* Alert message */}
         {alert.show && (
-          <div
-            className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
-              alert.type === "success"
-                ? "bg-green-100 border-l-4 border-green-500 text-green-700"
-                : "bg-red-100 border-l-4 border-red-500 text-red-700"
-            }`}
-          >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                {alert.type === "success" ? (
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className="ml-3">
-                <p className="text-sm">{alert.message}</p>
-              </div>
-              <button onClick={closeAlert} className="ml-auto text-gray-500 hover:text-gray-700">
-                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
+          <Alert className={alert.type}>
+            <AlertIcon className={alert.type}>
+              {alert.type === "success" ? <FaCheckCircle /> : <FaExclamationTriangle />}
+            </AlertIcon>
+
+            <AlertContent>
+              <AlertTitle className={alert.type}>{alert.type === "success" ? "Success" : "Error"}</AlertTitle>
+              <AlertMessage className={alert.type}>{alert.message}</AlertMessage>
+            </AlertContent>
+
+            <AlertCloseButton className={alert.type} onClick={closeAlert} aria-label="Close alert">
+              <FaTimes />
+            </AlertCloseButton>
+          </Alert>
         )}
 
         {/* Delete Confirmation Dialog */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this certificate? This action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={cancelDelete}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-800 transition-colors"
-                >
+          <ConfirmDialog>
+            <ConfirmDialogContent>
+              <ConfirmDialogHeader>
+                <ConfirmDialogIcon>
+                  <FaExclamationTriangle />
+                </ConfirmDialogIcon>
+                <ConfirmDialogTitle>Confirm Deletion</ConfirmDialogTitle>
+                <ConfirmDialogMessage>
+                  Are you sure you want to delete this certificate? This action cannot be undone.
+                </ConfirmDialogMessage>
+              </ConfirmDialogHeader>
+
+              <ConfirmDialogFooter>
+                <ModalButton className="secondary" onClick={cancelDelete}>
                   Cancel
-                </button>
-                <button
-                  onClick={deleteCertificate}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors flex items-center"
-                  disabled={deleteLoading}
-                >
+                </ModalButton>
+
+                <ModalButton className="danger" onClick={deleteCertificate} disabled={deleteLoading}>
                   {deleteLoading ? (
                     <>
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
@@ -629,10 +1479,10 @@ const CertificatePage = () => {
                   ) : (
                     "Delete Certificate"
                   )}
-                </button>
-              </div>
-            </div>
-          </div>
+                </ModalButton>
+              </ConfirmDialogFooter>
+            </ConfirmDialogContent>
+          </ConfirmDialog>
         )}
       </MainContent>
     </PageContainer>

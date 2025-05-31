@@ -3,19 +3,13 @@ import { useNavigate } from "react-router-dom";
 import {
   collection,
   getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
   query,
   orderBy,
   limit,
   where,
-  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase.config";
 import {
-  FaTrash,
-  FaEdit,
   FaSearch,
   FaSortAlphaDown,
   FaSortAlphaUp,
@@ -27,13 +21,12 @@ import {
   FaFilter,
   FaEye,
 } from "react-icons/fa";
-import IntSidebar from "./sidebar";
+import Sidebar from "../Admin/Aside";
 import LgNavbar from "../components/LgNavbar";
 import { Viewer, Worker } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import deleteFromCloudinary from "../deleteFromCloudinary";
 import styled from "styled-components";
 
 // Styled Components
@@ -81,7 +74,6 @@ const CourseDashboard = ({ expanded }) => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState({ isOpen: false, type: "", content: null });
-  const [editingCourse, setEditingCourse] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,41 +128,6 @@ const CourseDashboard = ({ expanded }) => {
     navigate("/addcourse");
   };
 
-  const handleEditCourse = (course) => {
-    setEditingCourse(course);
-    setModal({ isOpen: true, type: "edit", content: course });
-  };
-
-  const handleDeleteCourse = (courseId) => {
-    setModal({ isOpen: true, type: "delete", content: courseId });
-  };
-
-  const confirmDeleteCourse = async (courseId) => {
-    try {
-      const courseDocRef = doc(db, "courses", courseId);
-      const courseDoc = await getDoc(courseDocRef);
-      const courseData = courseDoc.data();
-
-      const filePublicIds = courseData.filePublicIds || [];
-
-      for (const publicId of filePublicIds) {
-        await deleteFromCloudinary(publicId);
-      }
-
-      const modulesCollectionRef = collection(courseDocRef, "modules");
-      const modulesSnapshot = await getDocs(modulesCollectionRef);
-      const deletePromises = modulesSnapshot.docs.map((moduleDoc) => deleteDoc(doc(modulesCollectionRef, moduleDoc.id)));
-      await Promise.all(deletePromises);
-
-      await deleteDoc(courseDocRef);
-      setCourses(courses.filter((course) => course.id !== courseId));
-      setModal({ isOpen: true, type: "success", content: "Course deleted successfully!" });
-    } catch (error) {
-      console.error("Error deleting course:", error);
-      setModal({ isOpen: true, type: "error", content: "An error occurred while deleting the course." });
-    }
-  };
-
   const handleSearch = (event) => {
     setSearchTerm(event.target.value);
   };
@@ -183,34 +140,13 @@ const CourseDashboard = ({ expanded }) => {
     setCurrentPage(newPage);
   };
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setEditingCourse({ ...editingCourse, [name]: value });
-  };
-
-  const handleSubmitEdit = async () => {
-    try {
-      await updateDoc(doc(db, "courses", editingCourse.id), {
-        title: editingCourse.title,
-        description: editingCourse.description,
-        numModules: editingCourse.numModules, // Update numModules
-      });
-      setCourses(courses.map((course) => (course.id === editingCourse.id ? editingCourse : course)));
-      setModal({ isOpen: true, type: "success", content: "Course updated successfully!" });
-    } catch (error) {
-      console.error("Error updating course:", error);
-      setModal({ isOpen: true, type: "error", content: "An error occurred while updating the course." });
-    }
-  };
-
   const closeModal = () => {
     setModal({ isOpen: false, type: "", content: null });
-    setEditingCourse(null);
     setPdfFile(null);
   };
 
   const handleCourseClick = (courseId) => {
-    navigate(`/modules/${courseId}`);
+    navigate(`/admin-modules/${courseId}`);
   };
 
   const handleViewFile = (fileUrl) => {
@@ -341,26 +277,6 @@ const CourseDashboard = ({ expanded }) => {
                         >
                           <FaEye />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditCourse(course);
-                          }}
-                          className="bg-white/90 p-2 rounded-full text-amber-600 hover:bg-white transition-colors"
-                          title="Edit Course"
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCourse(course.id);
-                          }}
-                          className="bg-white/90 p-2 rounded-full text-rose-600 hover:bg-white transition-colors"
-                          title="Delete Course"
-                        >
-                          <FaTrash />
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -435,15 +351,11 @@ const CourseDashboard = ({ expanded }) => {
           <div className="bg-white p-6 rounded-2xl shadow-lg w-full max-w-lg">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">
-                {modal.type === "edit"
-                  ? "Edit Course"
-                  : modal.type === "delete"
-                    ? "Confirm Delete"
-                    : modal.type === "viewPdf"
-                      ? "View File"
-                      : modal.type === "success"
-                        ? "Success"
-                        : "Error"}
+                {modal.type === "viewPdf"
+                  ? "View File"
+                  : modal.type === "success"
+                    ? "Success"
+                    : "Error"}
               </h2>
               <button
                 onClick={closeModal}
@@ -452,79 +364,6 @@ const CourseDashboard = ({ expanded }) => {
                 <FaTimes />
               </button>
             </div>
-
-            {modal.type === "edit" && editingCourse && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
-                  <input
-                    type="text"
-                    name="title"
-                    placeholder="Course Title"
-                    value={editingCourse.title}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    name="description"
-                    placeholder="Course Description"
-                    value={editingCourse.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  ></textarea>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Number of Modules</label>
-                  <input
-                    type="number"
-                    name="numModules"
-                    placeholder="Number of Modules"
-                    value={editingCourse.numModules}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <button
-                  onClick={handleSubmitEdit}
-                  className="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors font-medium"
-                >
-                  Save Changes
-                </button>
-              </div>
-            )}
-
-            {modal.type === "delete" && (
-              <div className="text-center">
-                <div className="bg-rose-100 p-3 rounded-full inline-flex items-center justify-center mb-4">
-                  <FaExclamationTriangle className="text-rose-500 text-2xl" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Course</h3>
-                <p className="text-gray-500 mb-6">
-                  Are you sure you want to delete this course? This action cannot be undone.
-                </p>
-                <div className="flex justify-center space-x-3">
-                  <button
-                    onClick={closeModal}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => confirmDeleteCourse(modal.content)}
-                    className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 font-medium"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
 
             {modal.type === "viewPdf" && pdfFile && (
               <div className="h-[500px] overflow-hidden rounded-xl border border-gray-200">
@@ -582,7 +421,7 @@ const ElearningDashboard = () => {
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper expanded={isSidebarOpen}>
-          <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <CourseDashboard expanded={isSidebarOpen} />
       </ContentContainer>

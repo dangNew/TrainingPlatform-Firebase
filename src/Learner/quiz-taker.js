@@ -110,7 +110,7 @@ const ResultCard = styled.div`
   text-align: center;
 `
 
-const PerfectScoreCard = styled.div`
+const ScoreResultCard = styled.div`
   background-color: white;
   border-radius: 8px;
   padding: 2rem;
@@ -133,13 +133,13 @@ const QuizTaker = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedOptions, setSelectedOptions] = useState({})
   const [quizSubmitted, setQuizSubmitted] = useState(false)
-  const [score, setScore] = useState({ correct: 0, total: 0, points: 0, totalPoints: 0 })
+  const [score, setScore] = useState({ correct: 0, total: 0, points: 0, totalPoints: 0, percentage: 0, passed: false })
   const [allQuestions, setAllQuestions] = useState([])
   const [savingScore, setSavingScore] = useState(false)
   const [userType, setUserType] = useState("learner") // Default to learner, will check if intern
   const [previousScore, setPreviousScore] = useState(null)
   const [quizAttempts, setQuizAttempts] = useState(0)
-  const [showPerfectScore, setShowPerfectScore] = useState(false) // New state for perfect score demo
+  const [showResultsScreen, setShowResultsScreen] = useState(false) // Renamed from showPerfectScore
 
   // Flatten all questions from all sections into a single array for easier navigation
   useEffect(() => {
@@ -185,10 +185,10 @@ const QuizTaker = () => {
 
         setAllQuestions(questions)
 
-        // If in review mode, fetch previous score
+        // If in review mode, fetch previous score from progress/courseId/course score
         if (mode === "review") {
-          const scoresCollection = collection(db, userType, user.uid, "course score")
-          const q = query(scoresCollection, where("courseId", "==", courseId), where("quizId", "==", quizId))
+          const scoresCollection = collection(db, userType, user.uid, "progress", courseId, "course score")
+          const q = query(scoresCollection, where("quizId", "==", quizId))
 
           const scoresSnapshot = await getDocs(q)
           if (!scoresSnapshot.empty) {
@@ -276,7 +276,6 @@ const QuizTaker = () => {
 
       const scoreToSave = {
         userId: user.uid,
-        courseId,
         quizId,
         quizTitle: quiz.title,
         score: scoreData.points,
@@ -292,8 +291,8 @@ const QuizTaker = () => {
         attempts: quizAttempts + 1, // Increment attempts count
       }
 
-      // Save to the appropriate collection based on user type
-      await addDoc(collection(db, userType, user.uid, "course score"), scoreToSave)
+      // Save to the course score collection inside progress/courseId
+      await addDoc(collection(db, userType, user.uid, "progress", courseId, "course score"), scoreToSave)
     } catch (error) {
       console.error("Error saving quiz score:", error)
     } finally {
@@ -325,9 +324,24 @@ const QuizTaker = () => {
     return allQuestions.length > 0 && Object.keys(selectedOptions).length === allQuestions.length
   }
 
-  // Function to show perfect score demo
-  const showPerfectScoreDemo = () => {
-    setShowPerfectScore(true)
+  // Function to show results screen with actual score
+  const showResults = () => {
+    // If we're in review mode, use the previous score
+    if (isReviewMode && previousScore) {
+      setScore({
+        correct: previousScore.correctAnswers || 0,
+        total: previousScore.totalQuestions || 0,
+        points: previousScore.score || 0,
+        totalPoints: previousScore.totalPoints || 0,
+        percentage: previousScore.percentage || 0,
+        passed: previousScore.passed || false,
+      })
+    } else if (!quizSubmitted) {
+      // If not submitted yet, calculate the score
+      calculateScore()
+    }
+
+    setShowResultsScreen(true)
   }
 
   if (loading) {
@@ -357,8 +371,8 @@ const QuizTaker = () => {
   const currentQuestion = getCurrentQuestion()
   const isReviewMode = mode === "review"
 
-  // Perfect score demo view
-  if (showPerfectScore) {
+  // Results screen view - now shows actual score
+  if (showResultsScreen) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-3xl mx-auto">
@@ -367,27 +381,42 @@ const QuizTaker = () => {
               <FaArrowLeft className="mr-2" /> Back to Course
             </button>
             <div className="text-right">
-              <h2 className="text-xl font-bold">AIA Philippines Orientation Quiz</h2>
-              <p className="text-sm text-gray-500">Quiz Mode</p>
+              <h2 className="text-xl font-bold">{quiz.title}</h2>
+              <p className="text-sm text-gray-500">Quiz Results</p>
             </div>
           </div>
 
           <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
-            <span>Question 5 of 5</span>
-            <span>5 of 5 answered</span>
+            <span>
+              Question {allQuestions.length} of {allQuestions.length}
+            </span>
+            <span>
+              {Object.keys(selectedOptions).length} of {allQuestions.length} answered
+            </span>
           </div>
           <div className="h-2 w-full bg-purple-600 rounded-full mb-8"></div>
 
-          <PerfectScoreCard>
-            <div className="text-7xl font-bold mb-4 text-purple-600">100%</div>
-            <h3 className="text-3xl font-bold mb-6">Congratulations!</h3>
-            <p className="text-lg text-gray-700 mb-8">You scored 7 out of 7 points (5 of 5 questions correct)</p>
+          <ScoreResultCard>
+            <div className="text-7xl font-bold mb-4 text-purple-600">{score.percentage}%</div>
+            <h3 className="text-3xl font-bold mb-6">{score.passed ? "Congratulations!" : "Quiz Completed"}</h3>
+            <p className="text-lg text-gray-700 mb-8">
+              You scored {score.points} out of {score.totalPoints} points ({score.correct} of {score.total} questions
+              correct)
+            </p>
             <div className="inline-block px-6 py-2 rounded-full text-base font-medium mb-8 bg-green-100 text-green-800">
-              <FaCheck className="inline mr-2" /> Passed
+              {score.passed ? (
+                <>
+                  <FaCheck className="inline mr-2" /> Passed
+                </>
+              ) : (
+                <>
+                  <FaTimes className="inline mr-2" /> Failed
+                </>
+              )}
             </div>
             <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
               <button
-                onClick={() => setShowPerfectScore(false)}
+                onClick={() => setShowResultsScreen(false)}
                 className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center"
               >
                 <FaClipboardList className="mr-2" /> Review Answers
@@ -399,7 +428,7 @@ const QuizTaker = () => {
                 <FaArrowLeft className="mr-2" /> Back to Course
               </button>
             </div>
-          </PerfectScoreCard>
+          </ScoreResultCard>
         </div>
       </div>
     )
@@ -420,13 +449,13 @@ const QuizTaker = () => {
           </div>
         </div>
 
-        {/* Demo Button */}
+        {/* Show Results Button - renamed from Demo Button */}
         <div className="mb-4">
           <button
-            onClick={showPerfectScoreDemo}
+            onClick={showResults}
             className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 flex items-center"
           >
-            <FaTrophy className="mr-2" /> Show Perfect Score Demo
+            <FaTrophy className="mr-2" /> Show Quiz Results
           </button>
         </div>
 

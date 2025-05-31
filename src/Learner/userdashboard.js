@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState, useContext } from "react"
-import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore"
+import { collection, doc, getDoc, onSnapshot, query, where, getDocs } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { auth, db } from "../firebase.config"
-import { FaBook, FaCheckCircle, FaClock, FaGraduationCap, FaMedal, FaUser } from "react-icons/fa"
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts"
+import { FaBook, FaClock, FaMedal, FaUser, FaQuestionCircle } from "react-icons/fa"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import styled from "styled-components"
-import { SidebarToggleContext } from "../components/LgNavbar" // Import the context
-import Sidebar from "../components/LSidebar" // Import the sidebar component
+import { SidebarToggleContext } from "../components/LgNavbar"
+import Sidebar from "../components/LSidebar"
 
 const MainContent = styled.div`
   flex: 1;
@@ -31,12 +31,13 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 const LearnerDashboard = () => {
   const [user, loading] = useAuthState(auth)
   const [learnerData, setLearnerData] = useState(null)
-  const [userCollection, setUserCollection] = useState(null) // 'learner' or 'intern'
+  const [userCollection, setUserCollection] = useState(null)
   const [courses, setCourses] = useState([])
   const [progress, setProgress] = useState({})
   const [history, setHistory] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
   const [certificates, setCertificates] = useState([])
+  const [quizScores, setQuizScores] = useState([])
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -44,13 +45,13 @@ const LearnerDashboard = () => {
     totalModules: 0,
     completedModules: 0,
     certificatesEarned: 0,
+    totalQuizzes: 0,
+    completedQuizzes: 0,
   })
   const [dashboardLoading, setDashboardLoading] = useState(true)
 
-  // Use the expanded state from the context
   const { expanded } = useContext(SidebarToggleContext)
 
-  // Fetch learner data
   useEffect(() => {
     if (!user) return
 
@@ -79,11 +80,12 @@ const LearnerDashboard = () => {
     fetchUserData()
   }, [user])
 
-  // Subscribe to real-time updates for courses
   useEffect(() => {
-    if (!user) return
+    if (!user || !userCollection) return
 
-    const coursesQuery = query(collection(db, "courses"))
+    const collectionName = userCollection === "learner" ? "courses" : "Intern_Course"
+    const coursesQuery = query(collection(db, collectionName))
+
     const unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
       const coursesData = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -93,9 +95,8 @@ const LearnerDashboard = () => {
     })
 
     return () => unsubscribeCourses()
-  }, [user])
+  }, [user, userCollection])
 
-  // Subscribe to real-time updates for learner progress
   useEffect(() => {
     if (!user || !userCollection) return
 
@@ -104,7 +105,7 @@ const LearnerDashboard = () => {
       progressCollection,
       (snapshot) => {
         if (snapshot.empty) {
-          setProgress({}) // Set to empty object instead of null
+          setProgress({})
           return
         }
 
@@ -116,14 +117,41 @@ const LearnerDashboard = () => {
       },
       (error) => {
         console.error("Error fetching progress:", error)
-        setProgress({}) // Set to empty object on error
+        setProgress({})
       },
     )
 
     return () => unsubscribeProgress()
   }, [user, userCollection])
 
-  // Subscribe to real-time updates for learner history
+  // Fetch quiz scores from the "course score" subcollection
+  useEffect(() => {
+    if (!user || !userCollection) return
+
+    const courseScoreCollection = collection(db, userCollection, user.uid, "course score")
+    const unsubscribeQuizScores = onSnapshot(
+      courseScoreCollection,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setQuizScores([])
+          return
+        }
+
+        const scoresData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        setQuizScores(scoresData)
+      },
+      (error) => {
+        console.error("Error fetching quiz scores:", error)
+        setQuizScores([])
+      },
+    )
+
+    return () => unsubscribeQuizScores()
+  }, [user, userCollection])
+
   useEffect(() => {
     if (!user || !userCollection) return
 
@@ -132,8 +160,8 @@ const LearnerDashboard = () => {
       historyCollection,
       (snapshot) => {
         if (snapshot.empty) {
-          setHistory([]) // Set to empty array instead of null
-          setRecentActivities([]) // Clear recent activities
+          setHistory([])
+          setRecentActivities([])
           return
         }
 
@@ -154,7 +182,7 @@ const LearnerDashboard = () => {
       },
       (error) => {
         console.error("Error fetching history:", error)
-        setHistory([]) // Set to empty array on error
+        setHistory([])
         setRecentActivities([])
       },
     )
@@ -162,7 +190,6 @@ const LearnerDashboard = () => {
     return () => unsubscribeHistory()
   }, [user, userCollection])
 
-  // Fetch certificates
   useEffect(() => {
     if (!user) return
 
@@ -180,58 +207,164 @@ const LearnerDashboard = () => {
     return () => unsubscribeCertificates()
   }, [user])
 
-  // Calculate statistics
+  // Update the quiz stats calculation to check for quiz scores in the progress collection
+  // Replace the existing calculateQuizStats function with this implementation
+
+  const calculateQuizStats = async () => {
+    let totalQuizzes = 0
+    let completedQuizzes = 0
+
+    try {
+      // Get all quizzes across all courses
+      for (const course of courses) {
+        // Check if the course has quizzes
+        const quizzesSnapshot = await getDocs(
+          collection(db, userCollection === "intern" ? "Intern_Course" : "courses", course.id, "quizzes"),
+        )
+
+        if (!quizzesSnapshot.empty) {
+          const courseQuizCount = quizzesSnapshot.size
+          totalQuizzes += courseQuizCount
+
+          // Check if the user has a progress document for this course
+          const progressRef = doc(db, userCollection, user.uid, "progress", course.id)
+          const progressSnap = await getDoc(progressRef)
+
+          if (progressSnap.exists()) {
+            // Check if there are quiz scores in the course score collection
+            const courseScoreCollection = collection(
+              db,
+              userCollection,
+              user.uid,
+              "progress",
+              course.id,
+              "course score",
+            )
+            const courseScoreSnapshot = await getDocs(courseScoreCollection)
+
+            // Count unique completed quizzes for this course
+            const completedQuizIds = new Set()
+            courseScoreSnapshot.forEach((doc) => {
+              const scoreData = doc.data()
+              if (scoreData.quizId && (scoreData.passed || scoreData.isCompleted)) {
+                completedQuizIds.add(scoreData.quizId)
+              }
+            })
+
+            completedQuizzes += completedQuizIds.size
+          }
+        }
+      }
+
+      setStats((prevStats) => ({
+        ...prevStats,
+        totalQuizzes,
+        completedQuizzes,
+      }))
+    } catch (error) {
+      console.error("Error calculating quiz stats:", error)
+      setStats((prevStats) => ({
+        ...prevStats,
+        totalQuizzes: 0,
+        completedQuizzes: 0,
+      }))
+    }
+  }
+
+  // Update the useEffect that calls calculateQuizStats to include the new dependencies
   useEffect(() => {
-    if (!courses.length) {
+    if (!courses.length || !userCollection || !user) {
       setDashboardLoading(false)
       return
     }
 
-    // Ensure progress is an object and not null/undefined
-    const progressData = progress || {}
+    const calculateCourseStats = () => {
+      // Existing course stats calculation code...
+      const totalCourses = courses.length
+      let completedCourses = 0
+      let inProgressCourses = 0
+      let totalModules = 0
+      let completedModules = 0
+      let certificatesEarned = 0
 
-    const totalCourses = courses.length
-    let completedCourses = 0
-    let inProgressCourses = 0
-    let totalModules = 0
-    let completedModules = 0
+      // Track courses with certificates in progress collection
+      const coursesWithCertificates = new Set()
 
-    courses.forEach((course) => {
-      const courseProgress = progressData[course.id]
+      // First, check for certificates in progress collection
+      Object.entries(progress).forEach(([courseId, courseProgress]) => {
+        if (courseProgress.certificate) {
+          coursesWithCertificates.add(courseId)
+          certificatesEarned++
+        }
+      })
 
-      if (!courseProgress) {
-        return
-      }
+      courses.forEach((course) => {
+        const courseProgress = progress[course.id]
 
-      // Count modules
-      const moduleCount = course.modules?.length || 0
-      totalModules += moduleCount
+        // Ensure that course.numModules is parsed as an integer
+        const moduleCount = Number.parseInt(course.numModules) || 0
+        totalModules += moduleCount
 
-      // Count completed modules
-      const completedModuleCount = courseProgress.completedModules?.length || 0
-      completedModules += completedModuleCount
+        const completedModuleCount = courseProgress?.completedModules?.length || 0
+        completedModules += completedModuleCount
 
-      // Determine course completion status
-      if (completedModuleCount === moduleCount && moduleCount > 0) {
-        completedCourses++
-      } else if (completedModuleCount > 0) {
-        inProgressCourses++
-      }
-    })
+        // Check if the course is completed
+        // A course is considered completed if:
+        // 1. It has a certificate in the progress collection, OR
+        // 2. All modules are completed
+        if (coursesWithCertificates.has(course.id)) {
+          // If the course has a certificate, it's completed regardless of module completion
+          completedCourses++
+        } else if (completedModuleCount === moduleCount && moduleCount > 0) {
+          completedCourses++
+        } else if (completedModuleCount > 0) {
+          inProgressCourses++
+        }
+      })
 
-    setStats({
-      totalCourses,
-      completedCourses,
-      inProgressCourses,
-      totalModules,
-      completedModules,
-      certificatesEarned: certificates.length,
-    })
+      // Add certificates from the legacy certificates collection
+      // but avoid double-counting courses that already have certificates in progress
+      certificates.forEach((cert) => {
+        if (cert.courseId && !coursesWithCertificates.has(cert.courseId) && cert.isCourseWide) {
+          certificatesEarned++
 
-    setDashboardLoading(false)
-  }, [courses, progress, certificates])
+          // If this course wasn't already counted as completed, increment completed courses
+          const course = courses.find((c) => c.id === cert.courseId)
+          if (course) {
+            const courseProgress = progress[cert.courseId]
+            const completedModuleCount = courseProgress?.completedModules?.length || 0
+            const moduleCount = Number.parseInt(course.numModules) || 0
 
-  // Format date
+            // Only count if it wasn't already counted as completed
+            if (completedModuleCount !== moduleCount || moduleCount === 0) {
+              completedCourses++
+              // If it was in progress, decrement in-progress count
+              if (completedModuleCount > 0) {
+                inProgressCourses--
+              }
+            }
+          }
+        }
+      })
+
+      setStats((prevStats) => ({
+        ...prevStats,
+        totalCourses,
+        completedCourses,
+        inProgressCourses,
+        totalModules,
+        completedModules,
+        certificatesEarned,
+      }))
+    }
+
+    // Calculate course stats first
+    calculateCourseStats()
+
+    // Then calculate quiz stats and finish loading
+    calculateQuizStats().then(() => setDashboardLoading(false))
+  }, [courses, progress, certificates, userCollection, user])
+
   const formatDate = (timestamp) => {
     if (!timestamp) return "N/A"
     const date = timestamp.toDate()
@@ -244,10 +377,14 @@ const LearnerDashboard = () => {
     }).format(date)
   }
 
-  // Calculate course progress percentage
   const calculateCourseProgress = (courseId) => {
     const course = courses.find((c) => c.id === courseId)
     const courseProgress = progress && progress[courseId]
+
+    // If the course has a certificate in progress, it's 100% complete
+    if (courseProgress?.certificate) {
+      return 100
+    }
 
     if (!course || !courseProgress) return 0
 
@@ -258,7 +395,6 @@ const LearnerDashboard = () => {
     return Math.round((completedModules / totalModules) * 100)
   }
 
-  // Prepare data for charts
   const prepareProgressChartData = () => {
     return [
       { name: "Completed", value: stats.completedCourses },
@@ -274,7 +410,13 @@ const LearnerDashboard = () => {
     ]
   }
 
-  // Prepare course progress data for bar chart
+  const prepareQuizChartData = () => {
+    return [
+      { name: "Completed", value: stats.completedQuizzes },
+      { name: "Remaining", value: stats.totalQuizzes - stats.completedQuizzes },
+    ]
+  }
+
   const prepareCourseProgressData = () => {
     return courses.slice(0, 5).map((course) => {
       const progressPercent = calculateCourseProgress(course.id)
@@ -314,7 +456,6 @@ const LearnerDashboard = () => {
     )
   }
 
-  // Check if progress and history exist
   const hasProgress = progress && Object.keys(progress).length > 0
   const hasHistory = history && history.length > 0
 
@@ -324,7 +465,6 @@ const LearnerDashboard = () => {
         <Sidebar />
       </SidebarWrapper>
       <MainContent expanded={expanded}>
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div className="flex items-center mb-4 md:mb-0">
             {learnerData?.photoURL?.url ? (
@@ -339,7 +479,7 @@ const LearnerDashboard = () => {
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold ">
+              <h1 className="text-2xl font-bold">
                 Welcome, {learnerData?.fullName || user.email?.split("@")[0] || "Learner"}
               </h1>
               <p className="text-gray-500">{learnerData?.email || user.email}</p>
@@ -358,7 +498,6 @@ const LearnerDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 shadow-lg text-white">
             <div className="flex items-center mb-4">
@@ -387,30 +526,30 @@ const LearnerDashboard = () => {
 
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 shadow-lg text-white">
             <div className="flex items-center mb-4">
-              <FaCheckCircle className="text-white text-2xl mr-3" />
-              <h2 className="text-xl font-semibold">Module Progress</h2>
+              <FaQuestionCircle className="text-white text-2xl mr-3" />
+              <h2 className="text-xl font-semibold">Quiz Progress</h2>
             </div>
-            {hasProgress ? (
+            {quizScores.length > 0 || stats.totalQuizzes > 0 ? (
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-gray-100">
-                    Completed: {stats.completedModules} of {stats.totalModules}
+                    Completed: {stats.completedQuizzes} of {stats.totalQuizzes}
                   </p>
                   <p className="text-gray-100 font-bold">
-                    {stats.totalModules > 0 ? Math.round((stats.completedModules / stats.totalModules) * 100) : 0}%
+                    {stats.totalQuizzes > 0 ? Math.round((stats.completedQuizzes / stats.totalQuizzes) * 100) : 0}%
                   </p>
                 </div>
                 <div className="w-full bg-green-700 rounded-full h-3">
                   <div
                     className="bg-white h-3 rounded-full"
                     style={{
-                      width: `${stats.totalModules > 0 ? (stats.completedModules / stats.totalModules) * 100 : 0}%`,
+                      width: `${stats.totalQuizzes > 0 ? (stats.completedQuizzes / stats.totalQuizzes) * 100 : 0}%`,
                     }}
                   ></div>
                 </div>
               </div>
             ) : (
-              <p className="text-gray-100">No module completion data available.</p>
+              <p className="text-gray-100">No quiz data available.</p>
             )}
           </div>
 
@@ -426,8 +565,8 @@ const LearnerDashboard = () => {
                   <p className="text-gray-100">Earned</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold">{stats.completedCourses - stats.certificatesEarned}</p>
-                  <p className="text-gray-100">Available</p>
+                  <p className="text-3xl font-bold">{stats.totalCourses}</p>
+                  <p className="text-gray-100">Total Available</p>
                 </div>
               </div>
               {stats.completedCourses > 0 && (
@@ -442,9 +581,7 @@ const LearnerDashboard = () => {
           </div>
         </div>
 
-        {/* Charts and Course Progress */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Course Progress Chart */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Course Progress Overview</h2>
             {hasProgress ? (
@@ -476,35 +613,6 @@ const LearnerDashboard = () => {
             )}
           </div>
 
-          {/* Course Progress Bar Chart */}
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Your Course Progress</h2>
-            {hasProgress && courses.length > 0 ? (
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={prepareCourseProgressData()}
-                    layout="vertical"
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip formatter={(value) => [`${value}%`, "Completion"]} />
-                    <Bar dataKey="progress" fill="#00C49F" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">No course progress data available.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity and Courses */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Recent Activity */}
           <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -536,81 +644,8 @@ const LearnerDashboard = () => {
               </div>
             )}
           </div>
-
-          {/* Your Courses */}
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <FaGraduationCap className="text-green-500 text-xl mr-3" />
-                <h2 className="text-xl font-semibold">Your Courses</h2>
-              </div>
-              {courses.length > 5 && (
-                <button
-                  onClick={() => (window.location.href = "/courses")}
-                  className="text-sm bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-white transition-colors"
-                >
-                  View all ({courses.length})
-                </button>
-              )}
-            </div>
-            {courses.length > 0 ? (
-              <ul className="space-y-4">
-                {courses.slice(0, 5).map((course) => {
-                  const progressPercent = calculateCourseProgress(course.id)
-                  return (
-                    <li
-                      key={course.id}
-                      className="border-b border-gray-200 pb-3 last:border-0 hover:bg-gray-50 transition-colors p-2 rounded"
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <p className="font-medium">{course.title}</p>
-                        <span
-                          className={`text-sm px-2 py-1 rounded text-white ${
-                            progressPercent === 100
-                              ? "bg-green-500"
-                              : progressPercent > 0
-                                ? "bg-blue-500"
-                                : "bg-gray-500"
-                          }`}
-                        >
-                          {progressPercent === 100
-                            ? "Completed"
-                            : progressPercent > 0
-                              ? `${progressPercent}% Complete`
-                              : "Not Started"}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div
-                          className={`h-2 rounded-full ${progressPercent === 100 ? "bg-green-500" : "bg-blue-500"}`}
-                          style={{ width: `${progressPercent}%` }}
-                        ></div>
-                      </div>
-                      <button
-                        onClick={() => (window.location.href = `/courses/${course.id}`)}
-                        className="mt-2 text-xs text-blue-500 hover:text-blue-700"
-                      >
-                        {progressPercent === 0
-                          ? "Start Course"
-                          : progressPercent === 100
-                            ? "Review Course"
-                            : "Continue Course"}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <FaGraduationCap className="text-gray-300 text-4xl mb-3" />
-                <p className="text-gray-500">No courses found.</p>
-                <p className="text-sm text-gray-400 mt-2">Enroll in courses to see them here.</p>
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* Certificates */}
         <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">

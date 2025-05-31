@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FaCloudUploadAlt,
   FaTimes,
@@ -8,12 +8,13 @@ import {
   FaFileAlt,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import IntSidebar from "./sidebar";
+import Sidebar from "../Admin/Aside";
 import LgNavbar from "../components/LgNavbar";
 import uploadToCloudinary from "../uploadToCloudinary";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase.config";
+import { db, auth } from "../firebase.config";
 import styled from "styled-components";
+import { doc, getDoc } from "firebase/firestore";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -62,8 +63,25 @@ const AddCourse = () => {
   const [modal, setModal] = useState({ isOpen: false, type: "success", content: "" });
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
-  const [numModules, setNumModules] = useState(1); // State for number of modules
+  const [numModules, setNumModules] = useState(1);
+  const [userRole, setUserRole] = useState("");
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          setUserRole(userDocSnap.data().role);
+        }
+      }
+    };
+
+    fetchUserRole();
+  }, []);
 
   // Toggle Sidebar function
   const toggleSidebar = () => {
@@ -178,7 +196,7 @@ const AddCourse = () => {
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper expanded={isSidebarOpen}>
-          <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <MainContent expanded={isSidebarOpen}>
           {/* Header Section */}
@@ -211,6 +229,7 @@ const AddCourse = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
+                    disabled={userRole !== "admin"} // Disable if user is not admin
                   />
                 </div>
 
@@ -223,6 +242,7 @@ const AddCourse = () => {
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
                     required
+                    disabled={userRole !== "admin"} // Disable if user is not admin
                   >
                     <option value="public">ALL</option>
                     <option value="intern">INTERN</option>
@@ -240,6 +260,7 @@ const AddCourse = () => {
                     value={numModules}
                     onChange={(e) => setNumModules(parseInt(e.target.value))}
                     required
+                    disabled={userRole !== "admin"} // Disable if user is not admin
                   >
                     {[...Array(10)].map((_, i) => (
                       <option key={i + 1} value={i + 1}>
@@ -257,6 +278,7 @@ const AddCourse = () => {
                     rows="4"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    disabled={userRole !== "admin"} // Disable if user is not admin
                   ></textarea>
                 </div>
 
@@ -271,9 +293,9 @@ const AddCourse = () => {
                         ? "border-indigo-300 bg-indigo-50"
                         : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50"
                     }`}
-                    onClick={triggerFileInput}
+                    onClick={userRole === "admin" ? triggerFileInput : undefined} // Only trigger if user is admin
                   >
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} required />
+                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} required disabled={userRole !== "admin"} />
 
                     <div className="flex flex-col items-center justify-center">
                       {file ? (
@@ -298,25 +320,27 @@ const AddCourse = () => {
                 </div>
               </div>
 
-              <div className="flex justify-center mt-8">
-                <button
-                  type="submit"
-                  className="flex items-center justify-center bg-indigo-600 text-white py-3 px-8 rounded-xl hover:bg-indigo-700 transition-colors font-medium min-w-[200px]"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
-                      <span>Uploading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaUpload className="mr-2" />
-                      <span>Upload Course</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              {userRole === "admin" && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    type="submit"
+                    className="flex items-center justify-center bg-indigo-600 text-white py-3 px-8 rounded-xl hover:bg-indigo-700 transition-colors font-medium min-w-[200px]"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-3"></div>
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaUpload className="mr-2" />
+                        <span>Upload Course</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
 

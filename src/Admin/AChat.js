@@ -40,7 +40,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { auth, db } from "../firebase.config";
-import IntSidebar from "./sidebar";
+import Sidebar from "../Admin/Aside"
 import LgNavbar from "../components/LgNavbar";
 import styled from "styled-components";
 import uploadToCloudinary from "../uploadToCloudinary";
@@ -2303,7 +2303,7 @@ const ElearningDashboard = () => {
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper>
-          <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
         <CourseDashboard expanded={isSidebarOpen} />
       </ContentContainer>

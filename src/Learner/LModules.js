@@ -12,6 +12,8 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  setDoc,
+  onSnapshot,
 } from "firebase/firestore"
 import { useEffect, useState, useContext } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
@@ -58,6 +60,7 @@ const ModuleDisplay = () => {
   const [quizzes, setQuizzes] = useState([])
   const [quizScores, setQuizScores] = useState({})
   const [quizAttempts, setQuizAttempts] = useState({}) // Track quiz attempts
+  const [allQuizzesCompleted, setAllQuizzesCompleted] = useState(false)
 
   // Add state variables for certificate functionality
   const [showCertificateAlert, setShowCertificateAlert] = useState(false)
@@ -95,106 +98,104 @@ const ModuleDisplay = () => {
   }
 
   useEffect(() => {
-    const checkUserTypeAndFetchData = async () => {
-      try {
-        // Get current user
-        if (!user) return
-
-        // Check if user exists in learner collection
-        const learnerDocRef = doc(db, "learner", user.uid)
-        const learnerDoc = await getDoc(learnerDocRef)
-
-        // Check if user exists in intern collection
-        const internDocRef = doc(db, "intern", user.uid)
-        const internDoc = await getDoc(internDocRef)
-
-        let courseCollectionName = "courses" // Default collection
-
-        if (learnerDoc.exists()) {
-          setUserType("learner")
-          courseCollectionName = "courses"
-        } else if (internDoc.exists()) {
-          setUserType("intern")
-          courseCollectionName = "Intern_Course"
-        } else {
-          console.warn("User not found in either learner or intern collection")
-        }
-
-        // Fetch course data
-        const fetchCourseData = async () => {
-          try {
-            const courseDoc = doc(db, courseCollectionName, courseId)
-            const courseSnapshot = await getDoc(courseDoc)
-            if (courseSnapshot.exists()) {
-              setCourseData(courseSnapshot.data())
-            }
-          } catch (error) {
-            console.error("Error fetching course data:", error)
-          }
-        }
-
-        // Fetch modules
-        const fetchModules = async () => {
-          try {
-            const modulesCollection = collection(db, courseCollectionName, courseId, "modules")
-            const querySnapshot = await getDocs(modulesCollection)
-            const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-
-            // Sort modules by their order if available
-            const sortedData = data.sort((a, b) => (a.order || 0) - (b.order || 0))
-            setModules(sortedData)
-          } catch (error) {
-            console.error("Error fetching modules:", error)
-          }
-        }
-
-        // Fetch quizzes for the course
-        const fetchQuizzes = async () => {
-          try {
-            const quizzesCollection = collection(db, courseCollectionName, courseId, "quizzes")
-            const querySnapshot = await getDocs(quizzesCollection)
-            const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-            setQuizzes(data)
-          } catch (error) {
-            console.error("Error fetching quizzes:", error)
-          }
-        }
-
-        // Execute all fetch operations
-        await Promise.all([fetchCourseData(), fetchModules(), fetchQuizzes()])
-      } catch (error) {
-        console.error("Error checking user type or fetching data:", error)
-      }
-    }
-
-    checkUserTypeAndFetchData()
-  }, [courseId, user])
-
-  const loadProgress = async () => {
-    if (!user) return
-
+  const checkUserTypeAndFetchData = async () => {
     try {
-      // Determine the collection based on user type
-      const userCollection = userType === "intern" ? "intern" : "learner"
+      if (!user) return;
 
-      const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId)
-      const userProgressDoc = await getDoc(userProgressRef)
+      const learnerDocRef = doc(db, "learner", user.uid);
+      const learnerDoc = await getDoc(learnerDocRef);
 
-      if (userProgressDoc.exists()) {
-        const userProgress = userProgressDoc.data()
-        setCompletedModules(userProgress.completedModules || [])
-        setCompletedChapters(userProgress.completedChapters || {})
+      const internDocRef = doc(db, "intern", user.uid);
+      const internDoc = await getDoc(internDocRef);
+
+      let courseCollectionName = "courses";
+
+      if (learnerDoc.exists()) {
+        setUserType("learner");
+        courseCollectionName = "courses";
+      } else if (internDoc.exists()) {
+        setUserType("intern");
+        courseCollectionName = "Intern_Course";
       } else {
-        setCompletedModules([])
-        setCompletedChapters({})
+        console.warn("User not found in either learner or intern collection");
       }
+
+      // Fetch course data with onSnapshot
+      const courseDoc = doc(db, courseCollectionName, courseId);
+      const unsubscribeCourse = onSnapshot(courseDoc, (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setCourseData(docSnapshot.data());
+        }
+      });
+
+      // Fetch modules with onSnapshot
+      const modulesCollection = collection(db, courseCollectionName, courseId, "modules");
+      const unsubscribeModules = onSnapshot(modulesCollection, (querySnapshot) => {
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const sortedData = data.sort((a, b) => (a.order || 0) - (b.order || 0));
+        setModules(sortedData);
+      });
+
+      // Fetch quizzes with onSnapshot
+      const quizzesCollection = collection(db, courseCollectionName, courseId, "quizzes");
+      const unsubscribeQuizzes = onSnapshot(quizzesCollection, (querySnapshot) => {
+        const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setQuizzes(data);
+      });
+
+      // Cleanup function to unsubscribe from the listeners
+      return () => {
+        unsubscribeCourse();
+        unsubscribeModules();
+        unsubscribeQuizzes();
+      };
     } catch (error) {
-      console.error("Error loading progress:", error)
-      // Reset progress if there's an error
-      setCompletedModules([])
-      setCompletedChapters({})
+      console.error("Error checking user type or fetching data:", error);
     }
+  };
+
+  checkUserTypeAndFetchData();
+}, [courseId, user]);
+
+
+  // Modify the loadProgress function to also check for certificates in the progress collection
+  const loadProgress = async () => {
+  if (!user) return;
+
+  try {
+    const userCollection = userType === "intern" ? "intern" : "learner";
+    const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId);
+
+    const unsubscribeProgress = onSnapshot(userProgressRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const userProgress = docSnapshot.data();
+        setCompletedModules(userProgress.completedModules || []);
+        setCompletedChapters(userProgress.completedChapters || {});
+
+        if (userProgress.completed) {
+          setAllModulesCompleted(true);
+        }
+
+        if (userProgress.certificate) {
+          setExistingCertificate(userProgress.certificate);
+        }
+      } else {
+        setCompletedModules([]);
+        setCompletedChapters({});
+      }
+    });
+
+    // Cleanup function to unsubscribe from the listener
+    return () => {
+      unsubscribeProgress();
+    };
+  } catch (error) {
+    console.error("Error loading progress:", error);
+    setCompletedModules([]);
+    setCompletedChapters({});
   }
+};
+
 
   const fetchQuizScores = async () => {
     if (!user) return
@@ -203,13 +204,12 @@ const ModuleDisplay = () => {
       // Determine the collection based on user type
       const userCollection = userType === "intern" ? "intern" : "learner"
 
-      // Get quiz scores
-      const scoresCollection = collection(db, userCollection, user.uid, "quizScores")
-      const scoresQuery = query(scoresCollection, where("courseId", "==", courseId))
-      const querySnapshot = await getDocs(scoresQuery)
+      // Get quiz scores from the course score collection inside progress/courseId
+      const scoresCollection = collection(db, userCollection, user.uid, "progress", courseId, "course score")
+      const scoresSnapshot = await getDocs(scoresCollection)
 
       const scoresData = {}
-      querySnapshot.docs.forEach((doc) => {
+      scoresSnapshot.docs.forEach((doc) => {
         const data = doc.data()
         scoresData[data.quizId] = {
           score: data.score,
@@ -221,13 +221,9 @@ const ModuleDisplay = () => {
       })
       setQuizScores(scoresData)
 
-      // Get quiz attempts
-      const attemptsCollection = collection(db, userCollection, user.uid, "course score")
-      const attemptsQuery = query(attemptsCollection, where("courseId", "==", courseId))
-      const attemptsSnapshot = await getDocs(attemptsQuery)
-
+      // Get quiz attempts from the same collection
       const attemptsData = {}
-      attemptsSnapshot.docs.forEach((doc) => {
+      scoresSnapshot.docs.forEach((doc) => {
         const data = doc.data()
         if (!attemptsData[data.quizId]) {
           attemptsData[data.quizId] = 0
@@ -235,11 +231,24 @@ const ModuleDisplay = () => {
         attemptsData[data.quizId]++
       })
       setQuizAttempts(attemptsData)
+
+      // Check if all quizzes are completed and passed
+      if (quizzes.length > 0) {
+        const allCompleted = quizzes.every((quiz) => {
+          const score = scoresData[quiz.id]
+          return score && score.passed
+        })
+        setAllQuizzesCompleted(allCompleted)
+      } else {
+        // If there are no quizzes, consider them all completed
+        setAllQuizzesCompleted(true)
+      }
     } catch (error) {
       console.error("Error fetching quiz scores and attempts:", error)
     }
   }
 
+  // Modify the loadCertificateData function to check for certificate in progress collection
   const loadCertificateData = async () => {
     if (!user) return
 
@@ -254,7 +263,16 @@ const ModuleDisplay = () => {
         setUserData(userSnap.data())
       }
 
-      // Check if certificate already exists
+      // Check if certificate already exists in progress document
+      const progressRef = doc(db, userCollection, user.uid, "progress", courseId)
+      const progressSnap = await getDoc(progressRef)
+
+      if (progressSnap.exists() && progressSnap.data().certificate) {
+        setExistingCertificate(progressSnap.data().certificate)
+        return
+      }
+
+      // Fallback to checking certificates collection for backward compatibility
       const certificatesCollection = collection(db, "certificates")
       const certificateQuery = query(
         certificatesCollection,
@@ -315,9 +333,21 @@ const ModuleDisplay = () => {
     } else {
       setAllModulesCompleted(false)
     }
-  }, [modules, completedModules])
 
-  // Add the generateCertificate function
+    // Also check if quizzes are completed when quizScores changes
+    if (quizzes.length > 0) {
+      const allCompleted = quizzes.every((quiz) => {
+        const score = quizScores[quiz.id]
+        return score && score.passed
+      })
+      setAllQuizzesCompleted(allCompleted)
+    } else {
+      // If there are no quizzes, consider them all completed
+      setAllQuizzesCompleted(true)
+    }
+  }, [modules, completedModules, quizzes, quizScores])
+
+  // Modify the generateCertificate function to save certificate in the progress collection
   const generateCertificate = async () => {
     if (!user || !courseData || !userData) return
 
@@ -343,7 +373,6 @@ const ModuleDisplay = () => {
       const certificateData = {
         userId: user.uid,
         userName: userData.fullName,
-        courseId,
         courseTitle: courseData.title,
         moduleTitle: "Complete Course",
         issueDate: serverTimestamp(),
@@ -353,12 +382,28 @@ const ModuleDisplay = () => {
         courseDescription: courseData.description,
       }
 
-      // Save certificate to Firestore
+      // Determine user type
+      const userCollection = userType === "intern" ? "intern" : "learner"
+
+      // Save certificate to the progress document
+      const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId)
+      await setDoc(
+        userProgressRef,
+        {
+          certificate: certificateData,
+          lastUpdated: serverTimestamp(),
+        },
+        { merge: true },
+      )
+
+      // Also save to certificates collection for backward compatibility
       const certificatesCollection = collection(db, "certificates")
-      await addDoc(certificatesCollection, certificateData)
+      await addDoc(certificatesCollection, {
+        ...certificateData,
+        courseId,
+      })
 
       // Update user's certificates count
-      const userCollection = userType === "intern" ? "intern" : "learner"
       const userRef = doc(db, userCollection, user.uid)
       await updateDoc(userRef, {
         certificatesCount: (userData.certificatesCount || 0) + 1,
@@ -765,8 +810,11 @@ const ModuleDisplay = () => {
                             className={`px-4 py-2 rounded-lg flex items-center ${
                               quizAttempts[quiz.id] > 0
                                 ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                : "bg-blue-600 text-white hover:bg-blue-700"
+                                : allModulesCompleted
+                                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                                  : "bg-gray-400 text-gray-200 cursor-not-allowed"
                             }`}
+                            disabled={!allModulesCompleted && quizAttempts[quiz.id] === 0}
                           >
                             {quizAttempts[quiz.id] > 0 ? (
                               <>
@@ -794,11 +842,11 @@ const ModuleDisplay = () => {
                 <FaCertificate className="text-yellow-400 text-3xl mr-3" />
                 <div>
                   <h2 className="text-xl font-bold">Course Certificate</h2>
-                  <p className="text-sm text-gray-300">Complete all modules to earn your certificate</p>
+                  <p className="text-sm text-gray-300">Complete all modules and quizzes to earn your certificate</p>
                 </div>
               </div>
 
-              {allModulesCompleted ? (
+              {allModulesCompleted && allQuizzesCompleted ? (
                 existingCertificate ? (
                   <div className="bg-green-800 bg-opacity-50 p-2 rounded-lg text-sm">
                     <FaCheck className="inline-block mr-1 text-green-400" />
@@ -826,6 +874,8 @@ const ModuleDisplay = () => {
                 <span>Course Progress</span>
                 <span>
                   {completedModules.length}/{modules.length} modules
+                  {quizzes.length > 0 &&
+                    ` • ${Object.keys(quizScores).filter((id) => quizScores[id].passed).length}/${quizzes.length} quizzes`}
                 </span>
               </div>
               <div className="h-1.5 w-full bg-gray-700 rounded-full">
@@ -835,6 +885,14 @@ const ModuleDisplay = () => {
                 ></div>
               </div>
             </div>
+
+            {/* Add a message if certificate is locked */}
+            {!allModulesCompleted || !allQuizzesCompleted ? (
+              <div className="mt-3 text-xs text-gray-300">
+                {!allModulesCompleted && <div>• Complete all modules</div>}
+                {!allQuizzesCompleted && <div>• Pass all quizzes</div>}
+              </div>
+            ) : null}
           </div>
           {/* Course Comments Section */}
           <div className="mt-6 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">

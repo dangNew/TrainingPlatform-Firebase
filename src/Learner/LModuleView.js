@@ -24,6 +24,7 @@ import {
   FaLayerGroup,
   FaChalkboardTeacher,
   FaScroll,
+  FaCertificate, // Make sure this line is added
 } from "react-icons/fa"
 import { auth, db } from "../firebase.config"
 import VideoPlayer from "./video-player"
@@ -203,12 +204,15 @@ const ModuleView = () => {
         const courseSnap = await getDoc(courseRef)
 
         // Check if module is already completed in history
-        const historyCollection = collection(db, userType === "intern" ? "intern" : "learner", user.uid, "history")
-        const historyQuery = query(
-          historyCollection,
-          where("moduleId", "==", moduleId),
-          where("courseId", "==", courseId),
+        const historyCollection = collection(
+          db,
+          userType === "intern" ? "intern" : "learner",
+          user.uid,
+          "progress",
+          courseId,
+          "history",
         )
+        const historyQuery = query(historyCollection, where("moduleId", "==", moduleId))
         const historySnapshot = await getDocs(historyQuery)
 
         if (!historySnapshot.empty) {
@@ -266,13 +270,19 @@ const ModuleView = () => {
               }
               setQuizAnswers(initialAnswers)
 
-              // Check for previous quiz attempts in moduleScore collection
+              // Check for previous quiz attempts in moduleScore collection inside progress/courseId
               try {
                 // Try the appropriate collection based on user type
                 const moduleScoreQuery = query(
-                  collection(db, userType === "intern" ? "intern" : "learner", user.uid, "moduleScore"),
+                  collection(
+                    db,
+                    userType === "intern" ? "intern" : "learner",
+                    user.uid,
+                    "progress",
+                    courseId,
+                    "moduleScore",
+                  ),
                   where("moduleId", "==", moduleId),
-                  where("courseId", "==", courseId),
                 )
 
                 const moduleScoreSnapshot = await getDocs(moduleScoreQuery)
@@ -449,6 +459,93 @@ const ModuleView = () => {
       const userProgressDoc = await getDoc(userProgressRef)
 
       let completedModules = []
+      let completedChapters = {}
+      if (userProgressDoc.exists()) {
+        completedModules = userProgressDoc.data().completedModules || []
+        completedChapters = userProgressDoc.data().completedChapters || {}
+      }
+
+      if (!completedModules.includes(moduleId)) {
+        completedModules.push(moduleId)
+      }
+
+      // Update completed chapters for the current module
+      completedChapters[moduleId] = module.chapters.map((_, index) => index)
+
+      await setDoc(
+        userProgressRef,
+        {
+          completedModules,
+          completedChapters,
+          lastUpdated: serverTimestamp(),
+        },
+        { merge: true },
+      )
+
+      // 2. Add completion record to user's history collection inside progress
+      if (!moduleAlreadyCompleted) {
+        // Create history subcollection inside progress document
+        const historyCollection = collection(db, userCollection, user.uid, "progress", courseId, "history")
+        const historyDoc = await addDoc(historyCollection, {
+          moduleId,
+          moduleTitle: module.title,
+          completedAt: serverTimestamp(),
+          chaptersCompleted: (unlockedChapters[moduleId] || []).length,
+          totalChapters: module.chapters.length,
+        })
+
+        // Store the history document ID
+        setHistoryDocId(historyDoc.id)
+
+        // Update module completion status
+        setModuleAlreadyCompleted(true)
+      }
+
+      // 3. Check if all modules are completed and update the progress document
+      const courseRef = doc(db, userCollection === "intern" ? "Intern_Course" : "courses", courseId)
+      const courseSnap = await getDoc(courseRef)
+
+      if (courseSnap.exists()) {
+        const courseData = courseSnap.data()
+        const totalModules = courseData.numModules || 0
+
+        if (completedModules.length === totalModules) {
+          await setDoc(
+            userProgressRef,
+            {
+              completed: true,
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true },
+          )
+        }
+      }
+
+      // 4. Show module completed screen
+      setShowModuleCompleted(true)
+    } catch (error) {
+      console.error("Error saving completion:", error)
+      setError("There was an error saving your progress. Please try again.")
+    } finally {
+      setSavingCompletion(false)
+    }
+  }
+
+  // Function to mark module as completed in the database without showing the completion screen
+  const markModuleAsCompleted = async () => {
+    if (!user || !module || !course) return
+
+    try {
+      setSavingCompletion(true)
+
+      // Determine user type
+      const userCollection = userData && userData.role === "intern" ? "intern" : "learner"
+
+      // 1. Mark the module as completed in Firestore
+      const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId)
+      const userProgressDoc = await getDoc(userProgressRef)
+
+      let completedModules = []
       if (userProgressDoc.exists()) {
         completedModules = userProgressDoc.data().completedModules || []
       }
@@ -466,32 +563,80 @@ const ModuleView = () => {
       }
 
       // 2. Add completion record to user's history in Firestore ONLY if not already completed
-      if (!moduleAlreadyCompleted) {
-        const historyCollection = collection(db, userCollection, user.uid, "history")
-        const historyDoc = await addDoc(historyCollection, {
-          courseId,
-          courseTitle: course.title,
-          moduleId,
-          moduleTitle: module.title,
-          completedAt: serverTimestamp(),
-          chaptersCompleted: (unlockedChapters[moduleId] || []).length,
-          totalChapters: module.chapters.length,
-        })
+      const historyCollection = collection(db, userCollection, user.uid, "progress", courseId, "history")
+      const historyDoc = await addDoc(historyCollection, {
+        moduleId,
+        moduleTitle: module.title,
+        completedAt: serverTimestamp(),
+        chaptersCompleted: (unlockedChapters[moduleId] || []).length,
+        totalChapters: module.chapters.length,
+      })
 
-        // Store the history document ID
-        setHistoryDocId(historyDoc.id)
+      // Store the history document ID
+      setHistoryDocId(historyDoc.id)
 
-        // Update module completion status
-        setModuleAlreadyCompleted(true)
-      }
-
-      // 3. Show module completed screen
-      setShowModuleCompleted(true)
+      // Update module completion status
+      setModuleAlreadyCompleted(true)
     } catch (error) {
       console.error("Error saving completion:", error)
       setError("There was an error saving your progress. Please try again.")
     } finally {
       setSavingCompletion(false)
+    }
+  }
+
+  // Modify the submitQuiz function to save to the new location
+  const submitQuiz = async () => {
+    if (quizSubmitting) return
+
+    try {
+      setQuizSubmitting(true)
+
+      // Calculate results
+      const results = calculateQuizResults()
+      setQuizResults(results)
+
+      // Save results to Firestore
+      if (user) {
+        const scoreData = {
+          userId: user.uid,
+          quizId: currentQuiz.id,
+          moduleId,
+          quizTitle: currentQuiz.title,
+          score: results.score,
+          totalPoints: results.totalPoints,
+          percentage: results.percentage,
+          correctAnswers: results.correctAnswers,
+          totalQuestions: results.totalQuestions,
+          passed: results.passed,
+          answers: quizAnswers,
+          completedAt: serverTimestamp(),
+          attempts: quizAttemptCount + 1, // Add attempts field to track number of attempts
+        }
+
+        // Determine user type
+        const userCollection = userData && userData.role === "intern" ? "intern" : "learner"
+
+        // Add to moduleScore collection inside progress/courseId
+        await addDoc(collection(db, userCollection, user.uid, "progress", courseId, "moduleScore"), scoreData)
+        setQuizAttemptCount((prevCount) => prevCount + 1)
+
+        console.log("Quiz results saved to Firestore")
+
+        // Set has previous attempt since we just submitted a quiz
+        setHasPreviousAttempt(true)
+        setPreviousQuizAttempt(scoreData)
+
+        // Mark the module as completed in the database, but don't show the completion screen yet
+        await markModuleAsCompleted()
+      }
+
+      setQuizSubmitted(true)
+      setShowQuizResults(true)
+    } catch (error) {
+      console.error("Error submitting quiz:", error)
+    } finally {
+      setQuizSubmitting(false)
     }
   }
 
@@ -584,61 +729,6 @@ const ModuleView = () => {
     }
   }
 
-  const submitQuiz = async () => {
-    if (quizSubmitting) return
-
-    try {
-      setQuizSubmitting(true)
-
-      // Calculate results
-      const results = calculateQuizResults()
-      setQuizResults(results)
-
-      // Save results to Firestore
-      if (user) {
-        const scoreData = {
-          userId: user.uid,
-          courseId,
-          quizId: currentQuiz.id,
-          moduleId,
-          quizTitle: currentQuiz.title,
-          score: results.score,
-          totalPoints: results.totalPoints,
-          percentage: results.percentage,
-          correctAnswers: results.correctAnswers,
-          totalQuestions: results.totalQuestions,
-          passed: results.passed,
-          answers: quizAnswers,
-          completedAt: serverTimestamp(),
-          attempts: quizAttemptCount + 1, // Add attempts field to track number of attempts
-        }
-
-        // Determine user type
-        const userCollection = userData && userData.role === "intern" ? "intern" : "learner"
-
-        // Add to user's moduleScore collection
-        await addDoc(collection(db, userCollection, user.uid, "moduleScore"), scoreData)
-        setQuizAttemptCount((prevCount) => prevCount + 1)
-
-        console.log("Quiz results saved to Firestore")
-
-        // Set has previous attempt since we just submitted a quiz
-        setHasPreviousAttempt(true)
-        setPreviousQuizAttempt(scoreData)
-
-        // Mark the module as completed in the database, but don't show the completion screen yet
-        await markModuleAsCompleted()
-      }
-
-      setQuizSubmitted(true)
-      setShowQuizResults(true)
-    } catch (error) {
-      console.error("Error submitting quiz:", error)
-    } finally {
-      setQuizSubmitting(false)
-    }
-  }
-
   const getTotalQuizQuestions = () => {
     if (!currentQuiz || !currentQuiz.sections) return 0
 
@@ -701,64 +791,6 @@ const ModuleView = () => {
   const handleGoToAssessment = () => {
     // Navigate to assessment exam page
     navigate(`/assessment?courseId=${courseId}`)
-  }
-
-  // Function to mark module as completed in the database without showing the completion screen
-  const markModuleAsCompleted = async () => {
-    if (!user || !module || !course) return
-
-    try {
-      setSavingCompletion(true)
-
-      // Determine user type
-      const userCollection = userData && userData.role === "intern" ? "intern" : "learner"
-
-      // 1. Mark the module as completed in Firestore
-      const userProgressRef = doc(db, userCollection, user.uid, "progress", courseId)
-      const userProgressDoc = await getDoc(userProgressRef)
-
-      let completedModules = []
-      if (userProgressDoc.exists()) {
-        completedModules = userProgressDoc.data().completedModules || []
-      }
-
-      if (!completedModules.includes(moduleId)) {
-        completedModules.push(moduleId)
-        await setDoc(
-          userProgressRef,
-          {
-            completedModules,
-            lastUpdated: serverTimestamp(),
-          },
-          { merge: true },
-        )
-      }
-
-      // 2. Add completion record to user's history in Firestore ONLY if not already completed
-      if (!moduleAlreadyCompleted) {
-        const historyCollection = collection(db, userCollection, user.uid, "history")
-        const historyDoc = await addDoc(historyCollection, {
-          courseId,
-          courseTitle: course.title,
-          moduleId,
-          moduleTitle: module.title,
-          completedAt: serverTimestamp(),
-          chaptersCompleted: (unlockedChapters[moduleId] || []).length,
-          totalChapters: module.chapters.length,
-        })
-
-        // Store the history document ID
-        setHistoryDocId(historyDoc.id)
-
-        // Update module completion status
-        setModuleAlreadyCompleted(true)
-      }
-    } catch (error) {
-      console.error("Error saving completion:", error)
-      setError("There was an error saving your progress. Please try again.")
-    } finally {
-      setSavingCompletion(false)
-    }
   }
 
   // Force check scroll position when content loads
@@ -921,6 +953,7 @@ const ModuleView = () => {
   }
 
   // If showing previous quiz results
+  // If showing previous quiz results
   if (showQuiz && showQuizResults && quizResults) {
     return (
       <div className="flex h-screen bg-gray-100">
@@ -997,10 +1030,7 @@ const ModuleView = () => {
 
               {/* Add Module Completed to sidebar if module is completed */}
               {moduleAlreadyCompleted && (
-                <li
-                  className="rounded-xl bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer"
-                  onClick={() => setShowModuleCompleted(true)}
-                >
+                <li className="rounded-xl bg-green-50 text-green-700">
                   <div className="flex items-center p-3">
                     <div className="p-2 bg-green-100 rounded-lg mr-3">
                       <FaMedal className="text-green-600" />
@@ -1034,8 +1064,8 @@ const ModuleView = () => {
             <button
               onClick={() => {
                 setShowQuizResults(false)
-                setShowQuiz(false)
-                setShowPreviousAttempt(false)
+                setCurrentQuizSection(0)
+                setCurrentQuizQuestion(0)
               }}
               className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
             >
@@ -1145,9 +1175,32 @@ const ModuleView = () => {
                     </span>
                   </button>
                 )}
+
+                {/* Add Finish Module button next to Review Answers */}
+                <button
+                  onClick={completeModule}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center"
+                >
+                  <FaTrophy className="mr-2" /> Finish Module
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Module Completed Section */}
+          {moduleAlreadyCompleted && (
+            <div className="mt-8 p-4 bg-gradient-to-r from-green-500 to-green-700 rounded-lg text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FaCertificate className="text-yellow-400 text-3xl mr-3" />
+                  <div>
+                    <h2 className="text-xl font-bold">Module Completed</h2>
+                    <p className="text-sm text-gray-300">You have successfully completed this module.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )

@@ -77,6 +77,7 @@ const LNavbar = () => {
     setExpanded(!expanded)
   }
 
+
   const toggleNavbar = () => {
     setMobileDrawerOpen(!mobileDrawerOpen)
   }
@@ -198,13 +199,13 @@ const LNavbar = () => {
                     <Settings size={16} />
                     <span>Settings</span>
                   </div>
-                  <div
+                  {/* <div
                     className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer"
                     onClick={navigateToHelp}
                   >
                     <LifeBuoy size={16} />
                     <span>Help</span>
-                  </div>
+                  </div> */}
                   <hr className="my-1 border-gray-200" />
                   <div
                     className="px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center gap-2 cursor-pointer"

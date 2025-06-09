@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../firebase.config"
+import { auth, db } from "../firebase.config";
 
 const Testimonials = () => {
   const [comments, setComments] = useState([]);
@@ -39,7 +39,8 @@ const Testimonials = () => {
           });
         }
 
-        setComments(commentsData);
+        // Only keep the first 6 testimonials
+        setComments(commentsData.slice(0, 6));
       } catch (error) {
         console.error("Error fetching testimonials:", error);
       }

@@ -2421,107 +2421,104 @@ function ChatRoom() {
       )}
     </div>
     {showChatInfo && activeChat && (
-      <div className="absolute top-16 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
-        <div className="text-lg font-medium mb-2 border-b pb-2 flex justify-between items-center">
-          <span>Chat info</span>
-          <button
-            onClick={() => setShowChatInfo(false)}
-            className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
+  <div className="absolute top-16 right-4 bg-white shadow-lg rounded-xl p-4 z-20 w-64">
+    <div className="text-lg font-medium mb-2 border-b pb-2 flex justify-between items-center">
+      <span>Chat info</span>
+      <button
+        onClick={() => setShowChatInfo(false)}
+        className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
+      >
+        <X size={16} />
+      </button>
+    </div>
 
-        <div className="space-y-3 py-2">
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-            onClick={() => {
-              setEditingGroupName(true)
-              setNewGroupName(activeChat.name)
-            }}
-          >
-            <Edit2 size={18} className="mr-3 text-indigo-600" />
-            <span className="text-gray-700">Change chat name</span>
-          </button>
+    <div className="space-y-3 py-2">
+      <button
+        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+        onClick={() => {
+          setEditingGroupName(true);
+          setNewGroupName(activeChat.name);
+        }}
+      >
+        <Edit2 size={18} className="mr-3 text-indigo-600" />
+        <span className="text-gray-700">Change chat name</span>
+      </button>
 
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <ImageIcon size={18} className="mr-3 text-indigo-600" />
-            <span className="text-gray-700">Change photo</span>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-            />
-          </button>
+      <button
+        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <ImageIcon size={18} className="mr-3 text-indigo-600" />
+        <span className="text-gray-700">Change photo</span>
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          onChange={handlePhotoUpload}
+        />
+      </button>
 
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-            onClick={() => setShowThemeSelector(!showThemeSelector)}
-          >
-            <Palette size={18} className="mr-3 text-indigo-600" />
-            <span className="text-gray-700">Change theme</span>
-          </button>
+      <button
+        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+        onClick={() => setShowThemeSelector(!showThemeSelector)}
+      >
+        <Palette size={18} className="mr-3 text-indigo-600" />
+        <span className="text-gray-700">Change theme</span>
+      </button>
 
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-            onClick={() => setShowEmojiSelector(!showEmojiSelector)}
-          >
-            <Smile size={18} className="mr-3 text-indigo-600" />
-            <span className="text-gray-700">Change emoji</span>
-          </button>
+      <button
+        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+        onClick={() => setShowEmojiSelector(!showEmojiSelector)}
+      >
+        <Smile size={18} className="mr-3 text-indigo-600" />
+        <span className="text-gray-700">Change emoji</span>
+      </button>
 
-          <button
-            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-            onClick={() => {
-              setShowChatInfo(false)
-              if (activeChat.type === "group") {
-                setShowGroupMembers(true)
-              }
-            }}
-          >
-            <Users size={18} className="mr-3 text-indigo-600" />
-            <span className="text-gray-700">{activeChat.type === "group" ? "Chat members" : "Edit nicknames"}</span>
-          </button>
+      {activeChat.type === "group" && (
+        <button
+          className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
+          onClick={() => {
+            setShowChatInfo(false);
+            setShowAddMembers(true);
+            setSelectedUsers([]);
+            setSearchTerm("");
+          }}
+        >
+          <UserPlus size={18} className="mr-3 text-indigo-600" />
+          <span className="text-gray-700">Add members</span>
+        </button>
+      )}
 
-          {activeChat.type === "group" && (
-            <button
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center"
-              onClick={() => {
-                setShowChatInfo(false)
-                setShowAddMembers(true)
-                setSelectedUsers([])
-                setSearchTerm("")
-              }}
-            >
-              <UserPlus size={18} className="mr-3 text-indigo-600" />
-              <span className="text-gray-700">Add members</span>
-            </button>
-          )}
-
-          <div className="border-t pt-2 mt-2">
-            <button
-              className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center"
-              onClick={() => {
-                setShowChatInfo(false)
-                if (activeChat.type === "group") {
-                  leaveGroupChat()
-                } else {
-                  deleteChat(activeChat.id)
-                }
-              }}
-            >
-              <LogOut size={18} className="mr-3" />
-              <span>{activeChat.type === "group" ? "Leave group" : "Delete chat"}</span>
-            </button>
-          </div>
-        </div>
+      <div className="border-t pt-2 mt-2">
+        <button
+          className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 rounded-lg flex items-center"
+          onClick={() => {
+            setShowChatInfo(false);
+            if (activeChat.type === "group") {
+              leaveGroupChat();
+            } else {
+              deleteChat(activeChat.id);
+            }
+          }}
+        >
+          <LogOut size={18} className="mr-3" />
+          <span>{activeChat.type === "group" ? "Leave group" : "Delete chat"}</span>
+        </button>
       </div>
-    )}
+
+      <button
+        className="w-full py-2 bg-red-600 text-white rounded-lg flex items-center justify-center hover:bg-red-700 transition-colors"
+        onClick={() => setShowChatInfo(false)}
+      >
+        <X size={18} className="mr-2" />
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
+
 
     {/* Theme selector panel */}
     {showThemeSelector && (

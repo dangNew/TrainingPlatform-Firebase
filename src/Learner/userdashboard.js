@@ -124,7 +124,6 @@ const LearnerDashboard = () => {
     return () => unsubscribeProgress()
   }, [user, userCollection])
 
-  // Fetch quiz scores from the "course score" subcollection
   useEffect(() => {
     if (!user || !userCollection) return
 
@@ -207,17 +206,12 @@ const LearnerDashboard = () => {
     return () => unsubscribeCertificates()
   }, [user])
 
-  // Update the quiz stats calculation to check for quiz scores in the progress collection
-  // Replace the existing calculateQuizStats function with this implementation
-
   const calculateQuizStats = async () => {
     let totalQuizzes = 0
     let completedQuizzes = 0
 
     try {
-      // Get all quizzes across all courses
       for (const course of courses) {
-        // Check if the course has quizzes
         const quizzesSnapshot = await getDocs(
           collection(db, userCollection === "intern" ? "Intern_Course" : "courses", course.id, "quizzes"),
         )
@@ -226,12 +220,10 @@ const LearnerDashboard = () => {
           const courseQuizCount = quizzesSnapshot.size
           totalQuizzes += courseQuizCount
 
-          // Check if the user has a progress document for this course
           const progressRef = doc(db, userCollection, user.uid, "progress", course.id)
           const progressSnap = await getDoc(progressRef)
 
           if (progressSnap.exists()) {
-            // Check if there are quiz scores in the course score collection
             const courseScoreCollection = collection(
               db,
               userCollection,
@@ -242,7 +234,6 @@ const LearnerDashboard = () => {
             )
             const courseScoreSnapshot = await getDocs(courseScoreCollection)
 
-            // Count unique completed quizzes for this course
             const completedQuizIds = new Set()
             courseScoreSnapshot.forEach((doc) => {
               const scoreData = doc.data()
@@ -271,7 +262,6 @@ const LearnerDashboard = () => {
     }
   }
 
-  // Update the useEffect that calls calculateQuizStats to include the new dependencies
   useEffect(() => {
     if (!courses.length || !userCollection || !user) {
       setDashboardLoading(false)
@@ -279,7 +269,6 @@ const LearnerDashboard = () => {
     }
 
     const calculateCourseStats = () => {
-      // Existing course stats calculation code...
       const totalCourses = courses.length
       let completedCourses = 0
       let inProgressCourses = 0
@@ -287,10 +276,8 @@ const LearnerDashboard = () => {
       let completedModules = 0
       let certificatesEarned = 0
 
-      // Track courses with certificates in progress collection
       const coursesWithCertificates = new Set()
 
-      // First, check for certificates in progress collection
       Object.entries(progress).forEach(([courseId, courseProgress]) => {
         if (courseProgress.certificate) {
           coursesWithCertificates.add(courseId)
@@ -300,20 +287,13 @@ const LearnerDashboard = () => {
 
       courses.forEach((course) => {
         const courseProgress = progress[course.id]
-
-        // Ensure that course.numModules is parsed as an integer
         const moduleCount = Number.parseInt(course.numModules) || 0
         totalModules += moduleCount
 
         const completedModuleCount = courseProgress?.completedModules?.length || 0
         completedModules += completedModuleCount
 
-        // Check if the course is completed
-        // A course is considered completed if:
-        // 1. It has a certificate in the progress collection, OR
-        // 2. All modules are completed
         if (coursesWithCertificates.has(course.id)) {
-          // If the course has a certificate, it's completed regardless of module completion
           completedCourses++
         } else if (completedModuleCount === moduleCount && moduleCount > 0) {
           completedCourses++
@@ -322,23 +302,18 @@ const LearnerDashboard = () => {
         }
       })
 
-      // Add certificates from the legacy certificates collection
-      // but avoid double-counting courses that already have certificates in progress
       certificates.forEach((cert) => {
         if (cert.courseId && !coursesWithCertificates.has(cert.courseId) && cert.isCourseWide) {
           certificatesEarned++
 
-          // If this course wasn't already counted as completed, increment completed courses
           const course = courses.find((c) => c.id === cert.courseId)
           if (course) {
             const courseProgress = progress[cert.courseId]
             const completedModuleCount = courseProgress?.completedModules?.length || 0
             const moduleCount = Number.parseInt(course.numModules) || 0
 
-            // Only count if it wasn't already counted as completed
             if (completedModuleCount !== moduleCount || moduleCount === 0) {
               completedCourses++
-              // If it was in progress, decrement in-progress count
               if (completedModuleCount > 0) {
                 inProgressCourses--
               }
@@ -358,10 +333,7 @@ const LearnerDashboard = () => {
       }))
     }
 
-    // Calculate course stats first
     calculateCourseStats()
-
-    // Then calculate quiz stats and finish loading
     calculateQuizStats().then(() => setDashboardLoading(false))
   }, [courses, progress, certificates, userCollection, user])
 
@@ -381,7 +353,6 @@ const LearnerDashboard = () => {
     const course = courses.find((c) => c.id === courseId)
     const courseProgress = progress && progress[courseId]
 
-    // If the course has a certificate in progress, it's 100% complete
     if (courseProgress?.certificate) {
       return 100
     }
@@ -644,60 +615,6 @@ const LearnerDashboard = () => {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 shadow-lg mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <FaMedal className="text-yellow-500 text-xl mr-3" />
-              <h2 className="text-xl font-semibold">Your Certificates</h2>
-            </div>
-            {certificates.length > 0 && (
-              <button
-                onClick={() => (window.location.href = "/certificates")}
-                className="text-sm bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded text-white transition-colors"
-              >
-                View all certificates
-              </button>
-            )}
-          </div>
-          {certificates.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {certificates.map((certificate) => (
-                <div
-                  key={certificate.id}
-                  className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 hover:shadow-md transition-all border border-yellow-200"
-                >
-                  <div className="flex items-center mb-2">
-                    <FaMedal className="text-yellow-500 mr-2" />
-                    <h3 className="font-medium">{certificate.courseName || "Certificate"}</h3>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Issued on:{" "}
-                    {certificate.issuedDate ? new Date(certificate.issuedDate.toDate()).toLocaleDateString() : "N/A"}
-                  </p>
-                  <button
-                    onClick={() => (window.location.href = `/certificates/${certificate.id}`)}
-                    className="w-full text-sm bg-yellow-500 hover:bg-yellow-600 px-3 py-2 rounded transition-colors text-white flex items-center justify-center"
-                  >
-                    <span>View Certificate</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FaMedal className="text-gray-300 text-4xl mb-3" />
-              <p className="text-gray-500">No certificates earned yet.</p>
-              <p className="text-sm text-gray-400 mt-2">Complete courses to earn certificates.</p>
-              <button
-                onClick={() => (window.location.href = "/courses")}
-                className="mt-4 text-sm bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded transition-colors text-white"
-              >
-                Browse Courses
-              </button>
-            </div>
-          )}
         </div>
       </MainContent>
     </div>

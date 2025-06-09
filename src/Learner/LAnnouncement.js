@@ -1,12 +1,11 @@
-"use client"
-
-import { useEffect, useState, useContext } from "react"
-import { db } from "../firebase.config"
-import { collection, getDocs, doc, getDoc } from "firebase/firestore"
-import { useNavigate } from "react-router-dom"
-import Sidebar from "../components/LSidebar"
-import styled, { keyframes } from "styled-components"
-import { SidebarToggleContext } from "../components/LgNavbar"
+import React, { useEffect, useState, useContext } from "react";
+import { useParams } from "react-router-dom";
+import { db } from "../firebase.config";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/LSidebar";
+import styled, { keyframes } from "styled-components";
+import { SidebarToggleContext } from "../components/LgNavbar";
 import {
   Bell,
   Calendar,
@@ -19,7 +18,7 @@ import {
   CheckCircle,
   Info,
   X,
-} from "lucide-react"
+} from "lucide-react";
 
 // Animations
 const fadeIn = keyframes`
@@ -31,38 +30,24 @@ const fadeIn = keyframes`
     opacity: 1;
     transform: translateY(0);
   }
-`
-
-const shimmer = keyframes`
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-`
+`;
 
 // Styled Components
 const PageContainer = styled.div`
   display: flex;
   height: 100vh;
   background-color: #f4f6f9;
-`
-
-const HeaderWrapper = styled.div`
-  width: 100%;
-  z-index: 10;
-`
+`;
 
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-`
+`;
 
 const SidebarWrapper = styled.div`
   height: 100%;
   z-index: 5;
-`
+`;
 
 const MainContent = styled.div`
   flex: 1;
@@ -72,7 +57,7 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
   width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
-`
+`;
 
 const PageHeader = styled.div`
   display: flex;
@@ -80,18 +65,18 @@ const PageHeader = styled.div`
   align-items: center;
   margin-bottom: 2rem;
   position: relative;
-  background: linear-gradient(to right, #4f46e5, #3b82f6);
+  background: linear-gradient(to right, #0ea5e9, #4f46e5); /* sky-500 to indigo-600 */
   color: white;
   padding: 1.5rem;
   border-radius: 0.75rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-`
+`;
 
 const HeaderContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-`
+`;
 
 const Title = styled.h1`
   font-size: 1.5rem;
@@ -99,13 +84,13 @@ const Title = styled.h1`
   display: flex;
   align-items: center;
   gap: 0.75rem;
-`
+`;
 
 const Subtitle = styled.p`
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
-`
+`;
 
 const ActionBar = styled.div`
   display: flex;
@@ -113,13 +98,13 @@ const ActionBar = styled.div`
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
   align-items: center;
-`
+`;
 
 const SearchBar = styled.div`
   flex: 1;
   min-width: 250px;
   position: relative;
-`
+`;
 
 const SearchInput = styled.input`
   width: 100%;
@@ -136,7 +121,7 @@ const SearchInput = styled.input`
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
-`
+`;
 
 const SearchIcon = styled.div`
   position: absolute;
@@ -144,7 +129,7 @@ const SearchIcon = styled.div`
   top: 50%;
   transform: translateY(-50%);
   color: #9ca3af;
-`
+`;
 
 const FilterButton = styled.button`
   display: flex;
@@ -164,7 +149,7 @@ const FilterButton = styled.button`
     background-color: #f9fafb;
     border-color: #d1d5db;
   }
-`
+`;
 
 const RefreshButton = styled.button`
   display: flex;
@@ -196,14 +181,14 @@ const RefreshButton = styled.button`
     transform: none;
     box-shadow: none;
   }
-`
+`;
 
 const AnnouncementGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1.5rem;
   animation: ${fadeIn} 0.5s ease-out;
-`
+`;
 
 const AnnouncementCard = styled.div`
   background: white;
@@ -232,7 +217,7 @@ const AnnouncementCard = styled.div`
     background: linear-gradient(to bottom, #3b82f6, #2563eb);
     border-radius: 0 2px 2px 0;
   }
-`
+`;
 
 const AnnouncementHeader = styled.div`
   padding: 1.5rem;
@@ -240,7 +225,7 @@ const AnnouncementHeader = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 1px solid #f3f4f6;
-`
+`;
 
 const AnnouncementTitle = styled.h3`
   font-size: 1.125rem;
@@ -249,7 +234,7 @@ const AnnouncementTitle = styled.h3`
   margin: 0;
   padding-right: 1rem;
   line-height: 1.4;
-`
+`;
 
 const AnnouncementBadge = styled.span`
   display: inline-flex;
@@ -259,8 +244,8 @@ const AnnouncementBadge = styled.span`
     type === "All"
       ? "rgba(16, 185, 129, 0.1)"
       : type === "learner"
-        ? "rgba(245, 158, 11, 0.1)"
-        : "rgba(239, 68, 68, 0.1)"};
+      ? "rgba(245, 158, 11, 0.1)"
+      : "rgba(239, 68, 68, 0.1)"};
   color: ${({ type }) => (type === "All" ? "#10b981" : type === "learner" ? "#f59e0b" : "#ef4444")};
   font-size: 0.75rem;
   font-weight: 600;
@@ -268,14 +253,14 @@ const AnnouncementBadge = styled.span`
   border-radius: 9999px;
   white-space: nowrap;
   flex-shrink: 0;
-`
+`;
 
 const AnnouncementContent = styled.div`
   padding: 1.5rem;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-`
+`;
 
 const AnnouncementText = styled.div`
   color: #4b5563;
@@ -294,7 +279,7 @@ const AnnouncementText = styled.div`
       margin-bottom: 0;
     }
   }
-`
+`;
 
 const AnnouncementFooter = styled.div`
   display: flex;
@@ -305,13 +290,13 @@ const AnnouncementFooter = styled.div`
   font-size: 0.75rem;
   color: #6b7280;
   margin-top: auto;
-`
+`;
 
 const DateDisplay = styled.div`
   display: flex;
   align-items: center;
   gap: 0.35rem;
-`
+`;
 
 const ReadMoreLink = styled.div`
   display: inline-flex;
@@ -328,7 +313,7 @@ const ReadMoreLink = styled.div`
   &:hover svg {
     transform: translateX(2px);
   }
-`
+`;
 
 const EmptyState = styled.div`
   text-align: center;
@@ -337,7 +322,7 @@ const EmptyState = styled.div`
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   animation: ${fadeIn} 0.5s ease-out;
-`
+`;
 
 const EmptyStateIcon = styled.div`
   width: 80px;
@@ -350,14 +335,14 @@ const EmptyStateIcon = styled.div`
   margin: 0 auto 1.5rem;
   color: #9ca3af;
   font-size: 2rem;
-`
+`;
 
 const EmptyStateTitle = styled.h3`
   font-size: 1.25rem;
   font-weight: 600;
   color: #1f2937;
   margin: 0 0 0.5rem 0;
-`
+`;
 
 const EmptyStateText = styled.p`
   font-size: 1rem;
@@ -366,7 +351,7 @@ const EmptyStateText = styled.p`
   max-width: 400px;
   margin-left: auto;
   margin-right: auto;
-`
+`;
 
 const LoadingContainer = styled.div`
   display: flex;
@@ -374,7 +359,7 @@ const LoadingContainer = styled.div`
   align-items: center;
   justify-content: center;
   min-height: 300px;
-`
+`;
 
 const LoadingSpinner = styled.div`
   width: 50px;
@@ -390,13 +375,13 @@ const LoadingSpinner = styled.div`
       transform: rotate(360deg);
     }
   }
-`
+`;
 
 const LoadingText = styled.p`
   font-size: 1rem;
   color: #6b7280;
   margin: 0;
-`
+`;
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -408,7 +393,7 @@ const ModalOverlay = styled.div`
   z-index: 50;
   padding: 1rem;
   animation: ${fadeIn} 0.3s ease-out;
-`
+`;
 
 const ModalContent = styled.div`
   background: white;
@@ -420,7 +405,7 @@ const ModalContent = styled.div`
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-`
+`;
 
 const ModalHeader = styled.div`
   display: flex;
@@ -429,7 +414,7 @@ const ModalHeader = styled.div`
   padding: 1.5rem;
   border-bottom: 1px solid #f3f4f6;
   position: relative;
-`
+`;
 
 const ModalTitle = styled.h3`
   font-size: 1.25rem;
@@ -437,7 +422,7 @@ const ModalTitle = styled.h3`
   color: #1f2937;
   margin: 0;
   padding-right: 2rem;
-`
+`;
 
 const ModalCloseButton = styled.button`
   position: absolute;
@@ -459,7 +444,7 @@ const ModalCloseButton = styled.button`
     background-color: #f3f4f6;
     color: #1f2937;
   }
-`
+`;
 
 const ModalBody = styled.div`
   padding: 1.5rem;
@@ -476,7 +461,7 @@ const ModalBody = styled.div`
       margin-bottom: 0;
     }
   }
-`
+`;
 
 const ModalFooter = styled.div`
   display: flex;
@@ -484,7 +469,7 @@ const ModalFooter = styled.div`
   padding: 1rem 1.5rem;
   background-color: #f9fafb;
   border-top: 1px solid #f3f4f6;
-`
+`;
 
 const InfoCard = styled.div`
   background-color: rgba(59, 130, 246, 0.05);
@@ -494,21 +479,21 @@ const InfoCard = styled.div`
   margin-bottom: 1.5rem;
   display: flex;
   align-items: flex-start;
-`
+`;
 
 const InfoIcon = styled.div`
   color: #3b82f6;
   margin-right: 0.75rem;
   margin-top: 0.125rem;
   flex-shrink: 0;
-`
+`;
 
 const InfoText = styled.p`
   font-size: 0.875rem;
   color: #4b5563;
   margin: 0;
   line-height: 1.5;
-`
+`;
 
 const StatusBadge = styled.div`
   display: inline-flex;
@@ -521,156 +506,136 @@ const StatusBadge = styled.div`
   padding: 0.35rem 0.75rem;
   border-radius: 9999px;
   margin-left: 1rem;
-`
+`;
 
 const AnnouncementPage = () => {
-  const [allAnnouncements, setAllAnnouncements] = useState([])
-  const [filteredAnnouncements, setFilteredAnnouncements] = useState([])
-  const [userRole, setUserRole] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const { expanded } = useContext(SidebarToggleContext)
-  const navigate = useNavigate()
+  const [allAnnouncements, setAllAnnouncements] = useState([]);
+  const [filteredAnnouncements, setFilteredAnnouncements] = useState([]);
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { expanded } = useContext(SidebarToggleContext);
+  const navigate = useNavigate();
+  const { announcementId } = useParams();
 
-  // First useEffect: Fetch user role and all announcements
   useEffect(() => {
     const fetchUserAndAnnouncements = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
 
-        // Get current user ID (assuming you have it stored somewhere)
-        // This is a placeholder - replace with your actual auth logic
-        const currentUserId = localStorage.getItem("userId") || "defaultUserId"
+        const currentUserId = localStorage.getItem("userId") || "defaultUserId";
 
-        // Check if user exists in learner collection
-        const learnerDoc = await getDoc(doc(db, "learner", currentUserId))
+        const learnerDoc = await getDoc(doc(db, "learner", currentUserId));
+        const internDoc = await getDoc(doc(db, "intern", currentUserId));
 
-        // Check if user exists in intern collection
-        const internDoc = await getDoc(doc(db, "intern", currentUserId))
-
-        // Set user role based on which collection the user belongs to
-        let role = "unknown"
+        let role = "unknown";
         if (learnerDoc.exists()) {
-          role = "learner"
+          role = "learner";
         } else if (internDoc.exists()) {
-          role = "intern"
+          role = "intern";
         }
 
-        console.log("User role detected:", role)
-        setUserRole(role)
+        setUserRole(role);
 
-        // Fetch all announcements
-        const announcementsSnapshot = await getDocs(collection(db, "announcements"))
+        const announcementsSnapshot = await getDocs(collection(db, "announcements"));
         const announcements = announcementsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }))
+        }));
 
-        console.log("All announcements fetched:", announcements.length)
-        setAllAnnouncements(announcements)
+        setAllAnnouncements(announcements);
+
+        if (announcementId) {
+          const selectedAnnouncement = announcements.find((announcement) => announcement.id === announcementId);
+          if (selectedAnnouncement) {
+            setSelectedAnnouncement(selectedAnnouncement);
+            setIsModalOpen(true);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching data:", error)
+        console.error("Error fetching data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchUserAndAnnouncements()
-  }, []) // Empty dependency array means this runs once on mount
+    fetchUserAndAnnouncements();
+  }, [announcementId]);
 
-  // Second useEffect: Filter announcements when userRole or allAnnouncements change
   useEffect(() => {
-    if (!userRole || allAnnouncements.length === 0) return
+    if (!userRole || allAnnouncements.length === 0) return;
 
-    const currentDate = new Date().toISOString().split("T")[0]
-    console.log("Current date for filtering:", currentDate)
-    console.log("Filtering announcements for role:", userRole)
+    const currentDate = new Date().toISOString().split("T")[0];
 
     const filtered = allAnnouncements.filter((announcement) => {
-      // Check if announcement is still valid (not expired)
-      const isValid = announcement.expiryDate >= currentDate
-
-      // Ensure targetAudience is defined before calling toLowerCase
-      const targetAudience = announcement.targetAudience || ""
+      const isValid = announcement.expiryDate >= currentDate;
+      const targetAudience = announcement.targetAudience || "";
       const isTargeted =
         targetAudience.toLowerCase() === "all" ||
         targetAudience.toLowerCase() === "learner" ||
-        targetAudience.toLowerCase() === userRole.toLowerCase()
+        targetAudience.toLowerCase() === userRole.toLowerCase();
 
-      console.log(
-        `Announcement "${announcement.subject}" - Valid: ${isValid}, Targeted: ${isTargeted}, Target Audience: ${targetAudience}`,
-      )
+      return isValid && isTargeted;
+    });
 
-      return isValid && isTargeted
-    })
+    filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    console.log("Filtered announcements:", filtered.length)
+    setFilteredAnnouncements(filtered);
+  }, [userRole, allAnnouncements]);
 
-    // Sort announcements by date (newest first)
-    filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-    setFilteredAnnouncements(filtered)
-  }, [userRole, allAnnouncements])
-
-  // Filter announcements by search term
   useEffect(() => {
     if (searchTerm.trim() === "") {
-      // If search is empty, use the original filtered list
-      return
+      return;
     }
 
     const searchFiltered = filteredAnnouncements.filter(
       (announcement) =>
         announcement.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (announcement.content && announcement.content.toLowerCase().includes(searchTerm.toLowerCase())),
-    )
+    );
 
-    setFilteredAnnouncements(searchFiltered)
-  }, [searchTerm])
+    setFilteredAnnouncements(searchFiltered);
+  }, [searchTerm]);
 
-  // Function to parse HTML content safely
   const createMarkup = (htmlContent) => {
-    return { __html: htmlContent }
-  }
+    return { __html: htmlContent };
+  };
 
   const handleAnnouncementClick = (announcement) => {
-    setSelectedAnnouncement(announcement)
-    setIsModalOpen(true)
-  }
+    setSelectedAnnouncement(announcement);
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setSelectedAnnouncement(null)
-  }
+    setIsModalOpen(false);
+    setSelectedAnnouncement(null);
+  };
 
-  // Function to refresh announcements
   const refreshAnnouncements = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // Fetch all announcements again
-      const announcementsSnapshot = await getDocs(collection(db, "announcements"))
+      const announcementsSnapshot = await getDocs(collection(db, "announcements"));
       const announcements = announcementsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      }))
+      }));
 
-      setAllAnnouncements(announcements)
-      setSearchTerm("") // Clear search term
+      setAllAnnouncements(announcements);
+      setSearchTerm("");
     } catch (error) {
-      console.error("Error refreshing announcements:", error)
+      console.error("Error refreshing announcements:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Check if an announcement is active (not expired)
   const isAnnouncementActive = (expiryDate) => {
-    const currentDate = new Date().toISOString().split("T")[0]
-    return expiryDate >= currentDate
-  }
+    const currentDate = new Date().toISOString().split("T")[0];
+    return expiryDate >= currentDate;
+  };
 
   return (
     <PageContainer>
@@ -804,7 +769,7 @@ const AnnouncementPage = () => {
         </MainContent>
       </ContentContainer>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default AnnouncementPage
+export default AnnouncementPage;

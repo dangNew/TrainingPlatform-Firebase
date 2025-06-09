@@ -143,25 +143,25 @@ export const pricingOptions = [
 ];
 
 export const resourcesLinks = [
-  { href: "#", text: "About Us" },
-  { href: "#", text: "Contact" },
-  { href: "#", text: "FAQs" },
-  { href: "#", text: "Privacy Policy" },
-  { href: "#", text: "Community Forums" },
+  { href: "/about", text: "About Us" },
+  // { href: "#", text: "Contact" },
+  // { href: "#", text: "FAQs" },
+  // { href: "#", text: "Privacy Policy" },
+  // { href: "#", text: "Community Forums" },
 ];
 
 export const platformLinks = [
   { href: "#", text: "Features" },
-  { href: "#", text: "Supported Devices" },
-  { href: "#", text: "System Requirements" },
-  { href: "#", text: "Downloads" },
-  { href: "#", text: "Release Notes" },
+  // { href: "#", text: "Supported Devices" },
+  // { href: "#", text: "System Requirements" },
+  // { href: "#", text: "Downloads" },
+  // { href: "#", text: "Release Notes" },
 ];
 
-export const communityLinks = [
-  { href: "#", text: "Events" },
-  { href: "#", text: "Meetups" },
-  { href: "#", text: "Conferences" },
-  { href: "#", text: "Hackathons" },
-  { href: "#", text: "Jobs" },
-];
+// export const communityLinks = [
+//   { href: "#", text: "Events" },
+//   { href: "#", text: "Meetups" },
+//   { href: "#", text: "Conferences" },
+//   { href: "#", text: "Hackathons" },
+//   { href: "#", text: "Jobs" },
+// ];

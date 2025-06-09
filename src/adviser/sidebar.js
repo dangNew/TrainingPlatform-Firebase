@@ -55,7 +55,7 @@ const Sidebar = () => {
       "/addmodule": "Add Module",
       "/addquiz": "Quizzes",
       
-      "/admin": "Admin",
+      // "/admin": "Admin",
     };
 
     setActiveItem(routeToText[location.pathname] || "Dashboard");
@@ -97,7 +97,7 @@ const Sidebar = () => {
               <SidebarItem icon={<FaFolder size={28} />} text="File Library" route="/file-library" />
               <SidebarItem icon={<FaPlusCircle size={28} />} text="Add Module" route="/addmodule" />
               <SidebarItem icon={<FaPuzzlePiece size={28} />} text="Quizzes" route="/addquiz" />
-              <SidebarItem icon={<FaUserShield size={28} />} text="Admin" route="/admin" />
+              {/* <SidebarItem icon={<FaUserShield size={28} />} text="Admin" route="/admin" /> */}
             </ul>
 
             <div className="border-t border-gray-300 flex p-3">

@@ -72,13 +72,16 @@ const PageHeader = styled.div`
   align-items: center;
   margin-bottom: 2rem;
   position: relative;
-  background: linear-gradient(to right, #3b82f6, #6366f1);
+  background: linear-gradient(to right, #0ea5e9, #4f46e5); /* sky-500 to indigo-600 */
   color: white;
   padding: 1.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 1rem; /* rounded-2xl ≈ 1rem or 16px */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 
+              0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+  overflow: hidden;
   width: 100%;
-`
+`;
+
 
 const HeaderContent = styled.div`
   display: flex;

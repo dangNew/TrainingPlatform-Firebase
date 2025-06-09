@@ -1,10 +1,12 @@
+// App.js
+import React, { useState } from "react";
 import {
   Route,
   BrowserRouter as Router,
   Routes,
   useLocation,
 } from "react-router-dom";
-
+import { SidebarToggleContext } from "./components/LgNavbar";
 import SignUp from "./Authentication/Signup";
 import Login from "./Authentication/login";
 import Dashboard from "./Dashboard/Dashboard";
@@ -46,21 +48,19 @@ import QuizTaker from "./Learner/quiz-taker";
 import ResourcePage from "./Learner/Resources";
 import AnnouncementPage from "./Learner/LAnnouncement";
 import UserSettings from "./Learner/userSettings";
+import AboutUs from "./Learner/aboutus";
 
 // Components
 import NavBar from "./components/Navbar";
-import LNavbar, { SidebarToggleContext } from "./components/LgNavbar";
+import LNavbar from "./components/LgNavbar";
 import LSidebar from "./components/LSidebar";
 
 import "./index.css";
-import { useState } from "react";
 
-// ✅ Updated NavBarWrapper
 const NavBarWrapper = () => {
   const location = useLocation();
   const showNavBar = ["/login", "/signup"].includes(location.pathname);
 
-  // Scroll handler to specific section ID
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
     if (element) {
@@ -131,7 +131,6 @@ function App() {
         <NavBarWrapper />
         <LNavBarWrapper />
         <LSidebarWrapper />
-
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
@@ -175,8 +174,10 @@ function App() {
           <Route path="/quiz-taker" element={<QuizTaker />} />
           <Route path="/resources" element={<ResourcePage />} />
           <Route path="/navbar" element={<LNavbar />} />
-          <Route path="/announcement" element={<AnnouncementPage />} />
+          <Route path="/announcement/:announcementId?" element={<AnnouncementPage />} />
           <Route path="/settings" element={<UserSettings />} />
+          <Route path="/about" element={<AboutUs />} />
+
         </Routes>
       </Router>
     </SidebarToggleContext.Provider>

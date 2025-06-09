@@ -99,12 +99,12 @@ const HeroSection = () => {
               <IoIosArrowForward className="text-xl group-hover:translate-x-2 group-hover:-rotate-45 duration-300" />
             </button>
 
-            <a
+            {/* <a
               href="#"
               className="py-3 px-4 mx-3 border border-white text-white rounded-md"
             >
               Learn More
-            </a>
+            </a> */}
           </motion.div>
         </div>
 

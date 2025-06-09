@@ -1,7 +1,12 @@
 import {
-  BookOpen, FileText, FolderOpen, LayoutDashboard,
-  LifeBuoy, LogOut, MessageCircle, Megaphone, UserCircle
-} from 'lucide-react';
+  FaTachometerAlt,
+  FaBook,
+  FaComments,
+  FaFileAlt,
+  FaFolder,
+  FaBullhorn
+} from "react-icons/fa";
+
 import { useContext, useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -83,12 +88,13 @@ export default function LSidebar() {
           </Link> */}
           {/* <hr className="my-3 border-gray-700" /> */}
           <ul className="flex-1 px-3">
-            <SidebarItem icon={<LayoutDashboard size={28} />} text="Dashboard" route="/user-dashboard" activeItem={activeItem} setActiveItem={setActiveItem} />
-            <SidebarItem icon={<BookOpen size={28} />} text="Courses" route="/lcourses" activeItem={activeItem} setActiveItem={setActiveItem} />
-            <SidebarItem icon={<MessageCircle size={28} />} text="Chat" route="/chatroom" activeItem={activeItem} setActiveItem={setActiveItem} />
-            <SidebarItem icon={<FileText size={28} />} text="Certificates" route="/certificates" activeItem={activeItem} setActiveItem={setActiveItem} />
-            <SidebarItem icon={<FolderOpen size={28} />} text="Resources" route="/resources" activeItem={activeItem} setActiveItem={setActiveItem} />
-            <SidebarItem icon={<Megaphone size={28} />} text="Announcement" route="/announcement" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaTachometerAlt size={28} />} text="Dashboard" route="/user-dashboard" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaBook size={28} />} text="Courses" route="/lcourses" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaComments size={28} />} text="Chat" route="/chatroom" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaFileAlt size={28} />} text="Certificates" route="/certificates" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaFolder size={28} />} text="Resources" route="/resources" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaBullhorn size={28} />} text="Announcement" route="/announcement" activeItem={activeItem} setActiveItem={setActiveItem} />
+
           </ul>
 
           {/* <div className="border-t border-gray-700 flex p-3">

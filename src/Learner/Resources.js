@@ -78,7 +78,7 @@ const PageHeader = styled.div`
   align-items: center;
   margin-bottom: 2rem;
   position: relative;
-  background: linear-gradient(to right, #4f46e5, #3b82f6);
+  background: linear-gradient(to right, #0ea5e9, #4f46e5); /* sky-500 to indigo-600 */
   color: white;
   padding: 1.5rem;
   border-radius: 0.75rem;

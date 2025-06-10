@@ -409,6 +409,24 @@ function Profile() {
   const [comments, setComments] = useState([])
   const [userType, setUserType] = useState(null)
 
+  const getProfileImageUrl = () => {
+    // Handle nested photoURL structure
+    if (userData.photoURL?.url?.url) {
+      // Case: photoURL.url.url (nested structure)
+      return userData.photoURL.url.url
+    } else if (userData.photoURL?.url && typeof userData.photoURL.url === "string") {
+      // Case: photoURL.url (direct string)
+      return userData.photoURL.url
+    } else if (typeof userData.photoURL === "string") {
+      // Case: photoURL is a direct string
+      return userData.photoURL
+    } else if (user?.photoURL) {
+      // Fallback to Firebase Auth photoURL
+      return user.photoURL
+    }
+    return "https://via.placeholder.com/128"
+  }
+
   const fetchUserData = async () => {
     if (user) {
       // First try to get user from users collection
@@ -567,10 +585,7 @@ function Profile() {
       <ProfileHeader>
         <ProfileImageWrapper>
           <ProfileImage>
-            <img
-              src={userData.photoURL?.url || "https://via.placeholder.com/128"}
-              alt={userData.fullName || "Profile"}
-            />
+            <img src={getProfileImageUrl() || "/placeholder.svg"} alt={userData.fullName || "Profile"} />
           </ProfileImage>
         </ProfileImageWrapper>
         <ProfileInfo>

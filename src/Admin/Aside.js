@@ -51,7 +51,7 @@ const Sidebar = () => {
       "/admin-course": "Courses",
       "/admin-addcourse": "Add Course",
       "/admin-chat": "Chat",
-      "/file-library": "File Library",
+      "/admin-filelibrary": "File Library",
       "/admin-addmodule": "Add Module",
       "/admin-quiz": "Quizzes",
       

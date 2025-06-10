@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../Admin/Aside";
-import Header from "../Dashboard/Header";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase.config";
+import Sidebar from "../adviser/sidebar";
+import LgNavbar from "../components/LgNavbar";
 import { FaUser, FaSortAlphaDown, FaSortAlphaUp, FaSearch, FaEye, FaFolder } from "react-icons/fa";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase.config";
 import styled from "styled-components";
+import { SidebarToggleContext } from "../components/LgNavbar";
 
 // Styled Components
 const PageContainer = styled.div`
@@ -25,7 +27,7 @@ const HeaderWrapper = styled.div`
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-  margin-top: 100px; // Adjust this value based on your header's height
+  margin-top: 100px;
 `;
 
 const SidebarWrapper = styled.div`
@@ -51,12 +53,12 @@ const UserTable = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const { expanded } = useContext(SidebarToggleContext);
 
   const navigate = useNavigate();
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Fetch users from Firestore
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -107,13 +109,13 @@ const UserTable = () => {
   return (
     <PageContainer>
       <HeaderWrapper>
-        <Header />
+        <LgNavbar />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper expanded={isSidebarOpen}>
+        <SidebarWrapper expanded={expanded}>
           <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
         </SidebarWrapper>
-        <MainContent expanded={isSidebarOpen}>
+        <MainContent expanded={expanded}>
           {/* Header Section */}
           <div className="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl shadow-lg mb-8 overflow-hidden">
             <div className="p-8 flex flex-col md:flex-row justify-between items-center">

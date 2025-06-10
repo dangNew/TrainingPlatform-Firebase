@@ -10,8 +10,8 @@ import {
   FaLayerGroup,
   FaChalkboardTeacher,
 } from "react-icons/fa";
-import IntSidebar from "./sidebar";
-import Header from "../Dashboard/Header";
+import IntSidebar from "../adviser/sidebar";
+import LgNavbar from "../components/LgNavbar"; // Import LgNavbar instead of Header
 import { collection, doc, getDocs, setDoc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase.config";
 import uploadToCloudinary from "../uploadToCloudinary";
@@ -35,7 +35,7 @@ const HeaderWrapper = styled.div`
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-  margin-top: 100px; // Adjust this value based on your header's height
+  margin-top: 100px;
 `;
 
 const SidebarWrapper = styled.div`
@@ -171,7 +171,6 @@ const AddModule = () => {
 
   const addChapter = () => {
     setChapters([...chapters, { title: "", description: "", file: null, fileName: "" }]);
-    // Ensure fileInputRefs has enough elements
     fileInputRefs.current = fileInputRefs.current.slice(0, chapters.length + 1);
   };
 
@@ -329,7 +328,7 @@ const AddModule = () => {
   return (
     <PageContainer>
       <HeaderWrapper>
-        <Header />
+        <LgNavbar /> {/* Use LgNavbar instead of Header */}
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper expanded={isSidebarOpen}>

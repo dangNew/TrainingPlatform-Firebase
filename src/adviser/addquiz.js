@@ -16,7 +16,7 @@ import {
 } from "react-icons/fa";
 import { BsImage } from "react-icons/bs";
 import IntSidebar from "./sidebar";
-import Header from "../Dashboard/Header";
+import LgNavbar from "../components/LgNavbar"; // Import LgNavbar instead of Header
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -40,7 +40,7 @@ const HeaderWrapper = styled.div`
 const ContentContainer = styled.div`
   display: flex;
   flex: 1;
-  margin-top: 100px; // Adjust this value based on your header's height
+  margin-top: 100px;
 `;
 
 const SidebarWrapper = styled.div`
@@ -384,7 +384,7 @@ const AddQuiz = () => {
   return (
     <PageContainer>
       <HeaderWrapper>
-        <Header />
+        <LgNavbar /> {/* Use LgNavbar instead of Header */}
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper expanded={isSidebarOpen}>

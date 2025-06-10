@@ -12,12 +12,12 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase.config";
 import { doc, getDoc } from "firebase/firestore";
-import { SidebarToggleContext } from "../components/LgNavbar"; // <- Context from navbar
+import { SidebarToggleContext } from "../components/LgNavbar";
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { expanded } = useContext(SidebarToggleContext); // <-- from context
+  const { expanded } = useContext(SidebarToggleContext);
   const [userData, setUserData] = useState({ fullName: "", email: "" });
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem("activeItem") || "Dashboard";
@@ -64,7 +64,8 @@ const Sidebar = () => {
   return (
     <div className="flex">
       <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
-        <nav className={`h-full flex flex-col bg-white border-r shadow-sm text-blue-950 overflow-y-auto`}>
+        <nav className={`h-full flex flex-col bg-white border-r shadow-sm text-blue-950`}>
+          <div className="p-4 pb-2 flex justify-between items-center"></div>
           <ul className="flex-1 px-3">
             <SidebarItem icon={<FaTachometerAlt size={28} />} text="Dashboard" route="/dashboard" activeItem={activeItem} setActiveItem={setActiveItem} />
             <SidebarItem icon={<FaBook size={28} />} text="Courses" route="/courses" activeItem={activeItem} setActiveItem={setActiveItem} />

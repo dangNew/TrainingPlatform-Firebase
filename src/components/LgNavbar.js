@@ -1,7 +1,7 @@
 // components/LgNavbar.js
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { Menu, X, Search, Bell, MessageSquare, ChevronDown, Settings, LifeBuoy, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "../firebase.config";
@@ -21,12 +21,12 @@ const LNavbar = () => {
   const [userData, setUserData] = useState({
     fullName: "",
     photoURL: {
-      publicId: "",
       url: "",
     },
   });
   const [announcements, setAnnouncements] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
   const dropdownRef = useRef(null);
   const notificationDropdownRef = useRef(null);
 
@@ -36,23 +36,39 @@ const LNavbar = () => {
     const fetchUserData = async () => {
       if (!user) return;
 
-      const learnerRef = doc(db, "learner", user.uid);
-      const internRef = doc(db, "intern", user.uid);
+      // Check users collection
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-      const [learnerSnap, internSnap] = await Promise.all([getDoc(learnerRef), getDoc(internRef)]);
-
-      if (learnerSnap.exists()) {
-        setUserData(learnerSnap.data());
-      } else if (internSnap.exists()) {
-        setUserData(internSnap.data());
-      } else {
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
         setUserData({
-          fullName: user.displayName || "User",
-          photoURL: {
-            publicId: "",
-            url: user.photoURL || "",
-          },
+          fullName: userData.fullName,
+          photoURL: userData.photoURL || { url: "" },
         });
+      } else {
+        // If not found in users collection, try learner collection
+        const learnerRef = doc(db, "learner", user.uid);
+        const learnerSnap = await getDoc(learnerRef);
+
+        if (learnerSnap.exists()) {
+          setUserData(learnerSnap.data());
+        } else {
+          // If not found in learner collection, try intern collection
+          const internRef = doc(db, "intern", user.uid);
+          const internSnap = await getDoc(internRef);
+
+          if (internSnap.exists()) {
+            setUserData(internSnap.data());
+          } else {
+            setUserData({
+              fullName: user.displayName || "User",
+              photoURL: {
+                url: user.photoURL || "",
+              },
+            });
+          }
+        }
       }
     };
 
@@ -167,28 +183,24 @@ const LNavbar = () => {
     return "/placeholder.svg";
   };
 
+  // Check if the current route is the profile page
+  const isProfilePage = location.pathname === "/lprofile";
+
   return (
     <nav className="sticky top-0 z-50 py-6 bg-[#201E43] text-white">
       <div className="px-4 relative text-sm">
         <div className="flex justify-between items-center">
           <div className="flex items-center flex-shrink-0">
-            <button onClick={toggleSidebar} className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 mr-4 ml-0">
-              <Menu className="text-gray-200" size={20} />
-            </button>
+            {!isProfilePage && (
+              <button onClick={toggleSidebar} className="p-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 mr-4 ml-0">
+                <Menu className="text-gray-200" size={20} />
+              </button>
+            )}
             <img className="h-16 w-16 mr-3 rounded-full object-cover border-2 border-gray-300" src={logo} alt="logo" />
             <span className="text-2xl font-medium tracking-tight">WealthFinancials</span>
           </div>
 
           <div className="hidden lg:flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="text"
-                placeholder="Search"
-                className="pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-gray-800"
-              />
-            </div>
-
             <div className="relative" ref={notificationDropdownRef}>
               <Bell size={20} className="cursor-pointer" onClick={toggleNotificationDropdown} />
               {announcements.length > 0 && (
@@ -205,7 +217,7 @@ const LNavbar = () => {
                       onClick={() => navigateToAnnouncement(announcement.id)}
                     >
                       <p className="font-bold">{announcement.subject}</p>
-                       <p className="text-xs text-gray-500">{announcement.date}</p>
+                      <p className="text-xs text-gray-500">{announcement.date}</p>
                     </div>
                   ))}
                 </div>
@@ -255,12 +267,6 @@ const LNavbar = () => {
                 <img src={getProfileImageUrl()} alt="Profile" className="w-full h-full object-cover" />
               </div>
               <span className="font-medium">{userData.fullName || user?.displayName || "User"}</span>
-            </div>
-            <div className="w-full mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                <input type="text" placeholder="Search" className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent" />
-              </div>
             </div>
             <div className="flex gap-6 mt-4 mb-6">
               <Bell size={24} className="cursor-pointer" onClick={toggleNotificationDropdown} />

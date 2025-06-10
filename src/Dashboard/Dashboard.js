@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import { addDoc, collection, getDocs, query, orderBy, limit, where, doc, setDoc } from "firebase/firestore"
+import { SidebarToggleContext } from "../components/LgNavbar";
 import { db } from "../firebase.config"
 import LgNavbar from "../components/LgNavbar"
 import Sidebar from "../adviser/sidebar"
@@ -31,8 +32,9 @@ const MainContent = styled.div`
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  margin-left: 10px;
-`
+  margin-left: ${({ expanded }) => (expanded ? "270px" : "70px")};
+  transition: margin-left 0.3s ease;
+`;
 
 const Card = styled.div`
   background: white;
@@ -406,6 +408,7 @@ const Dashboard = () => {
   const [formErrors, setFormErrors] = useState({})
   const [notifications, setNotifications] = useState([])
   const [showInfoMessage, setShowInfoMessage] = useState(false)
+  const { expanded } = useContext(SidebarToggleContext);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -672,7 +675,7 @@ const Dashboard = () => {
       <LgNavbar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <MainContent>
+        <MainContent expanded={expanded}>
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center">
               <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl mr-4">

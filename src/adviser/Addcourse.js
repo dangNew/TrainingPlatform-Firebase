@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 import {
   FaCloudUploadAlt,
   FaTimes,
@@ -8,6 +8,7 @@ import {
   FaFileAlt,
   FaExclamationTriangle,
 } from "react-icons/fa";
+import { SidebarToggleContext } from "../components/LgNavbar";
 import IntSidebar from "./sidebar";
 import LgNavbar from "../components/LgNavbar";
 import uploadToCloudinary from "../uploadToCloudinary";
@@ -46,16 +47,18 @@ const SidebarWrapper = styled.div`
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
+  background-color: #f5f7fa;
   border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
-  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+  margin-left: ${({ expanded }) => (expanded ? "270px" : "70px")};
+  transition: margin-left 0.3s ease;
 `;
 
 const AddCourse = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+    const { expanded } = useContext(SidebarToggleContext);
   const [file, setFile] = useState(null);
   const [targetAudience, setTargetAudience] = useState("public");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -177,10 +180,10 @@ const AddCourse = () => {
         <LgNavbar />
       </HeaderWrapper>
       <ContentContainer>
-        <SidebarWrapper expanded={isSidebarOpen}>
-          <IntSidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+        <SidebarWrapper>
+          <IntSidebar/>
         </SidebarWrapper>
-        <MainContent expanded={isSidebarOpen}>
+        <MainContent expanded={expanded}>
           {/* Header Section */}
           <div className="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl shadow-lg mb-8 overflow-hidden">
             <div className="p-8">

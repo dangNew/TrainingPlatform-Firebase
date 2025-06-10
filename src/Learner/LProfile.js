@@ -1,15 +1,13 @@
 "use client"
 
 import { collection, doc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore"
-import { useEffect, useState, useContext } from "react"
+import { useEffect, useState } from "react"
 import { useAuthState } from "react-firebase-hooks/auth"
 import styled from "styled-components"
 import { auth, db } from "../firebase.config"
 import uploadToCloudinary from "../uploadToCloudinary"
 import ProfileHistory from "./profile-history"
 import ProfileProgress from "./profile-progress"
-import { SidebarToggleContext } from "../components/LgNavbar"
-import Sidebar from "../components/LSidebar"
 
 // Styled components
 const MainContent = styled.div`
@@ -18,15 +16,8 @@ const MainContent = styled.div`
   border-radius: 12px;
   box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
   overflow-y: auto;
-  transition: margin-left 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
-  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
   background-color: white;
-`
-
-const SidebarWrapper = styled.div`
-  height: 100%;
-  z-index: 5;
+  width: 100%;
 `
 
 const ProfileHeader = styled.div`
@@ -414,15 +405,21 @@ function Profile() {
   const [newProfileImage, setNewProfileImage] = useState(null)
   const [activeTab, setActiveTab] = useState("personal")
   const [loading, setLoading] = useState(false)
-  const { expanded } = useContext(SidebarToggleContext)
   const [alert, setAlert] = useState({ show: false, message: "", type: "" })
   const [comments, setComments] = useState([])
   const [userType, setUserType] = useState(null)
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (user) {
-        // First try to get user from learner collection
+  const fetchUserData = async () => {
+    if (user) {
+      // First try to get user from users collection
+      const usersRef = doc(db, "users", user.uid)
+      const usersDoc = await getDoc(usersRef)
+
+      if (usersDoc.exists()) {
+        setUserData(usersDoc.data())
+        setUserType("users")
+      } else {
+        // If not found in users collection, try learner collection
         const learnerRef = doc(db, "learner", user.uid)
         const learnerDoc = await getDoc(learnerRef)
 
@@ -441,13 +438,15 @@ function Profile() {
         }
       }
     }
+  }
 
+  useEffect(() => {
     fetchUserData()
   }, [user])
 
   useEffect(() => {
     const fetchComments = async () => {
-      if (user && activeTab === "comments") {
+      if (user && activeTab === "comments" && userType !== "users") {
         const commentsRef = collection(db, "courseComments")
         const q = query(commentsRef, where("userId", "==", user.uid))
         const querySnapshot = await getDocs(q)
@@ -463,7 +462,7 @@ function Profile() {
     }
 
     fetchComments()
-  }, [user, activeTab])
+  }, [user, activeTab, userType])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -481,13 +480,8 @@ function Profile() {
     setLoading(true)
     try {
       if (user) {
-        // First check if user exists in learner collection
-        const learnerRef = doc(db, "learner", user.uid)
-        const learnerDoc = await getDoc(learnerRef)
-
-        // Determine which collection to update
-        const collectionName = learnerDoc.exists() ? "learner" : "intern"
-        const userRef = doc(db, collectionName, user.uid)
+        // Determine which collection to update based on userType
+        const userRef = doc(db, userType, user.uid)
 
         await updateDoc(userRef, {
           fullName: userData.fullName,
@@ -500,8 +494,6 @@ function Profile() {
         if (newProfileImage) {
           const photoURL = await uploadToCloudinary(newProfileImage)
           if (photoURL) {
-            // Assuming uploadToCloudinary returns the URL directly
-            // We need to update the structure to match the expected format
             await updateDoc(userRef, {
               photoURL: {
                 publicId: `modules/module_file_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
@@ -544,329 +536,318 @@ function Profile() {
   }, [alert.show])
 
   return (
-    <div className="flex h-screen">
-      <SidebarWrapper>
-        <Sidebar />
-      </SidebarWrapper>
-      <MainContent expanded={expanded}>
-        {/* Background decorations */}
-        <div
-          style={{
-            position: "fixed",
-            left: "-4rem",
-            top: "-4rem",
-            height: "8rem",
-            width: "8rem",
-            borderRadius: "9999px",
-            background: "radial-gradient(circle, rgba(147, 51, 234, 0.2) 0%, rgba(236, 72, 153, 0) 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-        <div
-          style={{
-            position: "fixed",
-            right: "-4rem",
-            bottom: "-4rem",
-            height: "8rem",
-            width: "8rem",
-            borderRadius: "9999px",
-            background: "radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(147, 51, 234, 0) 70%)",
-            filter: "blur(40px)",
-          }}
-        />
+    <MainContent>
+      {/* Background decorations */}
+      <div
+        style={{
+          position: "fixed",
+          left: "-4rem",
+          top: "-4rem",
+          height: "8rem",
+          width: "8rem",
+          borderRadius: "9999px",
+          background: "radial-gradient(circle, rgba(147, 51, 234, 0.2) 0%, rgba(236, 72, 153, 0) 70%)",
+          filter: "blur(40px)",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          right: "-4rem",
+          bottom: "-4rem",
+          height: "8rem",
+          width: "8rem",
+          borderRadius: "9999px",
+          background: "radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, rgba(147, 51, 234, 0) 70%)",
+          filter: "blur(40px)",
+        }}
+      />
 
-        {/* Profile header */}
-        <ProfileHeader>
-          <ProfileImageWrapper>
-            <ProfileImage>
-              <img
-                src={userData.photoURL?.url || "https://via.placeholder.com/128"}
-                alt={userData.fullName || "Profile"}
-              />
-            </ProfileImage>
-          </ProfileImageWrapper>
-          <ProfileInfo>
-            <h2>{userData.fullName || "User Name"}</h2>
-            <p>{userData.email || "email@example.com"}</p>
-            <p className="username">@{userData.username || "username"}</p>
-            {userType && (
-              <p className="mt-2 inline-block px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                {userType === "learner" ? "Learner" : "Intern"}
-              </p>
-            )}
-          </ProfileInfo>
-        </ProfileHeader>
+      {/* Profile header */}
+      <ProfileHeader>
+        <ProfileImageWrapper>
+          <ProfileImage>
+            <img
+              src={userData.photoURL?.url || "https://via.placeholder.com/128"}
+              alt={userData.fullName || "Profile"}
+            />
+          </ProfileImage>
+        </ProfileImageWrapper>
+        <ProfileInfo>
+          <h2>{userData.fullName || "User Name"}</h2>
+          <p>{userData.email || "email@example.com"}</p>
+          <p className="username">@{userData.username || "username"}</p>
+          {userType && (
+            <p className="mt-2 inline-block px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+              {userType === "learner" ? "Learner" : userType === "intern" ? "Intern" : "User"}
+            </p>
+          )}
+        </ProfileInfo>
+      </ProfileHeader>
 
-        {/* Tabs */}
-        <TabsContainer>
-          <TabsList>
-            <TabButton active={activeTab === "personal"} onClick={() => setActiveTab("personal")}>
-              Personal Info
-            </TabButton>
-            <TabButton active={activeTab === "progress"} onClick={() => setActiveTab("progress")}>
-              Progress
-            </TabButton>
-            <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
-              Completed Courses
-            </TabButton>
-            <TabButton active={activeTab === "comments"} onClick={() => setActiveTab("comments")}>
-              Comments
-            </TabButton>
-          </TabsList>
+      {/* Tabs */}
+      <TabsContainer>
+        <TabsList>
+          <TabButton active={activeTab === "personal"} onClick={() => setActiveTab("personal")}>
+            Personal Info
+          </TabButton>
+          {userType !== "users" && (
+            <>
+              <TabButton active={activeTab === "progress"} onClick={() => setActiveTab("progress")}>
+                Progress
+              </TabButton>
+              <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
+                Completed Courses
+              </TabButton>
+              <TabButton active={activeTab === "comments"} onClick={() => setActiveTab("comments")}>
+                Comments
+              </TabButton>
+            </>
+          )}
+        </TabsList>
 
-          {/* Personal Info Tab */}
-          {activeTab === "personal" && (
-            <Card>
-              <CardHeader>
-                <h3>
-                  Personal Information
-                  {!editing && (
-                    <EditButton onClick={() => setEditing(true)}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                      </svg>
-                      Edit Profile
-                    </EditButton>
-                  )}
-                </h3>
-                <p>Manage your personal information and contact details</p>
-              </CardHeader>
-              <CardContent>
-                {editing ? (
-                  <div>
-                    <FormGrid>
-                      <FormGroup>
-                        <label htmlFor="fullName">Full Name</label>
-                        <input
-                          id="fullName"
-                          name="fullName"
-                          value={userData.fullName || ""}
-                          onChange={handleInputChange}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <label htmlFor="email">Email</label>
-                        <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={userData.email || ""}
-                          onChange={handleInputChange}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <label htmlFor="phoneNumber">Phone Number</label>
-                        <input
-                          id="phoneNumber"
-                          name="phoneNumber"
-                          value={userData.phoneNumber || ""}
-                          onChange={handleInputChange}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <label htmlFor="address">Address</label>
-                        <input
-                          id="address"
-                          name="address"
-                          value={userData.address || ""}
-                          onChange={handleInputChange}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <label htmlFor="username">Username</label>
-                        <input
-                          id="username"
-                          name="username"
-                          value={userData.username || ""}
-                          onChange={handleInputChange}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <label htmlFor="profileImage">Profile Image</label>
-                        <input
-                          id="profileImage"
-                          type="file"
-                          onChange={handleImageChange}
-                          style={{ cursor: "pointer" }}
-                        />
-                      </FormGroup>
-                    </FormGrid>
-                    <ButtonGroup>
-                      <SecondaryButton onClick={handleCancel} disabled={loading}>
-                        Cancel
-                      </SecondaryButton>
-                      <PrimaryButton onClick={handleSave} disabled={loading}>
-                        {loading ? "Saving..." : "Save Changes"}
-                      </PrimaryButton>
-                    </ButtonGroup>
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-gray-500 mb-4">
-                      Click the Edit Profile button to view and update your personal information.
-                    </p>
-                  </div>
+        {/* Personal Info Tab */}
+        {activeTab === "personal" && (
+          <Card>
+            <CardHeader>
+              <h3>
+                Personal Information
+                {!editing && (
+                  <EditButton onClick={() => setEditing(true)}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Edit Profile
+                  </EditButton>
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Progress Tab */}
-          {activeTab === "progress" && (
-            <Card>
-              <CardHeader>
-                <h3>Your Progress</h3>
-                <p>Track your learning journey and course progress</p>
-              </CardHeader>
-              <CardContent>
-                <ProfileProgress />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* History Tab */}
-          {activeTab === "history" && (
-            <Card>
-              <CardHeader>
-                <h3>Completed Courses</h3>
-                <p>View your learning achievements and completed courses</p>
-              </CardHeader>
-              <CardContent>
-                <ProfileHistory />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Comments Tab */}
-          {activeTab === "comments" && (
-            <Card>
-              <CardHeader>
-                <h3>Your Comments</h3>
-                <p>Review your course comments and feedback</p>
-              </CardHeader>
-              <CardContent>
-                {comments.length > 0 ? (
-                  <CommentsList>
-                    {comments.map((comment, index) => (
-                      <CommentCard key={index}>
-                        <CardContent>
-                          <CommentHeader>
-                            <h4>
-                              Course: <span>{comment.courseTitle || "Unknown Course"}</span>
-                            </h4>
-                            {comment.rating && (
-                              <Rating>
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    filled={i < comment.rating}
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
-                                    />
-                                  </Star>
-                                ))}
-                              </Rating>
-                            )}
-                          </CommentHeader>
-                          <CommentDate>
-                            {comment.createdAt?.toDate ? new Date(comment.createdAt?.toDate()).toLocaleString() : ""}
-                          </CommentDate>
-                          <CommentText>{comment.comment}</CommentText>
-                        </CardContent>
-                      </CommentCard>
-                    ))}
-                  </CommentsList>
-                ) : (
-                  <EmptyState>
-                    <p>No comments available.</p>
-                  </EmptyState>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContainer>
-
-        {/* Alert notification */}
-        {alert.show && (
-          <Alert type={alert.type}>
-            <AlertContent>
-              <AlertIcon type={alert.type}>
-                {alert.type === "success" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                )}
-              </AlertIcon>
-              <AlertBody>
-                <AlertTitle>{alert.type === "success" ? "Success" : "Error"}</AlertTitle>
-                <AlertMessage>{alert.message}</AlertMessage>
-              </AlertBody>
-            </AlertContent>
-            <AlertCloseButton onClick={() => setAlert({ show: false, message: "", type: "" })}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </AlertCloseButton>
-          </Alert>
+              </h3>
+              <p>Manage your personal information and contact details</p>
+            </CardHeader>
+            <CardContent>
+              {editing ? (
+                <div>
+                  <FormGrid>
+                    <FormGroup>
+                      <label htmlFor="fullName">Full Name</label>
+                      <input
+                        id="fullName"
+                        name="fullName"
+                        value={userData.fullName || ""}
+                        onChange={handleInputChange}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <label htmlFor="email">Email</label>
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={userData.email || ""}
+                        onChange={handleInputChange}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <label htmlFor="phoneNumber">Phone Number</label>
+                      <input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        value={userData.phoneNumber || ""}
+                        onChange={handleInputChange}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <label htmlFor="address">Address</label>
+                      <input id="address" name="address" value={userData.address || ""} onChange={handleInputChange} />
+                    </FormGroup>
+                    <FormGroup>
+                      <label htmlFor="username">Username</label>
+                      <input
+                        id="username"
+                        name="username"
+                        value={userData.username || ""}
+                        onChange={handleInputChange}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <label htmlFor="profileImage">Profile Image</label>
+                      <input id="profileImage" type="file" onChange={handleImageChange} style={{ cursor: "pointer" }} />
+                    </FormGroup>
+                  </FormGrid>
+                  <ButtonGroup>
+                    <SecondaryButton onClick={handleCancel} disabled={loading}>
+                      Cancel
+                    </SecondaryButton>
+                    <PrimaryButton onClick={handleSave} disabled={loading}>
+                      {loading ? "Saving..." : "Save Changes"}
+                    </PrimaryButton>
+                  </ButtonGroup>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-gray-500 mb-4">
+                    Click the Edit Profile button to view and update your personal information.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
-      </MainContent>
-    </div>
+
+        {/* Progress Tab */}
+        {activeTab === "progress" && userType !== "users" && (
+          <Card>
+            <CardHeader>
+              <h3>Your Progress</h3>
+              <p>Track your learning journey and course progress</p>
+            </CardHeader>
+            <CardContent>
+              <ProfileProgress />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* History Tab */}
+        {activeTab === "history" && userType !== "users" && (
+          <Card>
+            <CardHeader>
+              <h3>Completed Courses</h3>
+              <p>View your learning achievements and completed courses</p>
+            </CardHeader>
+            <CardContent>
+              <ProfileHistory />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Comments Tab */}
+        {activeTab === "comments" && userType !== "users" && (
+          <Card>
+            <CardHeader>
+              <h3>Your Comments</h3>
+              <p>Review your course comments and feedback</p>
+            </CardHeader>
+            <CardContent>
+              {comments.length > 0 ? (
+                <CommentsList>
+                  {comments.map((comment, index) => (
+                    <CommentCard key={index}>
+                      <CardContent>
+                        <CommentHeader>
+                          <h4>
+                            Course: <span>{comment.courseTitle || "Unknown Course"}</span>
+                          </h4>
+                          {comment.rating && (
+                            <Rating>
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  filled={i < comment.rating}
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                                  />
+                                </Star>
+                              ))}
+                            </Rating>
+                          )}
+                        </CommentHeader>
+                        <CommentDate>
+                          {comment.createdAt?.toDate ? new Date(comment.createdAt?.toDate()).toLocaleString() : ""}
+                        </CommentDate>
+                        <CommentText>{comment.comment}</CommentText>
+                      </CardContent>
+                    </CommentCard>
+                  ))}
+                </CommentsList>
+              ) : (
+                <EmptyState>
+                  <p>No comments available.</p>
+                </EmptyState>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </TabsContainer>
+
+      {/* Alert notification */}
+      {alert.show && (
+        <Alert type={alert.type}>
+          <AlertContent>
+            <AlertIcon type={alert.type}>
+              {alert.type === "success" ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              )}
+            </AlertIcon>
+            <AlertBody>
+              <AlertTitle>{alert.type === "success" ? "Success" : "Error"}</AlertTitle>
+              <AlertMessage>{alert.message}</AlertMessage>
+            </AlertBody>
+          </AlertContent>
+          <AlertCloseButton onClick={() => setAlert({ show: false, message: "", type: "" })}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </AlertCloseButton>
+        </Alert>
+      )}
+    </MainContent>
   )
 }
 

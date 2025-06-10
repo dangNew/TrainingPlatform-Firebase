@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { SidebarToggleContext } from "../components/LgNavbar";
 import {
   addDoc,
   arrayRemove,
@@ -38,9 +39,8 @@ import {
 } from "lucide-react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { motion, AnimatePresence } from "framer-motion";
-
 import { auth, db } from "../firebase.config";
-import Sidebar from "../Admin/Aside"
+import Sidebar from "../Admin/Aside";
 import LgNavbar from "../components/LgNavbar";
 import styled from "styled-components";
 import uploadToCloudinary from "../uploadToCloudinary";
@@ -71,16 +71,17 @@ const SidebarWrapper = styled.div`
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
+  background-color: #f5f7fa;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "0rem" : "4rem")};
-  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+  margin-left: ${({ expanded }) => (expanded ? "270px" : "70px")};
+  transition: margin-left 0.3s ease;
 `;
 
-const CourseDashboard = ({ expanded }) => {
+const CourseDashboard = () => {
   const [user] = useAuthState(auth);
+  const { expanded } = useContext(SidebarToggleContext);
   const [currentUser, setCurrentUser] = useState(null);
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
@@ -1208,7 +1209,7 @@ const CourseDashboard = ({ expanded }) => {
   };
 
   return (
-    <MainContent expanded={expanded}>
+    <MainContent  expanded={expanded}>
       <div className="flex h-full">
         {/* Chat List - Fixed to always be visible on desktop */}
         <div className="w-full md:w-1/3 lg:w-1/4 border-r border-gray-300 bg-gray-100 flex flex-col h-full">
@@ -2303,9 +2304,9 @@ const ElearningDashboard = () => {
       </HeaderWrapper>
       <ContentContainer>
         <SidebarWrapper>
-          <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+          <Sidebar />
         </SidebarWrapper>
-        <CourseDashboard expanded={isSidebarOpen} />
+        <CourseDashboard />
       </ContentContainer>
     </PageContainer>
   );

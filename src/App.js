@@ -106,7 +106,6 @@ const LSidebarWrapper = () => {
   const learnerPaths = [
     "/user-dashboard",
     "/chatroom",
-    "/lprofile",
     "/lcourses",
     "/lcourse",
     "/lmodules",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   FaTachometerAlt,
   FaBook,
@@ -7,23 +7,17 @@ import {
   FaFolder,
   FaPlusCircle,
   FaPuzzlePiece,
-  FaCalendarCheck,
-  FaEnvelope,
-  FaCog,
-  FaUserShield,
   FaSignOutAlt,
-  FaBars
 } from "react-icons/fa";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase.config";
 import { doc, getDoc } from "firebase/firestore";
-
-const SidebarContext = createContext();
+import { SidebarToggleContext } from "../components/LgNavbar"; // <- Context from navbar
 
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(true);
+  const { expanded } = useContext(SidebarToggleContext); // <-- from context
   const [userData, setUserData] = useState({ fullName: "", email: "" });
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem("activeItem") || "Dashboard";
@@ -35,13 +29,11 @@ const Sidebar = () => {
       if (user) {
         const userDocRef = doc(db, "users", user.uid);
         const userDocSnap = await getDoc(userDocRef);
-
         if (userDocSnap.exists()) {
           setUserData(userDocSnap.data());
         }
       }
     };
-
     fetchUserData();
   }, []);
 
@@ -54,8 +46,6 @@ const Sidebar = () => {
       "/file-library": "File Library",
       "/addmodule": "Add Module",
       "/addquiz": "Quizzes",
-      
-      // "/admin": "Admin",
     };
 
     setActiveItem(routeToText[location.pathname] || "Dashboard");
@@ -72,72 +62,51 @@ const Sidebar = () => {
   };
 
   return (
-    <SidebarContext.Provider value={{ expanded, activeItem, setActiveItem }}>
-      <div className="flex">
-        <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
-          <nav className={`h-full flex flex-col bg-white border-r shadow-sm text-blue-950 overflow-y-auto`}>
-            <div className="p-4 pb-2 flex justify-between items-center">
-              <button
-                onClick={() => setExpanded((curr) => !curr)}
-                className="p-1.5 rounded-lg bg-gray-200 hover:bg-gray-300"
-              >
-                <FaBars className="text-blue-950" size={28} />
-              </button>
-            </div>
+    <div className="flex">
+      <aside className={`fixed h-screen transition-all ${expanded ? "w-64" : "w-16"}`}>
+        <nav className={`h-full flex flex-col bg-white border-r shadow-sm text-blue-950 overflow-y-auto`}>
+          <ul className="flex-1 px-3">
+            <SidebarItem icon={<FaTachometerAlt size={28} />} text="Dashboard" route="/dashboard" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaBook size={28} />} text="Courses" route="/courses" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaBookOpen size={28} />} text="Add Course" route="/addcourse" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaComments size={28} />} text="Chat" route="/Achat" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaFolder size={28} />} text="File Library" route="/file-library" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaPlusCircle size={28} />} text="Add Module" route="/addmodule" activeItem={activeItem} setActiveItem={setActiveItem} />
+            <SidebarItem icon={<FaPuzzlePiece size={28} />} text="Quizzes" route="/addquiz" activeItem={activeItem} setActiveItem={setActiveItem} />
+          </ul>
 
-            
-
-            <hr className="my-3 border-gray-300" />
-
-            <ul className="flex-1 px-3">
-              <SidebarItem icon={<FaTachometerAlt size={28} />} text="Dashboard" route="/dashboard" />
-              <SidebarItem icon={<FaBook size={28} />} text="Courses" route="/courses" />
-              <SidebarItem icon={<FaBookOpen size={28} />} text="Add Course" route="/addcourse" />
-              <SidebarItem icon={<FaComments size={28} />} text="Chat" route="/Achat" />
-              <SidebarItem icon={<FaFolder size={28} />} text="File Library" route="/file-library" />
-              <SidebarItem icon={<FaPlusCircle size={28} />} text="Add Module" route="/addmodule" />
-              <SidebarItem icon={<FaPuzzlePiece size={28} />} text="Quizzes" route="/addquiz" />
-              {/* <SidebarItem icon={<FaUserShield size={28} />} text="Admin" route="/admin" /> */}
-            </ul>
-
-            <div className="border-t border-gray-300 flex p-3">
-              <button
-                onClick={handleLogout}
-                className="flex items-center justify-center w-full text-gray-800 hover:text-red-500"
-              >
-                <FaSignOutAlt size={28} className="mr-2" />
-                <span className={`overflow-hidden transition-all ${expanded ? "w-52 ml-3 text-lg" : "w-0"}`}>
-                  Logout
-                </span>
-              </button>
-            </div>
-          </nav>
-        </aside>
-        <main className={`transition-all ${expanded ? "ml-64" : "ml-16"}`}>{/* Main content goes here */}</main>
-      </div>
-    </SidebarContext.Provider>
+          <div className="border-t border-gray-300 flex p-3">
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center w-full text-gray-800 hover:text-red-500"
+            >
+              <FaSignOutAlt size={28} className="mr-2" />
+              <span className={`overflow-hidden transition-all ${expanded ? "w-52 ml-3 text-lg" : "w-0"}`}>
+                Logout
+              </span>
+            </button>
+          </div>
+        </nav>
+      </aside>
+    </div>
   );
 };
 
-const SidebarItem = ({ icon, text, route }) => {
-  const { expanded, activeItem, setActiveItem } = useContext(SidebarContext);
+const SidebarItem = ({ icon, text, route, activeItem, setActiveItem }) => {
+  const { expanded } = useContext(SidebarToggleContext);
   const navigate = useNavigate();
 
   const handleClick = () => {
     setActiveItem(text);
     localStorage.setItem("activeItem", text);
-    if (route) {
-      navigate(route);
-    }
+    if (route) navigate(route);
   };
 
   return (
     <li
       onClick={handleClick}
       className={`relative flex items-center py-1 px-2 my-1 font-medium rounded-md cursor-pointer transition-colors group ${
-        activeItem === text
-          ? "bg-yellow-300 text-yellow-900"
-          : "hover:bg-yellow-200 text-blue-950"
+        activeItem === text ? "bg-yellow-300 text-yellow-900" : "hover:bg-yellow-200 text-blue-950"
       }`}
     >
       {icon}

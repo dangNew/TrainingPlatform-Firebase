@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { SidebarToggleContext } from "../components/LgNavbar";
 import {
   collection,
   getDocs,
@@ -67,14 +68,15 @@ const SidebarWrapper = styled.div`
 const MainContent = styled.div`
   flex: 1;
   padding: 2rem;
+  background-color: #f5f7fa;
   border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  margin-left: ${({ expanded }) => (expanded ? "16rem" : "4rem")};
-  width: ${({ expanded }) => (expanded ? "calc(100% - 16rem)" : "calc(100% - 4rem)")};
+  margin-left: ${({ expanded }) => (expanded ? "270px" : "70px")};
+  transition: margin-left 0.3s ease;
 `;
 
-const CourseDashboard = ({ expanded }) => {
+const CourseDashboard = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,6 +84,7 @@ const CourseDashboard = ({ expanded }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [modal, setModal] = useState({ isOpen: false, type: "", content: null });
   const [editingCourse, setEditingCourse] = useState(null);
+  const { expanded } = useContext(SidebarToggleContext);
   const [pdfFile, setPdfFile] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
